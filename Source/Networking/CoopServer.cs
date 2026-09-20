@@ -121,6 +121,21 @@ namespace RimCoopMod.Networking
                 }
 
                 var hs = first.GetPayload<HandshakePayload>();
+
+                // Lo primero: mi versión de protocolo. Un cliente nuevo la usa para saber si somos compatibles;
+                // un servidor viejo nunca manda esto, y el cliente lo detecta justamente por eso.
+                NetIO.SendPacket(handle.Stream, Packet.Create(PacketType.ServerInfo, new ServerInfoPayload { ProtocolVersion = ProtocolInfo.Version }));
+                if (hs.ProtocolVersion != ProtocolInfo.Version)
+                {
+                    CoopLog.Warning($"[RimCoop] Un cliente con versión de protocolo {hs.ProtocolVersion} (el servidor usa {ProtocolInfo.Version}) intentó conectarse: se lo rechaza. Tiene que usar la misma versión del mod.");
+                    NetIO.SendPacket(handle.Stream, Packet.Create(PacketType.Chat, new ChatPayload
+                    {
+                        PlayerId = 0, PlayerName = "Servidor",
+                        Message = $"Versión del mod incompatible (tu protocolo: {hs.ProtocolVersion}, servidor: {ProtocolInfo.Version}). Actualizá el mod y el servidor a la misma versión."
+                    }));
+                    handle.TcpClient.Close();
+                    return;
+                }
                 string playerName = string.IsNullOrEmpty(hs.PlayerName) ? $"Jugador{_nextPlayerId}" : hs.PlayerName;
 
                 lock (_nameToId)

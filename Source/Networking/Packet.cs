@@ -40,7 +40,19 @@ namespace RimCoopMod.Networking
         PlayersRequest = 25,     // "decime dónde están las colonias de todos": el server responde con un PlayerUpdate por cada jugador asentado
         TradeMessage = 26,       // comercio entre jugadores (pedir stock, ofertar, aceptar, rechazar, transferir ítems)
         ResearchSync = 27,       // investigación compartida (proyectos terminados y progreso)
-        WorldEvent = 28          // condición que afecta a todas las bases a la vez (eclipse, llamarada solar, etc.)
+        WorldEvent = 28,         // condición del mapa real que se ve también en el mapa espejo de quien lo mira
+        ServerInfo = 29          // lo primero que manda el servidor: su versión de protocolo (para detectar mod/servidor desparejos)
+    }
+
+    public static class ProtocolInfo
+    {
+        /// <summary>Subir cada vez que cambia el formato de un paquete. Mod y servidor tienen que coincidir.</summary>
+        public const int Version = 8;
+    }
+
+    public class ServerInfoPayload
+    {
+        public int ProtocolVersion;
     }
 
     /// <summary>
@@ -68,6 +80,7 @@ namespace RimCoopMod.Networking
     public class HandshakePayload
     {
         public string PlayerName;
+        public int ProtocolVersion; // va al final del paquete: un servidor viejo lo ignora (y un cliente viejo no lo manda = 0)
     }
 
     public class WorldDataPayload

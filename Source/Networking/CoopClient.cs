@@ -23,6 +23,9 @@ namespace RimCoopMod.Networking
         public string LocalPlayerName { get; private set; }
         public string LastError { get; private set; }
 
+        // Si el servidor y el mod no son de la misma versión, acá queda el motivo (lo muestra CoopUpdater en pantalla).
+        public string VersionError;
+
         // Datos del mundo recibidos del servidor en el WorldData packet.
         public string LastKnownSeed { get; private set; }
         public float LastKnownCoverage { get; private set; } = 0.3f;
@@ -39,7 +42,7 @@ namespace RimCoopMod.Networking
                 _tcpClient.Connect(ip, port); // bloqueante; llamar desde un hilo aparte si querés no trabar la UI
                 _stream = _tcpClient.GetStream();
 
-                NetIO.SendPacket(_stream, Packet.Create(PacketType.Handshake, new HandshakePayload { PlayerName = playerName }));
+                NetIO.SendPacket(_stream, Packet.Create(PacketType.Handshake, new HandshakePayload { PlayerName = playerName, ProtocolVersion = ProtocolInfo.Version }));
 
                 _readThread = new Thread(ReadLoop) { IsBackground = true };
                 _readThread.Start();
@@ -56,12 +59,26 @@ namespace RimCoopMod.Networking
 
         private void ReadLoop()
         {
+            bool gotServerInfo = false;
             try
             {
                 while (IsConnected)
                 {
                     Packet p = NetIO.ReadPacket(_stream);
                     if (p == null) break;
+
+                    if (p.Type == PacketType.ServerInfo)
+                    {
+                        int serverVersion = p.GetPayload<ServerInfoPayload>().ProtocolVersion;
+                        gotServerInfo = true;
+                        if (serverVersion != ProtocolInfo.Version)
+                        {
+                            VersionError = $"El servidor usa otra versión de RimCoop (protocolo {serverVersion}; tu mod usa {ProtocolInfo.Version}). Actualizá el mod y el servidor a la misma versión.";
+                            CoopLog.Warning("[RimCoop] " + VersionError);
+                            break;
+                        }
+                        continue;
+                    }
 
                     if (p.Type == PacketType.WorldData)
                     {
@@ -77,6 +94,8 @@ namespace RimCoopMod.Networking
             catch (Exception e)
             {
                 CoopLog.Warning($"[RimCoop] Conexión perdida: {e.Message}");
+                if (!gotServerInfo)
+                    VersionError = "No se pudo entender al servidor: seguramente es de una versión anterior de RimCoop. Actualizá el servidor y el mod a la misma versión.";
             }
             finally
             {

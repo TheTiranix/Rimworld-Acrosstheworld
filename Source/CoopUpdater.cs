@@ -33,6 +33,14 @@ namespace RimCoopMod
 
         private void Update()
         {
+            var versionError = CoopClient.Instance.VersionError;
+            if (versionError != null)
+            {
+                CoopClient.Instance.VersionError = null;
+                try { Find.WindowStack?.Add(new Dialog_MessageBox(versionError, "Aceptar", null, null, null, "RimCoop: versiones distintas")); }
+                catch { Messages.Message(versionError, MessageTypeDefOf.RejectInput, false); }
+            }
+
             if (!CoopClient.Instance.IsConnected)
             {
                 _wasVisible = false;

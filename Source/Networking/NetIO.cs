@@ -63,6 +63,12 @@ namespace RimCoopMod.Networking
                     {
                         var p = (HandshakePayload)packet.Payload;
                         bw.Write(p.PlayerName ?? "");
+                        bw.Write(p.ProtocolVersion);
+                        break;
+                    }
+                case PacketType.ServerInfo:
+                    {
+                        bw.Write(((ServerInfoPayload)packet.Payload).ProtocolVersion);
                         break;
                     }
                 case PacketType.WorldData:
@@ -458,7 +464,14 @@ namespace RimCoopMod.Networking
             switch (type)
             {
                 case PacketType.Handshake:
-                    return new HandshakePayload { PlayerName = br.ReadString() };
+                    {
+                        var hs = new HandshakePayload { PlayerName = br.ReadString() };
+                        if (br.BaseStream.Position < br.BaseStream.Length) hs.ProtocolVersion = br.ReadInt32(); // clientes viejos no lo mandan
+                        return hs;
+                    }
+
+                case PacketType.ServerInfo:
+                    return new ServerInfoPayload { ProtocolVersion = br.ReadInt32() };
 
                 case PacketType.WorldData:
                     {
