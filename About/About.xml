@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ModMetaData>
+  <name>RimCoop - Multijugador Cooperativo</name>
+  <author>thetiranix</author>
+  <packageId>thetiranix.rimcoop</packageId>
+  <supportedVersions>
+    <li>1.6</li>
+  </supportedVersions>
+  <description>
+    Mod cooperativo para RimWorld: cada jugador lleva su propia colonia en el mismo planeta.
+
+    - Un servidor reparte la seed del mundo, y todos generan el mismo planeta.
+    - Ves las colonias de los demas en el mapa mundial, en el lugar donde las fundaron.
+    - Podes entrar al mapa real de otra base (como el campamento de una caravana) y ver sus colonos, construcciones e items en vivo.
+    - Colaborar: manda colonos tuyos a vivir y trabajar en la base de otro jugador (solo vos podes darles ordenes).
+    - Construi, marca zonas y areas en la base ajena: el dueno las aplica en su mapa.
+    - Comercio entre jugadores (ofertas de ida y vuelta) y ataques con incursiones reales.
+    - Chat global (tecla \), pausa por votacion y velocidad de juego compartida.
+
+    Estado: experimental. Cada juego corre su propia simulacion; lo que ves de otra base es una copia sincronizada, no una simulacion unica compartida.
+
+    Requiere Harmony.
+  </description>
+  <modDependencies>
+    <li>
+      <packageId>brrainz.harmony</packageId>
+      <displayName>Harmony</displayName>
+      <steamWorkshopUrl>steam://url/CommunityFilePage/2009463077</steamWorkshopUrl>
+      <downloadUrl>https://github.com/pardeike/HarmonyRimWorld/releases/latest</downloadUrl>
+    </li>
+  </modDependencies>
+  <loadAfter>
+    <li>brrainz.harmony</li>
+  </loadAfter>
+</ModMetaData>

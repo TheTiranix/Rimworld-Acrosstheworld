@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Defs>
+  <!--
+    Generador para el "espejo" de la base de otro jugador: SOLO terreno (rocas, piso, geysers,
+    plantas, nieve). A propósito NO incluye:
+    - Settlement/SettlementPower (crearían una base de facción falsa con sus propios colonos)
+    - Animals (crearía fauna nueva al azar; la fauna real ya se sincroniza por red)
+    - FindPlayerStartSpot/ScenParts (son para cuando un jugador funda SU colonia, no aplica acá)
+    Las construcciones/ítems reales del dueño se agregan aparte, por red (ver CoopSessionManager).
+  -->
+  <MapGeneratorDef>
+    <defName>RimCoop_MirrorBase</defName>
+    <genSteps>
+      <li>ElevationFertility</li>
+      <li>MutatorPostElevationFertility</li>
+      <li>Terrain</li>
+      <li>MutatorPostTerrain</li>
+      <li>Roads</li>
+      <li>RockChunks</li>
+      <li>SteamGeysers</li>
+      <li>Plants</li>
+      <li>Snow</li>
+    </genSteps>
+  </MapGeneratorDef>
+</Defs>

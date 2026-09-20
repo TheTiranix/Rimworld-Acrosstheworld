@@ -1,0 +1,61 @@
+using HarmonyLib;
+using RimCoopMod.GameComponents;
+using RimCoopMod.Networking;
+using RimWorld;
+using Verse;
+using Verse.AI;
+
+namespace RimCoopMod.World
+{
+    /// <summary>
+    /// La IA "libre" vive en el pawn REAL (el que está en el juego del dueño): decide sola qué
+    /// hacer, y el títere lo sigue trabajo por trabajo (ver SyncPuppetJob). Si el títere además
+    /// eligiera sus propios trabajos, en cada juego harían cosas distintas (dos IA con dados
+    /// distintos) — así que el títere no busca trabajo por su cuenta.
+    /// </summary>
+    [HarmonyPatch(typeof(Pawn_JobTracker), "TryFindAndStartJob")]
+    public static class Pawn_JobTracker_TryFindAndStartJob_Patch
+    {
+        [HarmonyPrefix]
+        public static bool Prefix(Pawn_JobTracker __instance)
+        {
+            var pawn = Traverse.Create(__instance).Field("pawn").GetValue<Pawn>();
+            return !PuppetPawnRegistry.IsPuppet(pawn);
+        }
+    }
+
+    /// <summary>Un títere no tiene crisis mentales propias: si el pawn real la tiene, se ve por su trabajo.</summary>
+    [HarmonyPatch(typeof(MentalStateHandler), nameof(MentalStateHandler.TryStartMentalState))]
+    public static class MentalStateHandler_TryStartMentalState_Patch
+    {
+        [HarmonyPrefix]
+        public static bool Prefix(MentalStateHandler __instance)
+        {
+            var pawn = Traverse.Create(__instance).Field("pawn").GetValue<Pawn>();
+            return !PuppetPawnRegistry.IsPuppet(pawn);
+        }
+    }
+
+    /// <summary>El fuego del espejo es solo para verse: no se propaga ni quema nada del mapa espejo.</summary>
+    [HarmonyPatch(typeof(Fire), "Tick")]
+    public static class Fire_Tick_Patch
+    {
+        [HarmonyPrefix]
+        public static bool Prefix(Fire __instance)
+        {
+            return CoopSessionManager.GetHostPlayerIdForMap(__instance.Map) < 0;
+        }
+    }
+
+    /// <summary>Cambios de velocidad (1x/2x/3x): se avisa a todos para que el ritmo sea el mismo.</summary>
+    [HarmonyPatch(typeof(TickManager), nameof(TickManager.CurTimeSpeed), MethodType.Setter)]
+    public static class TickManager_CurTimeSpeed_Broadcast_Patch
+    {
+        [HarmonyPostfix]
+        public static void Postfix(TickManager __instance, TimeSpeed value)
+        {
+            if (value == TimeSpeed.Paused || __instance.CurTimeSpeed != value) return; // la pausa se vota; y si el cambio fue bloqueado no se avisa
+            CoopSessionManager.BroadcastSpeed(value);
+        }
+    }
+}

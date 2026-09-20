@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Defs>
+  <KeyBindingDef>
+    <defName>RimCoop_ToggleChat</defName>
+    <label>RimCoop: chat global</label>
+    <description>Abre o cierra el chat global de RimCoop.</description>
+    <category>Game</category>
+    <defaultKeyCodeA>Backslash</defaultKeyCodeA>
+  </KeyBindingDef>
+</Defs>

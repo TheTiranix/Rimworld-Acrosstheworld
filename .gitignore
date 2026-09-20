@@ -1,0 +1,20 @@
+# Compilados
+bin/
+obj/
+Assemblies/
+*.pdb
+.vs/
+
+# Datos locales del servidor (ids de jugadores, seed) y logs
+ServerData/
+*.log
+
+# Paquetes de release
+release/
+*.zip
+
+# Config local de herramientas
+.claude/
+.mcp.json
+*.Backup.tmp
+*.slnx

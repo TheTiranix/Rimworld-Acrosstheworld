@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Defs>
+  <WorldObjectDef>
+    <defName>RimCoop_CoopPlayerBase</defName>
+    <label>base de jugador</label>
+    <worldObjectClass>RimCoopMod.World.CoopPlayerBase</worldObjectClass>
+    <texture>World/WorldObjects/Camp</texture>
+    <expandingIcon>true</expandingIcon>
+    <expandingIconTexture>World/WorldObjects/Expanding/Camp</expandingIconTexture>
+    <expandingIconColor>(0.9, 0.2, 0.2)</expandingIconColor>
+    <selectable>true</selectable>
+  </WorldObjectDef>
+</Defs>
