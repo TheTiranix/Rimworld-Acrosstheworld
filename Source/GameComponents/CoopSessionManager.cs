@@ -879,7 +879,9 @@ namespace RimCoopMod.GameComponents
         /// </summary>
         private static readonly HashSet<string> MovementOnlyJobs = new HashSet<string>
         {
-            "Goto", "GotoWander", "Wait_Wander", "GotoSafeTemperature", "Follow", "FollowClose", "Flee", "FleeAndCower", "Wait_MaintainPosture"
+            "Goto", "GotoWander", "Wait_Wander", "GotoSafeTemperature", "Follow", "FollowClose", "Flee", "FleeAndCower", "Wait_MaintainPosture",
+            // Habilidades/psicasts: en el títere fallan (no tiene el mismo estado interno) y llenan el log de excepciones.
+            "CastAbilityOnThing", "CastAbilityOnWorldTile"
         };
 
         [ThreadStatic] public static bool MirrorPathing;
@@ -1444,7 +1446,8 @@ namespace RimCoopMod.GameComponents
                         _connectedPlayerIds.Add(info.PlayerId);
                         _playerNames[info.PlayerId] = info.PlayerName;
                         EnsureRemoteBase(info);
-                        if (IsCollaborator(info.PlayerId)) SendResearchFullTo(info.PlayerId); // un colaborador que vuelve recibe mi investigación
+                        if (_pendingLeaveNames.Remove(info.PlayerName)) CoopClient.Instance.SendResearchSync(info.PlayerId, "leave", ""); // corté con él mientras estaba desconectado
+                        else if (IsCollaborator(info.PlayerId)) SendResearchFullTo(info.PlayerId); // un colaborador que vuelve recibe mi investigación
                         Messages.Message($"{info.PlayerName} se unió a la partida.", MessageTypeDefOf.NeutralEvent, false);
                         break;
                     }

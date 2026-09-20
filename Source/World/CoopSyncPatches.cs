@@ -84,3 +84,35 @@ namespace RimCoopMod.World
         }
     }
 }
+
+namespace RimCoopMod.World
+{
+    /// <summary>Filtra solo el ruido conocido de copiar colonos (ver PawnTransfer.KnownNoise).</summary>
+    [HarmonyPatch(typeof(Log), nameof(Log.Error), new[] { typeof(string) })]
+    public static class Log_Error_Quiet_Patch
+    {
+        [HarmonyPrefix]
+        public static bool Prefix(string text) => !PawnTransfer.ShouldSuppressLog(text);
+    }
+
+    [HarmonyPatch(typeof(Log), nameof(Log.Warning), new[] { typeof(string) })]
+    public static class Log_Warning_Quiet_Patch
+    {
+        [HarmonyPrefix]
+        public static bool Prefix(string text) => !PawnTransfer.ShouldSuppressLog(text);
+    }
+
+    /// <summary>
+    /// El títere tiene que poder seguir al pawn real por donde pase, incluso por una puerta que a su
+    /// facción (ej. un enemigo) no le abriría: si no encuentra camino, se teletransporta a saltos.
+    /// </summary>
+    [HarmonyPatch(typeof(Building_Door), "PawnCanOpen")]
+    public static class Building_Door_PawnCanOpen_Patch
+    {
+        [HarmonyPostfix]
+        public static void Postfix(Pawn p, ref bool __result)
+        {
+            if (!__result && p != null && PuppetPawnRegistry.IsPuppet(p)) __result = true;
+        }
+    }
+}

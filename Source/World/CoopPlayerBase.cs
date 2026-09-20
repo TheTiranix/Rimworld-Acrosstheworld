@@ -47,6 +47,18 @@ namespace RimCoopMod.World
                 action = () => Find.WindowStack.Add(new Dialog_ChooseColonistsToSend(this))
             };
 
+            if (CoopSessionManager.IsCollaboratingWith(RemotePlayerId))
+            {
+                yield return new Command_Action
+                {
+                    defaultLabel = "Dejar de compartir",
+                    defaultDesc = $"Dejar de compartir la investigación con {RemotePlayerName}. Los colonos que ya enviaron se quedan donde están; se puede volver a colaborar cuando quieran.",
+                    action = () => Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(
+                        $"¿Dejar de compartir la investigación con {RemotePlayerName}?",
+                        () => CoopSessionManager.StopCollaborating(RemotePlayerId)))
+                };
+            }
+
             yield return new Command_Action
             {
                 defaultLabel = "Entrar a la base",

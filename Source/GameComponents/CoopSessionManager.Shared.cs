@@ -80,6 +80,7 @@ namespace RimCoopMod.GameComponents
         // ---- Con quién se comparte: solo con quienes colaboran (se mandaron colonos entre sí) ----
 
         private HashSet<string> _collaboratorNames = new HashSet<string>();
+        private HashSet<string> _pendingLeaveNames = new HashSet<string>(); // corté con alguien que estaba desconectado: se le avisa cuando vuelva
         private readonly Dictionary<int, string> _playerNames = new Dictionary<int, string>();
 
         public override void ExposeData()
@@ -88,6 +89,10 @@ namespace RimCoopMod.GameComponents
             var names = _collaboratorNames.ToList();
             Scribe_Collections.Look(ref names, "rimcoopCollaborators", LookMode.Value);
             if (Scribe.mode == LoadSaveMode.LoadingVars) _collaboratorNames = new HashSet<string>(names ?? new List<string>());
+
+            var pending = _pendingLeaveNames.ToList();
+            Scribe_Collections.Look(ref pending, "rimcoopPendingLeaves", LookMode.Value);
+            if (Scribe.mode == LoadSaveMode.LoadingVars) _pendingLeaveNames = new HashSet<string>(pending ?? new List<string>());
         }
 
         private bool IsCollaborator(int playerId) =>
@@ -96,10 +101,30 @@ namespace RimCoopMod.GameComponents
         private List<int> OnlineCollaborators(int exceptPlayerId = -1) =>
             _connectedPlayerIds.Where(id => id != CoopClient.Instance.LocalPlayerId && id != exceptPlayerId && IsCollaborator(id)).ToList();
 
+        /// <summary>¿Estoy compartiendo investigación con este jugador? (lo usa el botón de la base)</summary>
+        public static bool IsCollaboratingWith(int playerId)
+        {
+            var instance = Current.Game?.GetComponent<CoopSessionManager>();
+            return instance != null && instance.IsCollaborator(playerId);
+        }
+
+        /// <summary>Corta la colaboración: se deja de compartir investigación (en las dos puntas). Los colonos ya enviados no se tocan.</summary>
+        public static void StopCollaborating(int playerId)
+        {
+            var instance = Current.Game?.GetComponent<CoopSessionManager>();
+            if (instance == null || !instance._playerNames.TryGetValue(playerId, out var name)) return;
+            if (!instance._collaboratorNames.Remove(name)) return;
+
+            if (instance._connectedPlayerIds.Contains(playerId)) CoopClient.Instance.SendResearchSync(playerId, "leave", "");
+            else instance._pendingLeaveNames.Add(name);
+            Messages.Message($"Dejaste de compartir la investigación con {name}.", MessageTypeDefOf.NeutralEvent, false);
+        }
+
         /// <summary>Empieza (o se confirma) una colaboración: desde ahora se comparte la investigación con ese jugador.</summary>
         private void AddCollaborator(int playerId)
         {
             if (!_playerNames.TryGetValue(playerId, out var name) || string.IsNullOrEmpty(name)) return;
+            _pendingLeaveNames.Remove(name); // volvieron a colaborar: ya no hay que avisar que se cortó
             bool isNew = _collaboratorNames.Add(name);
             if (isNew) Messages.Message($"Ahora colaborás con {name}: comparten la investigación.", MessageTypeDefOf.PositiveEvent, false);
             SendResearchFullTo(playerId);
@@ -160,6 +185,14 @@ namespace RimCoopMod.GameComponents
         {
             if (Find.ResearchManager == null) return;
             if (!IsCollaborator(m.FromPlayerId)) return; // solo se acepta de quienes colaboran conmigo
+
+            if (m.Kind == "leave")
+            {
+                if (_playerNames.TryGetValue(m.FromPlayerId, out var leaver) && _collaboratorNames.Remove(leaver))
+                    Messages.Message($"{leaver} dejó de compartir la investigación con vos.", MessageTypeDefOf.NeutralEvent, false);
+                return;
+            }
+
             var completed = new List<ResearchProjectDef>();
             string progressChanged = "";
 
