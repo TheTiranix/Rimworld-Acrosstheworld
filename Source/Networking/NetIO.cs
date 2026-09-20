@@ -167,6 +167,7 @@ namespace RimCoopMod.Networking
                             bw.Write(pawn.CurJobTargetBThingId);
                             bw.Write(pawn.CurJobTargetBX);
                             bw.Write(pawn.CurJobTargetBZ);
+                            bw.Write(pawn.CurJobCount);
                             bw.Write(pawn.HasSlowData);
                             if (pawn.HasSlowData)
                             {
@@ -211,6 +212,7 @@ namespace RimCoopMod.Networking
                         bw.Write(p.TargetBThingId);
                         bw.Write(p.TargetBX);
                         bw.Write(p.TargetBZ);
+                        bw.Write(p.Count);
                         break;
                     }
 
@@ -560,6 +562,7 @@ namespace RimCoopMod.Networking
                             ps.CurJobTargetBThingId = br.ReadInt32();
                             ps.CurJobTargetBX = br.ReadInt32();
                             ps.CurJobTargetBZ = br.ReadInt32();
+                            ps.CurJobCount = br.ReadInt32();
                             ps.HasSlowData = br.ReadBoolean();
                             if (ps.HasSlowData)
                             {
@@ -607,7 +610,8 @@ namespace RimCoopMod.Networking
                         HasTargetB = br.ReadBoolean(),
                         TargetBThingId = br.ReadInt32(),
                         TargetBX = br.ReadInt32(),
-                        TargetBZ = br.ReadInt32()
+                        TargetBZ = br.ReadInt32(),
+                        Count = br.ReadInt32()
                     };
 
                 case PacketType.JoinRequest:

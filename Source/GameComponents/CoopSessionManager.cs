@@ -414,7 +414,8 @@ namespace RimCoopMod.GameComponents
                 TargetAThingId = targetAId,
                 TargetAX = targetA.Cell.x,
                 TargetAZ = targetA.Cell.z,
-                HasTargetB = job.targetB.IsValid
+                HasTargetB = job.targetB.IsValid,
+                Count = job.count
             };
 
             if (payload.HasTargetB)
@@ -541,6 +542,7 @@ namespace RimCoopMod.GameComponents
                         snapshot.CurJobTargetAThingId = jobTargetA.HasThing ? jobTargetA.Thing.thingIDNumber : -1;
                         snapshot.CurJobTargetAX = jobTargetA.Cell.x;
                         snapshot.CurJobTargetAZ = jobTargetA.Cell.z;
+                        snapshot.CurJobCount = curJob.count;
                         snapshot.CurJobHasTargetB = curJob.targetB.IsValid;
                         if (snapshot.CurJobHasTargetB)
                         {
@@ -968,7 +970,7 @@ namespace RimCoopMod.GameComponents
 
             if (!targetA.IsValid) return null; // el target (ítem/pawn) todavía no se sincronizó acá
 
-            if (!ps.CurJobHasTargetB) return new Job(jobDef, targetA);
+            if (!ps.CurJobHasTargetB) return new Job(jobDef, targetA) { count = ps.CurJobCount };
 
             LocalTargetInfo targetB = ps.CurJobTargetBThingId >= 0
                 ? (LocalTargetInfo)FindLocalMirrorThing(hostPlayerId, ps.CurJobTargetBThingId)
@@ -976,7 +978,7 @@ namespace RimCoopMod.GameComponents
 
             if (!targetB.IsValid) return null;
 
-            return new Job(jobDef, targetA, targetB);
+            return new Job(jobDef, targetA, targetB) { count = ps.CurJobCount };
         }
 
         /// <summary>El reverso de ResolveHostThingId: dado el id del DUEÑO real, busca la copia local (títere o construcción/ítem espejo).</summary>
@@ -1319,6 +1321,7 @@ namespace RimCoopMod.GameComponents
             {
                 job = new Job(jobDef, targetA);
             }
+            job.count = order.Count; // cuántas unidades recoger/llevar/comer (sin esto, tomar un ítem del piso no hacía nada)
 
             // Esta orden ya se validó arriba; Pawn_JobTracker_TryTakeOrderedJob_Patch usa esta
             // bandera para no volver a filtrarla (si no, el propio host nunca podría ejecutar

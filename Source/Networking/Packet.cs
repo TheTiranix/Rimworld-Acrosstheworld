@@ -162,6 +162,7 @@ namespace RimCoopMod.Networking
         public int CurJobTargetBThingId;
         public int CurJobTargetBX;
         public int CurJobTargetBZ;
+        public int CurJobCount = -1;
 
         // Lo que lleva encima el pawn real (mochila) y en las manos, para que el títere pueda
         // ejecutar trabajos que usan eso (ej. comer una ración del inventario).
@@ -235,6 +236,7 @@ namespace RimCoopMod.Networking
         public int TargetBThingId;
         public int TargetBX;
         public int TargetBZ;
+        public int Count = -1; // job.count: cuántas unidades (ej. cuánto recoger del piso). Sin esto "tomar" llegaba con cantidad 0 y no recogía nada.
     }
 
     public class JoinRequestPayload
