@@ -895,6 +895,10 @@ namespace RimCoopMod.GameComponents
 
             WatchMirrorThingEdits();
 
+            // Lo que un títere hace localmente (cocinar, cosechar...) crea ítems que el dueño no tiene: se borran ya, sin esperar la foto completa.
+            foreach (var kv in _coopMaps)
+                if (kv.Value != null && _syncedThings.TryGetValue(kv.Key, out var knownThings)) ReconcileLocalItems(kv.Value, knownThings);
+
             foreach (var kv in _coopMaps.ToList())
             {
                 int host = kv.Key;

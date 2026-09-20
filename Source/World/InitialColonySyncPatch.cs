@@ -19,17 +19,17 @@ namespace RimCoopMod.World
     {
         [HarmonyPatch(nameof(GameComponentUtility.StartedNewGame))]
         [HarmonyPostfix]
-        public static void StartedNewGamePostfix() => NotifyIfHomeMapExists();
+        public static void StartedNewGamePostfix() => NotifyIfHomeMapExists(cleanupSavedBases: false); // partida nueva: las bases que se vieron al elegir sitio son validas, no hay que borrarlas
 
         [HarmonyPatch(nameof(GameComponentUtility.LoadedGame))]
         [HarmonyPostfix]
-        public static void LoadedGamePostfix() => NotifyIfHomeMapExists();
+        public static void LoadedGamePostfix() => NotifyIfHomeMapExists(cleanupSavedBases: true);
 
-        private static void NotifyIfHomeMapExists()
+        private static void NotifyIfHomeMapExists(bool cleanupSavedBases)
         {
             // Las bases de otros jugadores (y sus mapas espejo) que quedaron guardadas en la partida son
             // viejas y el mod crea las suyas por red: si no se limpian, aparecen duplicadas.
-            CoopSessionManager.CleanupSavedMirrorState();
+            if (cleanupSavedBases) CoopSessionManager.CleanupSavedMirrorState();
 
             if (!CoopClient.Instance.IsConnected) return;
             CoopClient.Instance.SendPlayersRequest();

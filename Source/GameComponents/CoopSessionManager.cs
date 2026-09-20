@@ -1861,6 +1861,11 @@ namespace RimCoopMod.GameComponents
             if (string.IsNullOrEmpty(info.PlayerName)) return;
             if (Current.Game?.World?.worldObjects == null) return; // el mundo todavía no existe: el próximo PlayersRequest lo trae de nuevo
 
+            // Si el objeto que teníamos anotado ya no está en el mundo (se limpió, se recargó la partida...), se vuelve a crear:
+            // antes quedaba anotado pero invisible hasta guardar y cargar.
+            if (_remoteBases.TryGetValue(info.PlayerName, out var known) && (known == null || known.Destroyed || !Find.WorldObjects.Contains(known)))
+                _remoteBases.Remove(info.PlayerName);
+
             if (!_remoteBases.TryGetValue(info.PlayerName, out var wobj))
             {
                 wobj = (CoopPlayerBase)WorldObjectMaker.MakeWorldObject(
