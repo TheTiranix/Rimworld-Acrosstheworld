@@ -157,6 +157,7 @@ namespace RimCoopMod.GameComponents
                 s.AreaLabel = pawn.playerSettings?.AreaRestrictionInPawnCurrentMap?.Label ?? "";
 
                 s.IsPlayerFaction = pawn.Faction == Faction.OfPlayer;
+                s.GenesCsv = pawn.genes == null ? "" : string.Join(";", pawn.genes.Xenogenes.Where(g => g?.def != null).Select(g => g.def.defName));
                 s.SkillsCsv = pawn.skills == null ? "" : string.Join(";", pawn.skills.skills.Select(k => k.def.defName + "," + k.Level + "," + Inv(k.xpSinceLastLevel) + "," + (int)k.passion));
                 s.TraitsCsv = pawn.story?.traits == null ? "" : string.Join(";", pawn.story.traits.allTraits.Select(t => t.def.defName + "," + t.Degree));
 
@@ -266,6 +267,26 @@ namespace RimCoopMod.GameComponents
             catch (Exception e)
             {
                 CoopLog.Warning($"[RimCoop] Error copiando habilidades/rasgos de {puppet.LabelShortCap}: {e.Message}");
+            }
+
+            try
+            {
+                // ---- Biotech: xenogenes (implantar/quitar genes cambia hasta cómo se ve el colono) ----
+                if (puppet.genes != null && ps.GenesCsv != null)
+                {
+                    var wantedGenes = new HashSet<string>(ps.GenesCsv.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries));
+                    foreach (var g in puppet.genes.Xenogenes.ToList())
+                        if (g?.def != null && !wantedGenes.Remove(g.def.defName)) puppet.genes.RemoveGene(g);
+                    foreach (var name in wantedGenes)
+                    {
+                        var gd = DefDatabase<GeneDef>.GetNamedSilentFail(name);
+                        if (gd != null) puppet.genes.AddGene(gd, true);
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                CoopLog.Warning($"[RimCoop] Error copiando genes de {puppet.LabelShortCap}: {e.Message}");
             }
 
             try

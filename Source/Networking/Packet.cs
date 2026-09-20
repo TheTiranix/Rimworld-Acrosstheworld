@@ -41,13 +41,22 @@ namespace RimCoopMod.Networking
         TradeMessage = 26,       // comercio entre jugadores (pedir stock, ofertar, aceptar, rechazar, transferir ítems)
         ResearchSync = 27,       // investigación compartida (proyectos terminados y progreso)
         WorldEvent = 28,         // condición del mapa real que se ve también en el mapa espejo de quien lo mira
-        ServerInfo = 29          // lo primero que manda el servidor: su versión de protocolo (para detectar mod/servidor desparejos)
+        ServerInfo = 29,         // lo primero que manda el servidor: su versión de protocolo (para detectar mod/servidor desparejos)
+        ModList = 30             // lista de mods/DLC activos de cada jugador, para avisar si no coinciden
+    }
+
+    public class ModListPayload
+    {
+        public int FromPlayerId;
+        public int ToPlayerId; // 0 = a todos
+        public string FromPlayerName;
+        public string ModIds;  // packageIds separados por coma
     }
 
     public static class ProtocolInfo
     {
         /// <summary>Subir cada vez que cambia el formato de un paquete. Mod y servidor tienen que coincidir.</summary>
-        public const int Version = 8;
+        public const int Version = 9;
     }
 
     public class ServerInfoPayload
@@ -209,6 +218,7 @@ namespace RimCoopMod.Networking
         public float GuestResistance;
         public float GuestWill;
         public bool IsPlayerFaction; // el pawn real es de la facción del jugador
+        public string GenesCsv;      // Biotech: xenogenes ("defName;defName;...")
     }
 
     public class MapSnapshotPayload
@@ -284,6 +294,7 @@ namespace RimCoopMod.Networking
         public int Rotation; // Rot4.AsInt
         public int StackCount;
         public int HitPoints;
+        public string StyleDefName; // Ideology: estilo visual del objeto (ThingStyleDef)
         public string StateStr; // estado del objeto: interruptor, batería, combustible, recetas, puerta fija...
     }
 
@@ -328,6 +339,7 @@ namespace RimCoopMod.Networking
         public List<RoofSnapshot> Roofs = new List<RoofSnapshot>(); // techos ya construidos (y naturales), comprimidos por tramos
         public List<RoofSnapshot> Terrains = new List<RoofSnapshot>(); // pisos construidos (capa superior del terreno), por tramos
         public List<RoofSnapshot> Snow = new List<RoofSnapshot>();     // nieve acumulada: DefName = nivel 1..10, por tramos
+        public List<RoofSnapshot> Pollution = new List<RoofSnapshot>(); // Biotech: celdas contaminadas, por tramos
         public string ConditionsCsv; // condiciones activas del mapa real (eclipse, lluvia tóxica...): "defName|ticksLeft;..."
         public bool HasPlants;                                         // las plantas pesan: se mandan cada tanto, no en cada foto
         public List<RoofSnapshot> Plants = new List<RoofSnapshot>();   // DefName = planta; RunsCsv = "id,x,z,crecimiento;..." 

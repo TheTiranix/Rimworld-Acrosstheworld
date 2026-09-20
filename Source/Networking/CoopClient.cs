@@ -377,6 +377,18 @@ namespace RimCoopMod.Networking
             }));
         }
 
+        public void SendModList(int toPlayerId, string modIds)
+        {
+            if (!IsConnected) return;
+            NetIO.SendPacket(_stream, Packet.Create(PacketType.ModList, new ModListPayload
+            {
+                FromPlayerId = LocalPlayerId,
+                ToPlayerId = toPlayerId,
+                FromPlayerName = LocalPlayerName,
+                ModIds = modIds
+            }));
+        }
+
         public void SendSpeedChange(int speed)
         {
             if (!IsConnected) return;

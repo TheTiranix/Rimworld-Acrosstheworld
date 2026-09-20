@@ -229,7 +229,9 @@ namespace RimCoopMod.GameComponents
                 UpdateLocalWealth(force: true);
                 CoopClient.Instance.SendUpdate(_localTile, CountLocalColonists());
                 SendResearchFull();
+                SendModListTo(0);
             }
+            if (isConnected && !_wasConnectedLastUpdate && _localTile < 0) SendModListTo(0); // aunque todavía no fundó su colonia
             _wasConnectedLastUpdate = isConnected;
 
             if (!isConnected) return;
@@ -590,7 +592,7 @@ namespace RimCoopMod.GameComponents
         private readonly Dictionary<int, Dictionary<int, string>> _sentThingSigs = new Dictionary<int, Dictionary<int, string>>();
 
         private static string ThingSig(ThingSnapshot t) =>
-            t.DefName + "|" + t.X + "|" + t.Z + "|" + t.Rotation + "|" + t.StackCount + "|" + t.HitPoints + "|" + t.StateStr;
+            t.DefName + "|" + t.X + "|" + t.Z + "|" + t.Rotation + "|" + t.StackCount + "|" + t.HitPoints + "|" + t.StyleDefName + "|" + t.StateStr;
 
         /// <summary>Solo lo que cambió (o apareció / desapareció) desde la última vez que se le mandó a cada watcher: mucho más liviano y rápido que la foto completa.</summary>
         private void BroadcastThingsDelta()
@@ -642,6 +644,7 @@ namespace RimCoopMod.GameComponents
                     Rotation = thing.Rotation.AsInt,
                     StackCount = thing is Filth filth ? filth.thickness : thing is Fire fire ? (int)(fire.fireSize * 100f) : thing is Blight blight ? (int)(blight.Severity * 100f) : thing.stackCount,
                     HitPoints = thing.HitPoints,
+                    StyleDefName = thing.StyleDef?.defName,
                     StateStr = thing is Building ? BuildStateString(thing) : ""
                 });
             }
@@ -707,6 +710,7 @@ namespace RimCoopMod.GameComponents
                 if (known.TryGetValue(ts.ThingId, out var existing) && existing != null && existing.Spawned)
                 {
                     ApplyThingState(existing, ts.StateStr);
+                    ApplyThingStyle(existing, ts.StyleDefName);
                     if (existing is Filth || existing is Fire || existing is Blight)
                     {
                         ApplySpecialCount(existing, ts.StackCount);
@@ -740,6 +744,7 @@ namespace RimCoopMod.GameComponents
                 {
                     Thing thing = ThingMaker.MakeThing(def, stuff);
                     if (!ApplySpecialCount(thing, ts.StackCount)) thing.stackCount = Math.Max(1, ts.StackCount);
+                    ApplyThingStyle(thing, ts.StyleDefName);
                     if (ts.HitPoints > 0) thing.HitPoints = Math.Min(ts.HitPoints, thing.MaxHitPoints);
 
                     var cell = new IntVec3(ts.X, 0, ts.Z);
@@ -941,7 +946,11 @@ namespace RimCoopMod.GameComponents
 
             // Caminar de un lado a otro lo resuelve FollowHostPosition (el títere sigue al real a pie);
             // mandarle también el trabajo de caminar haría que se peleen dos destinos distintos.
-            if (MovementOnlyJobs.Contains(ps.CurJobDefName))
+            var mirrorJobDef = DefDatabase<JobDef>.GetNamedSilentFail(ps.CurJobDefName);
+            string driverName = mirrorJobDef?.driverClass?.Name ?? "";
+            bool needsLord = driverName.Contains("Ritual") || driverName.Contains("Spectate") || driverName.Contains("Lord") || driverName.Contains("Ceremon");
+
+            if (MovementOnlyJobs.Contains(ps.CurJobDefName) || needsLord)
             {
                 try { if (puppet.CurJob != null) puppet.jobs.EndCurrentJob(JobCondition.InterruptForced, false); } catch { }
                 return;
@@ -1446,6 +1455,7 @@ namespace RimCoopMod.GameComponents
                         _connectedPlayerIds.Add(info.PlayerId);
                         _playerNames[info.PlayerId] = info.PlayerName;
                         EnsureRemoteBase(info);
+                        SendModListTo(info.PlayerId); // el que entra recibe mi lista de mods/DLC
                         if (_pendingLeaveNames.Remove(info.PlayerName)) CoopClient.Instance.SendResearchSync(info.PlayerId, "leave", ""); // corté con él mientras estaba desconectado
                         else if (IsCollaborator(info.PlayerId)) SendResearchFullTo(info.PlayerId); // un colaborador que vuelve recibe mi investigación
                         Messages.Message($"{info.PlayerName} se unió a la partida.", MessageTypeDefOf.NeutralEvent, false);
@@ -1613,6 +1623,10 @@ namespace RimCoopMod.GameComponents
 
                 case PacketType.SpeedChange:
                     ReceiveSpeedChange(p.GetPayload<SpeedChangePayload>());
+                    break;
+
+                case PacketType.ModList:
+                    ReceiveModList(p.GetPayload<ModListPayload>());
                     break;
 
                 case PacketType.ResearchSync:

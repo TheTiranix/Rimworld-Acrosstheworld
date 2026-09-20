@@ -66,6 +66,15 @@ namespace RimCoopMod.Networking
                         bw.Write(p.ProtocolVersion);
                         break;
                     }
+                case PacketType.ModList:
+                    {
+                        var p = (ModListPayload)packet.Payload;
+                        bw.Write(p.FromPlayerId);
+                        bw.Write(p.ToPlayerId);
+                        bw.Write(p.FromPlayerName ?? "");
+                        bw.Write(p.ModIds ?? "");
+                        break;
+                    }
                 case PacketType.ServerInfo:
                     {
                         bw.Write(((ServerInfoPayload)packet.Payload).ProtocolVersion);
@@ -192,6 +201,7 @@ namespace RimCoopMod.Networking
                                 bw.Write(pawn.GuestResistance);
                                 bw.Write(pawn.GuestWill);
                                 bw.Write(pawn.IsPlayerFaction);
+                                bw.Write(pawn.GenesCsv ?? "");
                             }
                         }
                         bw.Write(p.Interactions.Count);
@@ -268,6 +278,7 @@ namespace RimCoopMod.Networking
                             bw.Write(t.Rotation);
                             bw.Write(t.StackCount);
                             bw.Write(t.HitPoints);
+                            bw.Write(t.StyleDefName ?? "");
                             bw.Write(t.StateStr ?? "");
                         }
                         bw.Write(p.RemovedThingIds.Count);
@@ -304,6 +315,7 @@ namespace RimCoopMod.Networking
                         bw.Write(p.HasPlants);
                         WriteGridList(bw, p.Plants);
                         bw.Write(p.ConditionsCsv ?? "");
+                        WriteGridList(bw, p.Pollution);
                         }
                         break;
                     }
@@ -470,6 +482,15 @@ namespace RimCoopMod.Networking
                         return hs;
                     }
 
+                case PacketType.ModList:
+                    return new ModListPayload
+                    {
+                        FromPlayerId = br.ReadInt32(),
+                        ToPlayerId = br.ReadInt32(),
+                        FromPlayerName = br.ReadString(),
+                        ModIds = br.ReadString()
+                    };
+
                 case PacketType.ServerInfo:
                     return new ServerInfoPayload { ProtocolVersion = br.ReadInt32() };
 
@@ -598,6 +619,7 @@ namespace RimCoopMod.Networking
                                 ps.GuestResistance = br.ReadSingle();
                                 ps.GuestWill = br.ReadSingle();
                                 ps.IsPlayerFaction = br.ReadBoolean();
+                                ps.GenesCsv = br.ReadString();
                             }
                             p.Pawns.Add(ps);
                         }
@@ -681,6 +703,7 @@ namespace RimCoopMod.Networking
                                 Rotation = br.ReadInt32(),
                                 StackCount = br.ReadInt32(),
                                 HitPoints = br.ReadInt32(),
+                                StyleDefName = br.ReadString(),
                                 StateStr = br.ReadString()
                             });
                         }
@@ -727,6 +750,7 @@ namespace RimCoopMod.Networking
                         p.HasPlants = br.ReadBoolean();
                         ReadGridList(br, p.Plants);
                         p.ConditionsCsv = br.ReadString();
+                        ReadGridList(br, p.Pollution);
                         }
                         return p;
                     }

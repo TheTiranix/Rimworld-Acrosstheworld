@@ -50,6 +50,19 @@ dotnet build Source/RimCoopMod.csproj -c Release   # el mod (Assemblies/RimCoopM
 dotnet build server/RimCoopServer.csproj -c Release # el servidor
 ```
 
+## Compatibilidad con DLC
+
+Probado con **Royalty, Ideology, Biotech, Anomaly y Odyssey** activos. El mod usa solo lo que el juego expone
+en cada caso y se adapta a los DLC que tengas:
+
+- Al conectarse, cada jugador manda su lista de DLC/mods; si no coinciden, el mod avisa exactamente qué falta
+  de cada lado (lo que dependa de eso puede no aparecer del otro lado). **Conviene que todos usen los mismos DLC y mods.**
+- **Biotech:** se copia la contaminación del terreno y los xenogenes de los colonos.
+- **Ideology:** se copia el estilo visual de muebles y edificios.
+- Los trabajos que dependen de rituales/ceremonias no se imitan en el mapa espejo (se ve el resultado, no el ritual).
+- **Anomaly / Odyssey / Royalty:** las entidades, las condiciones de clima, el vacío y las naves gravitatorias no
+  tienen sincronización específica: lo que es un objeto o un colono normal se copia, el resto no.
+
 ## Limitaciones conocidas
 
 - No hay simulación determinista compartida: fecha/hora, investigación y riqueza son de cada partida.

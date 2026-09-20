@@ -92,6 +92,19 @@ namespace RimCoopMod.GameComponents
         // Suciedad y fuego: la "cantidad" no es stackCount
         // =====================================================================
 
+        // Ideology: el estilo visual de un objeto (mueble/edificio con el estilo de una ideología).
+        private static void ApplyThingStyle(Thing t, string styleDefName)
+        {
+            if (string.IsNullOrEmpty(styleDefName) && t.StyleDef == null) return;
+            if ((t.StyleDef?.defName ?? "") == (styleDefName ?? "")) return;
+            try
+            {
+                var style = string.IsNullOrEmpty(styleDefName) ? null : DefDatabase<ThingStyleDef>.GetNamedSilentFail(styleDefName);
+                if (style != null || string.IsNullOrEmpty(styleDefName)) t.StyleDef = style;
+            }
+            catch { }
+        }
+
         private static bool ApplySpecialCount(Thing thing, int count)
         {
             if (thing is Filth filth)
@@ -438,6 +451,12 @@ namespace RimCoopMod.GameComponents
 
             payload.ConditionsCsv = ActiveConditionsCsv(map);
 
+            if (ModsConfig.BiotechActive && map.pollutionGrid != null)
+            {
+                foreach (var kv in EncodeRuns(w, h, (x, z) => map.pollutionGrid.IsPolluted(new IntVec3(x, 0, z)) ? "1" : null))
+                    payload.Pollution.Add(new RoofSnapshot { DefName = kv.Key, RunsCsv = kv.Value.ToString() });
+            }
+
             _baseCounter++;
             payload.HasPlants = _forceFullPlants || _baseCounter % 6 == 1; // ~cada 30 s (o cuando alguien recién entra)
             _forceFullPlants = false;
@@ -510,6 +529,31 @@ namespace RimCoopMod.GameComponents
                 }
             }
             catch (Exception e) { CoopLog.Warning($"[RimCoop] No se pudo copiar la nieve: {e.Message}"); }
+
+            // ---- Biotech: contaminación del terreno ----
+            if (ModsConfig.BiotechActive && map.pollutionGrid != null)
+            {
+                try
+                {
+                    string sig = string.Join("#", snapshot.Pollution.Select(r => r.DefName + ":" + r.RunsCsv));
+                    if (!_gridSigs.TryGetValue(prefix + "pollution", out var old) || old != sig)
+                    {
+                        _gridSigs[prefix + "pollution"] = sig;
+                        var desired = DecodeRuns(snapshot.Pollution, w, h);
+                        for (int z = 0; z < h; z++)
+                        {
+                            for (int x = 0; x < w; x++)
+                            {
+                                var cell = new IntVec3(x, 0, z);
+                                bool want = desired[z * w + x] != null;
+                                if (map.pollutionGrid.IsPolluted(cell) != want && map.pollutionGrid.EverPollutable(cell))
+                                    map.pollutionGrid.SetPolluted(cell, want, false);
+                            }
+                        }
+                    }
+                }
+                catch (Exception e) { CoopLog.Warning($"[RimCoop] No se pudo copiar la contaminación: {e.Message}"); }
+            }
 
             // ---- clima: condiciones del mapa real ----
             ApplyConditionsToMirror(snapshot.ConditionsCsv, map);
