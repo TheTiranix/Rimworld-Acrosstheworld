@@ -66,6 +66,30 @@ namespace RimCoopMod.Networking
                         bw.Write(p.ProtocolVersion);
                         break;
                     }
+                case PacketType.ShipMessage:
+                    {
+                        var p = (ShipMessagePayload)packet.Payload;
+                        bw.Write(p.FromPlayerId);
+                        bw.Write(p.ToPlayerId);
+                        bw.Write(p.Kind ?? "");
+                        bw.Write(p.OriginPlayerId);
+                        bw.Write(p.ShipId);
+                        bw.Write(p.Name ?? "");
+                        bw.Write(p.DefName ?? "");
+                        bw.Write(p.FactionDef ?? "");
+                        bw.Write(p.Ticks);
+                        bw.Write(p.Seed);
+                        bw.Write(p.Goods ?? "");
+                        break;
+                    }
+                case PacketType.SaveAll:
+                    {
+                        var p = (SaveAllPayload)packet.Payload;
+                        bw.Write(p.FromPlayerId);
+                        bw.Write(p.FromPlayerName ?? "");
+                        bw.Write(p.SaveName ?? "");
+                        break;
+                    }
                 case PacketType.QuestMessage:
                     {
                         var p = (QuestMessagePayload)packet.Payload;
@@ -503,6 +527,25 @@ namespace RimCoopMod.Networking
                         if (br.BaseStream.Position < br.BaseStream.Length) hs.ProtocolVersion = br.ReadInt32(); // clientes viejos no lo mandan
                         return hs;
                     }
+
+                case PacketType.ShipMessage:
+                    return new ShipMessagePayload
+                    {
+                        FromPlayerId = br.ReadInt32(),
+                        ToPlayerId = br.ReadInt32(),
+                        Kind = br.ReadString(),
+                        OriginPlayerId = br.ReadInt32(),
+                        ShipId = br.ReadInt32(),
+                        Name = br.ReadString(),
+                        DefName = br.ReadString(),
+                        FactionDef = br.ReadString(),
+                        Ticks = br.ReadInt32(),
+                        Seed = br.ReadInt32(),
+                        Goods = br.ReadString()
+                    };
+
+                case PacketType.SaveAll:
+                    return new SaveAllPayload { FromPlayerId = br.ReadInt32(), FromPlayerName = br.ReadString(), SaveName = br.ReadString() };
 
                 case PacketType.QuestMessage:
                     return new QuestMessagePayload

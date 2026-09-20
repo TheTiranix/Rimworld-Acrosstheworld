@@ -74,6 +74,11 @@ namespace RimCoopMod.UI
             var logRect = new Rect(0f, 0f, inRect.width, inRect.height - 35f);
             DrawChatLog(logRect);
 
+            var saveRect = new Rect(inRect.width - 128f, 2f, 124f, 22f);
+            if (Widgets.ButtonText(saveRect, "Guardar todos"))
+                CoopSessionManager.RequestSaveAll();
+            TooltipHandler.TipRegion(saveRect, "Todos los jugadores guardan su partida ahora mismo (mantiene parejos los colonos que se mandaron entre sí).");
+
             var inputRect = new Rect(0f, inRect.height - 28f, inRect.width - 65f, 28f);
             var sendRect = new Rect(inRect.width - 60f, inRect.height - 28f, 60f, 28f);
 

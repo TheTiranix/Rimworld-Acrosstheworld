@@ -1435,6 +1435,7 @@ namespace RimCoopMod.GameComponents
                     IntVec3 cell = CellFinder.RandomClosewalkCellNear(map.Center, map, 10);
                     GenSpawn.Spawn(pawn, cell, map);
                     _pawnOwners[pawn.thingIDNumber] = req.FromPlayerId;
+                    if (_playerNames.TryGetValue(req.FromPlayerId, out var ownerName)) _pawnOwnerNames[pawn.thingIDNumber] = ownerName; // por nombre: el id cambia entre sesiones, el nombre no
                     added++;
                     CoopLog.Message($"[RimCoop] Colono {pawn.LabelShortCap} apareció en {cell} y quedó asignado al jugador {req.FromPlayerId}.");
                 }
@@ -1471,6 +1472,7 @@ namespace RimCoopMod.GameComponents
                             _connectedPlayerIds.Add(existing.PlayerId);
                             _playerNames[existing.PlayerId] = existing.PlayerName;
                         }
+                        RestorePawnOwners();
                         break;
                     }
 
@@ -1479,6 +1481,7 @@ namespace RimCoopMod.GameComponents
                         var info = p.GetPayload<PlayerBaseInfo>();
                         _connectedPlayerIds.Add(info.PlayerId);
                         _playerNames[info.PlayerId] = info.PlayerName;
+                        RestorePawnOwners();
                         EnsureRemoteBase(info);
                         SendModListTo(info.PlayerId); // el que entra recibe mi lista de mods/DLC
                         if (_pendingLeaveNames.Remove(info.PlayerName)) CoopClient.Instance.SendResearchSync(info.PlayerId, "leave", ""); // corté con él mientras estaba desconectado
@@ -1493,6 +1496,24 @@ namespace RimCoopMod.GameComponents
                         _connectedPlayerIds.Remove(info.PlayerId);
                         if (_remoteBases.TryGetValue(info.PlayerName, out var wobj))
                         {
+                            // Si estaba mirando su base, el mapa espejo se saca ANTES que el punto del mapa mundial (si no queda un mapa huérfano).
+                            try
+                            {
+                                if (wobj.HasMap)
+                                {
+                                    var mirrorMap = wobj.Map;
+                                    if (Find.CurrentMap == mirrorMap) CameraJumper.TryJump(CameraJumper.GetWorldTarget(LocalBaseMap != null ? (GlobalTargetInfo)new GlobalTargetInfo(LocalBaseMap.Center, LocalBaseMap) : GlobalTargetInfo.Invalid));
+                                    Current.Game.DeinitAndRemoveMap(mirrorMap, false);
+                                }
+                            }
+                            catch (Exception ex) { CoopLog.Warning($"[RimCoop] No se pudo cerrar el mapa espejo de {info.PlayerName}: {ex.Message}"); }
+
+                            _coopMaps.Remove(info.PlayerId);
+                            _syncedThings.Remove(info.PlayerId);
+                            _syncedPawns.Remove(info.PlayerId);
+                            _syncedPlants.Remove(info.PlayerId);
+                            _watchers.Remove(info.PlayerId);
+                            _sentThingSigs.Remove(info.PlayerId);
                             Find.WorldObjects.Remove(wobj);
                             _remoteBases.Remove(info.PlayerName);
                         }
@@ -1657,6 +1678,17 @@ namespace RimCoopMod.GameComponents
                 case PacketType.QuestMessage:
                     HandleQuestMessage(p.GetPayload<QuestMessagePayload>());
                     break;
+
+                case PacketType.ShipMessage:
+                    HandleShipMessage(p.GetPayload<ShipMessagePayload>());
+                    break;
+
+                case PacketType.SaveAll:
+                    {
+                        var sa = p.GetPayload<SaveAllPayload>();
+                        SaveGameNow(sa.SaveName, sa.FromPlayerName);
+                        break;
+                    }
 
                 case PacketType.ResearchSync:
                     ReceiveResearchSync(p.GetPayload<ResearchSyncPayload>());

@@ -220,3 +220,14 @@ namespace RimCoopMod.World
         public static void Prefix(QuestPart_GiveRoyalFavor __instance, Signal signal) => CoopSessionManager.ShareQuestRoyalFavor(__instance, signal);
     }
 }
+
+namespace RimCoopMod.World
+{
+    /// <summary>Le llegó una nave comercial a mi base: se comparte con mis colaboradores.</summary>
+    [HarmonyPatch(typeof(PassingShipManager), nameof(PassingShipManager.AddShip))]
+    public static class PassingShipManager_AddShip_Patch
+    {
+        [HarmonyPostfix]
+        public static void Postfix(PassingShipManager __instance, PassingShip vis) => CoopSessionManager.OnLocalTradeShipAdded(__instance, vis);
+    }
+}

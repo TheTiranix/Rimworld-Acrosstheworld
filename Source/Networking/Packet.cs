@@ -43,7 +43,31 @@ namespace RimCoopMod.Networking
         WorldEvent = 28,         // condición del mapa real que se ve también en el mapa espejo de quien lo mira
         ServerInfo = 29,         // lo primero que manda el servidor: su versión de protocolo (para detectar mod/servidor desparejos)
         ModList = 30,            // lista de mods/DLC activos de cada jugador, para avisar si no coinciden
-        QuestMessage = 31        // misiones compartidas entre jugadores (invitar, aceptar, actualizar, terminar)
+        QuestMessage = 31,       // misiones compartidas entre jugadores (invitar, aceptar, actualizar, terminar)
+        ShipMessage = 32,        // naves comerciales compartidas entre colaboradores (aparece, cambia el stock, se va)
+        SaveAll = 33             // "guardemos todos la partida ahora": mantiene las partidas de los jugadores parejas
+    }
+
+    public class ShipMessagePayload
+    {
+        public int FromPlayerId;
+        public int ToPlayerId;
+        public string Kind;        // ship | update | depart
+        public int OriginPlayerId; // quién recibió la nave originalmente
+        public int ShipId;         // loadID de la nave en el juego de origen
+        public string Name;
+        public string DefName;     // TraderKindDef
+        public string FactionDef;
+        public int Ticks;          // ticks que le quedan a la nave
+        public int Seed;           // semilla del factor de precio
+        public string Goods;       // "def,stuff,cantidad,calidad,vida;..."
+    }
+
+    public class SaveAllPayload
+    {
+        public int FromPlayerId;
+        public string FromPlayerName;
+        public string SaveName;
     }
 
     public class QuestMessagePayload
@@ -72,7 +96,7 @@ namespace RimCoopMod.Networking
     public static class ProtocolInfo
     {
         /// <summary>Subir cada vez que cambia el formato de un paquete. Mod y servidor tienen que coincidir.</summary>
-        public const int Version = 14;
+        public const int Version = 15;
     }
 
     public class ServerInfoPayload

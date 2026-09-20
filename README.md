@@ -77,6 +77,25 @@ en cada caso y se adapta a los DLC que tengas:
   Las ceremonias de investidura y otros rituales no se imitan en el mapa espejo (los participantes se ven
   en su posición, sin la animación del ritual), ni la animación de las naves aterrizando o despegando.
 
+## Guardar y cargar
+
+Cada jugador tiene su propia partida. Lo que se guarda con ella: los colaboradores, las misiones compartidas y quién es
+dueño de cada colono que te mandaron. Al cargar, las bases de los demás y sus mapas espejo se limpian y se vuelven a
+pedir al servidor, y los ids de jugador son estables por nombre (también entre reinicios del servidor).
+
+- **Ojo con los colonos que se mandaron entre jugadores:** un colono enviado con *Colaborar* existe en UNA sola partida. Si
+  un jugador carga una partida vieja (de antes de mandarlo o de recibirlo), ese colono puede quedar **duplicado o perdido**.
+  Para evitarlo, usá **Guardar todos** (botón en el chat): todos los jugadores guardan a la vez.
+- Las ofertas de comercio y las invitaciones a misiones que estaban pendientes se pierden al cargar.
+- El vínculo de una nave comercial compartida no se guarda: al cargar, la nave sigue en cada partida pero ya no se sincroniza.
+
+## Comercio con naves comerciales (Imperio y otros)
+
+Cuando le llega una nave comercial orbital a un jugador, sus colaboradores conectados la reciben también con el mismo stock.
+Cada uno comercia con sus colonos y su plata desde su consola de comunicaciones; si alguien compra o vende, el stock cambia
+en todos, y cuando la nave se va, se va de todos. Los esclavos y animales a la venta no viajan. Las demás
+comunicaciones con el Imperio (relaciones, pedidos de ayuda por la consola) siguen siendo de cada jugador.
+
 ## Limitaciones conocidas
 
 - No hay simulación determinista compartida: fecha/hora, investigación y riqueza son de cada partida.

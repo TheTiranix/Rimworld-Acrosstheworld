@@ -396,6 +396,19 @@ namespace RimCoopMod.Networking
             }));
         }
 
+        public void SendShipMessage(ShipMessagePayload payload)
+        {
+            if (!IsConnected) return;
+            payload.FromPlayerId = LocalPlayerId;
+            NetIO.SendPacket(_stream, Packet.Create(PacketType.ShipMessage, payload));
+        }
+
+        public void SendSaveAll(string saveName)
+        {
+            if (!IsConnected) return;
+            NetIO.SendPacket(_stream, Packet.Create(PacketType.SaveAll, new SaveAllPayload { FromPlayerId = LocalPlayerId, FromPlayerName = LocalPlayerName, SaveName = saveName }));
+        }
+
         public void SendModList(int toPlayerId, string modIds)
         {
             if (!IsConnected) return;

@@ -33,7 +33,7 @@ namespace RimCoopMod.GameComponents
             int tick = Find.TickManager.TicksGame;
             if (tick % WealthCheckIntervalTicks == 0) UpdateLocalWealth(force: false);
             if (tick % ResearchProgressIntervalTicks == 0) SendResearchProgress();
-            if (tick % QuestUpdateIntervalTicks == 0) TickQuests();
+            if (tick % QuestUpdateIntervalTicks == 0) { TickQuests(); TickShips(); }
         }
 
         // =====================================================================
@@ -93,9 +93,34 @@ namespace RimCoopMod.GameComponents
 
             ExposeQuestData();
 
+            var owners = _pawnOwnerNames.Select(kv => kv.Key + "=" + kv.Value).ToList();
+            Scribe_Collections.Look(ref owners, "rimcoopPawnOwners", LookMode.Value);
+            if (Scribe.mode == LoadSaveMode.LoadingVars)
+            {
+                _pawnOwnerNames = new Dictionary<int, string>();
+                foreach (var s in owners ?? new List<string>())
+                {
+                    var f = s.Split(new[] { '=' }, 2);
+                    if (f.Length == 2 && int.TryParse(f[0], out int id)) _pawnOwnerNames[id] = f[1];
+                }
+            }
+
             var pending = _pendingLeaveNames.ToList();
             Scribe_Collections.Look(ref pending, "rimcoopPendingLeaves", LookMode.Value);
             if (Scribe.mode == LoadSaveMode.LoadingVars) _pendingLeaveNames = new HashSet<string>(pending ?? new List<string>());
+        }
+
+        // Quién es dueño de cada colono que me mandaron (los "de otro jugador" que viven en mi base). Se guarda por NOMBRE con la
+        // partida: si no, al cargar se perdía y esos colonos pasaban a ser míos.
+        private Dictionary<int, string> _pawnOwnerNames = new Dictionary<int, string>();
+
+        private void RestorePawnOwners()
+        {
+            foreach (var kv in _pawnOwnerNames)
+            {
+                foreach (var p in _playerNames)
+                    if (p.Value == kv.Value) { _pawnOwners[kv.Key] = p.Key; break; }
+            }
         }
 
         private bool IsCollaborator(int playerId) =>
