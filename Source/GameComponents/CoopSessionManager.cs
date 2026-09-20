@@ -68,7 +68,8 @@ namespace RimCoopMod.GameComponents
         // hostPlayerId -> última foto recibida de esa base (soy espectador). La UI la lee directo.
         private readonly Dictionary<int, MapSnapshotPayload> _remoteSnapshots = new Dictionary<int, MapSnapshotPayload>();
 
-        private const int SnapshotIntervalTicks = 15; // ~0.25s de juego a velocidad normal (antes 30: se veía muy a los saltos)
+        private const int SnapshotIntervalTicks = 8; // ~0.25s de juego a velocidad normal (antes 30: se veía muy a los saltos)
+        private const int ThingsDeltaIntervalTicks = 30;
         private const int BaseSnapshotIntervalTicks = 300; // ~5s: construcciones/ítems cambian menos seguido que la posición
 
         // ---- Mapa real de otra base (soy espectador) ----
@@ -270,9 +271,11 @@ namespace RimCoopMod.GameComponents
                 BroadcastMapSnapshot();
             }
 
-            if (_watchers.Count > 0 && Find.TickManager.TicksGame % BaseSnapshotIntervalTicks == 0)
+            if (_watchers.Count > 0)
             {
-                BroadcastBaseSnapshot();
+                int t = Find.TickManager.TicksGame;
+                if (t % BaseSnapshotIntervalTicks == 0) BroadcastBaseSnapshot();          // foto completa (con zonas, áreas, techos...)
+                else if (t % ThingsDeltaIntervalTicks == 0) BroadcastThingsDelta();       // solo lo que cambió: ~cada 0.5 s
             }
         }
 
@@ -485,7 +488,9 @@ namespace RimCoopMod.GameComponents
                 SkyGlow = map.skyManager.CurSkyGlow
             };
 
-            bool sendSlow = (++_slowCounter % 4) == 0;
+            _slowCounter++;
+            bool sendSlow = (_slowCounter % 8) == 0;   // datos que casi no cambian: ~cada 0.5 s
+            bool sendMedium = (_slowCounter % 4) == 0; // arma, ropa, inventario, necesidades: ~cada 0.25 s
             foreach (var pawn in map.mapPawns.AllPawnsSpawned)
             {
                 int owner = -1;
@@ -508,14 +513,21 @@ namespace RimCoopMod.GameComponents
                     Dead = pawn.Dead,
                     Hostile = pawn.HostileTo(Faction.OfPlayer),
                     Animal = pawn.RaceProps?.Animal ?? false,
-                    EquippedWeaponDefName = pawn.equipment?.Primary?.def?.defName,
-                    EquippedWeaponStuffDefName = pawn.equipment?.Primary?.Stuff?.defName,
-                    InventoryCsv = pawn.inventory != null ? ItemsToCsv(pawn.inventory.innerContainer) : "",
-                    CarriedCsv = pawn.carryTracker?.CarriedThing != null ? ItemsToCsv(new[] { pawn.carryTracker.CarriedThing }) : "",
-                    ApparelCsv = pawn.apparel != null ? string.Join(";", pawn.apparel.WornApparel.Select(a => ApparelEntry(a))) : "",
-                    EquippedWeaponQuality = QualityOf(pawn.equipment?.Primary),
-                    EquippedWeaponHitPoints = pawn.equipment?.Primary?.HitPoints ?? 0
+                    Rot = pawn.Rotation.AsInt,
+                    Moving = pawn.pather != null && pawn.pather.Moving,
+                    HasMedium = sendMedium
                 };
+
+                if (sendMedium)
+                {
+                    snapshot.EquippedWeaponDefName = pawn.equipment?.Primary?.def?.defName;
+                    snapshot.EquippedWeaponStuffDefName = pawn.equipment?.Primary?.Stuff?.defName;
+                    snapshot.InventoryCsv = pawn.inventory != null ? ItemsToCsv(pawn.inventory.innerContainer) : "";
+                    snapshot.CarriedCsv = pawn.carryTracker?.CarriedThing != null ? ItemsToCsv(new[] { pawn.carryTracker.CarriedThing }) : "";
+                    snapshot.ApparelCsv = pawn.apparel != null ? string.Join(";", pawn.apparel.WornApparel.Select(a => ApparelEntry(a))) : "";
+                    snapshot.EquippedWeaponQuality = QualityOf(pawn.equipment?.Primary);
+                    snapshot.EquippedWeaponHitPoints = pawn.equipment?.Primary?.HitPoints ?? 0;
+                }
 
                 // El trabajo actual (no solo el ordenado por un jugador): así el títere puede
                 // ejecutarlo con su propio Tick() y animarse de verdad al otro lado.
@@ -573,13 +585,39 @@ namespace RimCoopMod.GameComponents
         /// manda a todos los que me están mirando. El terreno no se manda: sale igual del otro
         /// lado porque comparte seed+tile, así que solo hace falta lo que YO construí/dejé tirado.
         /// </summary>
-        private void BroadcastBaseSnapshot()
+        private readonly Dictionary<int, Dictionary<int, string>> _sentThingSigs = new Dictionary<int, Dictionary<int, string>>();
+
+        private static string ThingSig(ThingSnapshot t) =>
+            t.DefName + "|" + t.X + "|" + t.Z + "|" + t.Rotation + "|" + t.StackCount + "|" + t.HitPoints + "|" + t.StateStr;
+
+        /// <summary>Solo lo que cambió (o apareció / desapareció) desde la última vez que se le mandó a cada watcher: mucho más liviano y rápido que la foto completa.</summary>
+        private void BroadcastThingsDelta()
         {
             var map = Find.AnyPlayerHomeMap;
             if (map == null) return;
 
-            var payload = new BaseSnapshotPayload { HostPlayerId = CoopClient.Instance.LocalPlayerId };
+            var current = CollectThingSnapshots(map);
+            var currentSigs = current.ToDictionary(t => t.ThingId, ThingSig);
 
+            foreach (int watcherId in _watchers.ToList())
+            {
+                if (!_sentThingSigs.TryGetValue(watcherId, out var sent)) continue; // todavía no recibió una foto completa: se le manda en la próxima
+
+                var payload = new BaseSnapshotPayload { HostPlayerId = CoopClient.Instance.LocalPlayerId, ToPlayerId = watcherId, IsDelta = true, HasLayers = false };
+                foreach (var t in current)
+                    if (!sent.TryGetValue(t.ThingId, out var old) || old != currentSigs[t.ThingId]) payload.Things.Add(t);
+                foreach (int id in sent.Keys)
+                    if (!currentSigs.ContainsKey(id)) payload.RemovedThingIds.Add(id);
+
+                if (payload.Things.Count == 0 && payload.RemovedThingIds.Count == 0) continue;
+                _sentThingSigs[watcherId] = new Dictionary<int, string>(currentSigs);
+                CoopClient.Instance.SendBaseSnapshot(payload);
+            }
+        }
+
+        private List<ThingSnapshot> CollectThingSnapshots(Map map)
+        {
+            var result = new List<ThingSnapshot>();
             foreach (var thing in map.listerThings.AllThings)
             {
                 bool isConstructionSite = thing is Blueprint || thing is Frame; // plano o "en obra", todavía no son Building
@@ -592,7 +630,7 @@ namespace RimCoopMod.GameComponents
                 // rechaza al spawnear. Sincronizar cadáveres de verdad queda para otra pasada.
                 if (thing is Corpse) continue;
 
-                payload.Things.Add(new ThingSnapshot
+                result.Add(new ThingSnapshot
                 {
                     ThingId = thing.thingIDNumber,
                     DefName = thing.def.defName,
@@ -605,6 +643,18 @@ namespace RimCoopMod.GameComponents
                     StateStr = thing is Building ? BuildStateString(thing) : ""
                 });
             }
+            return result;
+        }
+
+        private void BroadcastBaseSnapshot()
+        {
+            var map = Find.AnyPlayerHomeMap;
+            if (map == null) return;
+
+            var payload = new BaseSnapshotPayload { HostPlayerId = CoopClient.Instance.LocalPlayerId };
+            payload.Things.AddRange(CollectThingSnapshots(map));
+            var fullSigs = payload.Things.ToDictionary(t => t.ThingId, ThingSig);
+            foreach (int w in _watchers) _sentThingSigs[w] = new Dictionary<int, string>(fullSigs);
 
             foreach (var zone in map.zoneManager.AllZones)
             {
@@ -701,15 +751,21 @@ namespace RimCoopMod.GameComponents
                 }
             }
 
-            ReconcileLocalItems(map, known);
-            ApplyWorldLayers(snapshot, map);
-            ApplyZones(snapshot, map);
-            ApplyAreasAndStores(snapshot, map);
-
-            // Lo que ya no viene en la foto es porque el dueño lo perdió/destruyó: lo sacamos acá también.
-            foreach (var oldId in known.Keys.Where(id => !seenIds.Contains(id)).ToList())
+            if (!snapshot.IsDelta) ReconcileLocalItems(map, known);
+            if (snapshot.HasLayers)
             {
-                if (known[oldId]?.Spawned == true) known[oldId].Destroy(DestroyMode.Vanish);
+                ApplyWorldLayers(snapshot, map);
+                ApplyZones(snapshot, map);
+                ApplyAreasAndStores(snapshot, map);
+            }
+
+            // Lo que ya no viene es porque el dueño lo perdió/destruyó: lo sacamos acá también.
+            // En una foto completa se deduce por lo que falta; en un delta, el dueño lo dice explícitamente.
+            var toRemove = snapshot.IsDelta ? snapshot.RemovedThingIds : known.Keys.Where(id => !seenIds.Contains(id)).ToList();
+            foreach (var oldId in toRemove)
+            {
+                if (!known.TryGetValue(oldId, out var gone)) continue;
+                if (gone?.Spawned == true) gone.Destroy(DestroyMode.Vanish);
                 known.Remove(oldId);
             }
         }
@@ -774,20 +830,14 @@ namespace RimCoopMod.GameComponents
                         continue;
                     }
 
-                    var cell = new IntVec3(ps.X, 0, ps.Z);
-                    // Si el títere está ejecutando el mismo trabajo que el real (ver más abajo),
-                    // su propio caminar ya lo va acercando solo — no hace falta forzar la posición
-                    // todo el tiempo (eso se veía como teletransporte y cortaba la animación de
-                    // caminar). Solo corregimos si se desvió de verdad (más de ~3 celdas).
-                    if ((puppet.Position - cell).LengthHorizontalSquared > 9)
-                    {
-                        puppet.Position = cell;
-                        puppet.Notify_Teleported(endCurrentJob: false, resetTweenedPos: true);
-                    }
+                    FollowHostPosition(puppet, ps, map);
 
-                    SyncPuppetEquipment(puppet, ps);
-                    SyncPuppetInventory(puppet, ps);
-                    SyncPuppetApparel(puppet, ps);
+                    if (ps.HasMedium)
+                    {
+                        SyncPuppetEquipment(puppet, ps);
+                        SyncPuppetInventory(puppet, ps);
+                        SyncPuppetApparel(puppet, ps);
+                    }
                     ApplyPuppetExtras(puppet, ps, map);
                     SyncPuppetJob(map, snapshot.HostPlayerId, puppet, ps);
                     continue;
@@ -825,11 +875,55 @@ namespace RimCoopMod.GameComponents
         /// trabajar, etc. No repetimos el forzado si sigue siendo el mismo trabajo (si no, la
         /// animación arrancaría de cero en cada foto y nunca se vería terminar nada).
         /// </summary>
+        private static readonly HashSet<string> MovementOnlyJobs = new HashSet<string>
+        {
+            "Goto", "GotoWander", "Wait_Wander", "GotoSafeTemperature", "Follow", "FollowClose", "Flee", "FleeAndCower", "Wait_MaintainPosture"
+        };
+
+        [ThreadStatic] public static bool MirrorPathing;
+
+        /// <summary>
+        /// Posición del títere = posición del pawn real. Si está cerca, camina hasta esa celda (mismo
+        /// paso, animación de caminar de verdad, sin saltos); solo si se atrasó de más se teletransporta.
+        /// </summary>
+        private void FollowHostPosition(Pawn puppet, PawnSnapshot ps, Map map)
+        {
+            var cell = new IntVec3(ps.X, 0, ps.Z);
+            if (!cell.InBounds(map)) return;
+
+            int d = Math.Max(Math.Abs(puppet.Position.x - cell.x), Math.Abs(puppet.Position.z - cell.z));
+            if (d == 0)
+            {
+                if (!ps.Moving && puppet.pather != null && !puppet.pather.Moving) puppet.Rotation = new Rot4(ps.Rot);
+                return;
+            }
+
+            bool mustTeleport = d > 5 || ps.Downed || puppet.pather == null || puppet.Downed;
+            if (!mustTeleport)
+            {
+                var pather = puppet.pather;
+                if (!pather.Moving || pather.Destination.Cell != cell)
+                {
+                    MirrorPathing = true;
+                    try { pather.StartPath(cell, Verse.AI.PathEndMode.OnCell); }
+                    catch { mustTeleport = true; }
+                    finally { MirrorPathing = false; }
+                    if (!pather.Moving) mustTeleport = true; // no encontró camino (puerta cerrada para su facción, etc.)
+                }
+            }
+
+            if (mustTeleport)
+            {
+                puppet.Position = cell;
+                puppet.Notify_Teleported(endCurrentJob: false, resetTweenedPos: d > 2);
+            }
+        }
+
         private void SyncPuppetJob(Map map, int hostPlayerId, Pawn puppet, PawnSnapshot ps)
         {
             string fingerprint = string.IsNullOrEmpty(ps.CurJobDefName)
                 ? ""
-                : $"{ps.CurJobDefName}|{ps.CurJobTargetAThingId}|{ps.CurJobTargetAX},{ps.CurJobTargetAZ}|{ps.CurJobTargetBThingId}";
+                : $"{ps.CurJobDefName}|{(ps.CurJobTargetAThingId >= 0 ? "t" + ps.CurJobTargetAThingId : "c" + ps.CurJobTargetAX + "," + ps.CurJobTargetAZ)}|{(ps.CurJobTargetBThingId >= 0 ? "t" + ps.CurJobTargetBThingId : "")}";
 
             if (_puppetJobFingerprints.TryGetValue(puppet, out var last) && last == fingerprint) return;
             _puppetJobFingerprints[puppet] = fingerprint;
@@ -837,6 +931,14 @@ namespace RimCoopMod.GameComponents
             if (string.IsNullOrEmpty(ps.CurJobDefName))
             {
                 // El pawn real no está haciendo nada: el títere tampoco (no decide por su cuenta, ver Pawn_JobTracker_TryFindAndStartJob_Patch).
+                try { if (puppet.CurJob != null) puppet.jobs.EndCurrentJob(JobCondition.InterruptForced, false); } catch { }
+                return;
+            }
+
+            // Caminar de un lado a otro lo resuelve FollowHostPosition (el títere sigue al real a pie);
+            // mandarle también el trabajo de caminar haría que se peleen dos destinos distintos.
+            if (MovementOnlyJobs.Contains(ps.CurJobDefName))
+            {
                 try { if (puppet.CurJob != null) puppet.jobs.EndCurrentJob(JobCondition.InterruptForced, false); } catch { }
                 return;
             }
@@ -1025,6 +1127,20 @@ namespace RimCoopMod.GameComponents
         private void SyncPuppetInventory(Pawn puppet, PawnSnapshot ps)
         {
             if (puppet.inventory == null) return;
+            SyncPuppetInventoryCore(puppet, ps);
+
+            // Lo que el títere metió en su mochila con su propio trabajo (ej. "tomar madera") no existe en el
+            // pawn real: se borra, si no queda un ítem "fantasma" al que no se le puede dar órdenes.
+            if (_puppetItems.TryGetValue(puppet, out var mine))
+            {
+                var tracked = new HashSet<Thing>(mine.Values);
+                foreach (var t in puppet.inventory.innerContainer.ToList())
+                    if (!tracked.Contains(t)) { try { t.Destroy(DestroyMode.Vanish); } catch { } }
+            }
+        }
+
+        private void SyncPuppetInventoryCore(Pawn puppet, PawnSnapshot ps)
+        {
             if (!_puppetItems.TryGetValue(puppet, out var mine))
             {
                 mine = new Dictionary<int, Thing>();
@@ -1390,6 +1506,7 @@ namespace RimCoopMod.GameComponents
                     {
                         var w = p.GetPayload<WatchRequestPayload>();
                         _watchers.Remove(w.FromPlayerId);
+                        _sentThingSigs.Remove(w.FromPlayerId);
                         break;
                     }
 

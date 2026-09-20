@@ -140,6 +140,9 @@ namespace RimCoopMod.Networking
         public int OwnerPlayerId; // -1 = no es colono de ningún jugador (fauna/hostil)
         public int X;
         public int Z;
+        public int Rot;         // hacia dónde mira (Rot4.AsInt)
+        public bool Moving;     // está caminando (para que el títere lo siga a pie en vez de teletransportarse)
+        public bool HasMedium;  // si false, arma/ropa/inventario/necesidades no vienen en esta foto (se mandan cada tanto)
         public string JobLabel;
         public bool Downed;
         public bool Dead;
@@ -300,6 +303,9 @@ namespace RimCoopMod.Networking
         public int HostPlayerId;
         public int ToPlayerId;
         public List<ThingSnapshot> Things = new List<ThingSnapshot>();
+        public bool IsDelta;   // true = solo lo que cambió desde la última foto (+ RemovedThingIds); false = foto completa
+        public bool HasLayers = true; // false en los deltas: zonas, áreas, techos, pisos, nieve y plantas viajan solo en la foto completa
+        public List<int> RemovedThingIds = new List<int>();
         public List<ZoneSnapshot> Zones = new List<ZoneSnapshot>();
         public List<AreaSnapshot> Areas = new List<AreaSnapshot>();
         public List<StoreSnapshot> Stores = new List<StoreSnapshot>();

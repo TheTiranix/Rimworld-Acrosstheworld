@@ -118,7 +118,7 @@ namespace RimCoopMod.GameComponents
         private void FillPawnExtras(Pawn pawn, PawnSnapshot s, bool slow)
         {
             var needs = pawn.needs;
-            if (needs != null)
+            if (needs != null && s.HasMedium)
             {
                 var parts = new List<string>();
                 if (needs.food != null) parts.Add("food=" + Inv(needs.food.CurLevel));

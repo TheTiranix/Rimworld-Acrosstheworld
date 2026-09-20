@@ -140,13 +140,25 @@ namespace RimCoopMod.Networking
                             bw.Write(pawn.OwnerPlayerId);
                             bw.Write(pawn.X);
                             bw.Write(pawn.Z);
+                            bw.Write(pawn.Rot);
+                            bw.Write(pawn.Moving);
                             bw.Write(pawn.JobLabel ?? "");
                             bw.Write(pawn.Downed);
                             bw.Write(pawn.Dead);
                             bw.Write(pawn.Hostile);
                             bw.Write(pawn.Animal);
-                            bw.Write(pawn.EquippedWeaponDefName ?? "");
-                            bw.Write(pawn.EquippedWeaponStuffDefName ?? "");
+                            bw.Write(pawn.HasMedium);
+                            if (pawn.HasMedium)
+                            {
+                                bw.Write(pawn.EquippedWeaponDefName ?? "");
+                                bw.Write(pawn.EquippedWeaponStuffDefName ?? "");
+                                bw.Write(pawn.InventoryCsv ?? "");
+                                bw.Write(pawn.CarriedCsv ?? "");
+                                bw.Write(pawn.ApparelCsv ?? "");
+                                bw.Write(pawn.EquippedWeaponQuality);
+                                bw.Write(pawn.EquippedWeaponHitPoints);
+                                bw.Write(pawn.NeedsCsv ?? "");
+                            }
                             bw.Write(pawn.CurJobDefName ?? "");
                             bw.Write(pawn.CurJobTargetAThingId);
                             bw.Write(pawn.CurJobTargetAX);
@@ -155,12 +167,6 @@ namespace RimCoopMod.Networking
                             bw.Write(pawn.CurJobTargetBThingId);
                             bw.Write(pawn.CurJobTargetBX);
                             bw.Write(pawn.CurJobTargetBZ);
-                            bw.Write(pawn.InventoryCsv ?? "");
-                            bw.Write(pawn.CarriedCsv ?? "");
-                            bw.Write(pawn.ApparelCsv ?? "");
-                            bw.Write(pawn.EquippedWeaponQuality);
-                            bw.Write(pawn.EquippedWeaponHitPoints);
-                            bw.Write(pawn.NeedsCsv ?? "");
                             bw.Write(pawn.HasSlowData);
                             if (pawn.HasSlowData)
                             {
@@ -240,6 +246,8 @@ namespace RimCoopMod.Networking
                         var p = (BaseSnapshotPayload)packet.Payload;
                         bw.Write(p.HostPlayerId);
                         bw.Write(p.ToPlayerId);
+                        bw.Write(p.IsDelta);
+                        bw.Write(p.HasLayers);
                         bw.Write(p.Things.Count);
                         foreach (var t in p.Things)
                         {
@@ -253,6 +261,10 @@ namespace RimCoopMod.Networking
                             bw.Write(t.HitPoints);
                             bw.Write(t.StateStr ?? "");
                         }
+                        bw.Write(p.RemovedThingIds.Count);
+                        foreach (int removedId in p.RemovedThingIds) bw.Write(removedId);
+                        if (p.HasLayers)
+                        {
                         bw.Write(p.Zones.Count);
                         foreach (var z in p.Zones)
                         {
@@ -282,6 +294,7 @@ namespace RimCoopMod.Networking
                         WriteGridList(bw, p.Snow);
                         bw.Write(p.HasPlants);
                         WriteGridList(bw, p.Plants);
+                        }
                         break;
                     }
 
@@ -519,28 +532,34 @@ namespace RimCoopMod.Networking
                                 OwnerPlayerId = br.ReadInt32(),
                                 X = br.ReadInt32(),
                                 Z = br.ReadInt32(),
+                                Rot = br.ReadInt32(),
+                                Moving = br.ReadBoolean(),
                                 JobLabel = br.ReadString(),
                                 Downed = br.ReadBoolean(),
                                 Dead = br.ReadBoolean(),
                                 Hostile = br.ReadBoolean(),
-                                Animal = br.ReadBoolean(),
-                                EquippedWeaponDefName = br.ReadString(),
-                                EquippedWeaponStuffDefName = br.ReadString(),
-                                CurJobDefName = br.ReadString(),
-                                CurJobTargetAThingId = br.ReadInt32(),
-                                CurJobTargetAX = br.ReadInt32(),
-                                CurJobTargetAZ = br.ReadInt32(),
-                                CurJobHasTargetB = br.ReadBoolean(),
-                                CurJobTargetBThingId = br.ReadInt32(),
-                                CurJobTargetBX = br.ReadInt32(),
-                                CurJobTargetBZ = br.ReadInt32(),
-                                InventoryCsv = br.ReadString(),
-                                CarriedCsv = br.ReadString(),
-                                ApparelCsv = br.ReadString(),
-                                EquippedWeaponQuality = br.ReadInt32(),
-                                EquippedWeaponHitPoints = br.ReadInt32()
+                                Animal = br.ReadBoolean()
                             };
-                            ps.NeedsCsv = br.ReadString();
+                            ps.HasMedium = br.ReadBoolean();
+                            if (ps.HasMedium)
+                            {
+                                ps.EquippedWeaponDefName = br.ReadString();
+                                ps.EquippedWeaponStuffDefName = br.ReadString();
+                                ps.InventoryCsv = br.ReadString();
+                                ps.CarriedCsv = br.ReadString();
+                                ps.ApparelCsv = br.ReadString();
+                                ps.EquippedWeaponQuality = br.ReadInt32();
+                                ps.EquippedWeaponHitPoints = br.ReadInt32();
+                                ps.NeedsCsv = br.ReadString();
+                            }
+                            ps.CurJobDefName = br.ReadString();
+                            ps.CurJobTargetAThingId = br.ReadInt32();
+                            ps.CurJobTargetAX = br.ReadInt32();
+                            ps.CurJobTargetAZ = br.ReadInt32();
+                            ps.CurJobHasTargetB = br.ReadBoolean();
+                            ps.CurJobTargetBThingId = br.ReadInt32();
+                            ps.CurJobTargetBX = br.ReadInt32();
+                            ps.CurJobTargetBZ = br.ReadInt32();
                             ps.HasSlowData = br.ReadBoolean();
                             if (ps.HasSlowData)
                             {
@@ -623,7 +642,9 @@ namespace RimCoopMod.Networking
                         var p = new BaseSnapshotPayload
                         {
                             HostPlayerId = br.ReadInt32(),
-                            ToPlayerId = br.ReadInt32()
+                            ToPlayerId = br.ReadInt32(),
+                            IsDelta = br.ReadBoolean(),
+                            HasLayers = br.ReadBoolean()
                         };
                         int count = br.ReadInt32();
                         for (int i = 0; i < count; i++)
@@ -641,6 +662,10 @@ namespace RimCoopMod.Networking
                                 StateStr = br.ReadString()
                             });
                         }
+                        int removedCount = br.ReadInt32();
+                        for (int i = 0; i < removedCount; i++) p.RemovedThingIds.Add(br.ReadInt32());
+                        if (p.HasLayers)
+                        {
                         int zoneCount = br.ReadInt32();
                         for (int i = 0; i < zoneCount; i++)
                         {
@@ -679,6 +704,7 @@ namespace RimCoopMod.Networking
                         ReadGridList(br, p.Snow);
                         p.HasPlants = br.ReadBoolean();
                         ReadGridList(br, p.Plants);
+                        }
                         return p;
                     }
 
