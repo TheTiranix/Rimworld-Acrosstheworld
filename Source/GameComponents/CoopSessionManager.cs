@@ -479,7 +479,7 @@ namespace RimCoopMod.GameComponents
 
         private void BroadcastMapSnapshot()
         {
-            var map = Find.AnyPlayerHomeMap;
+            var map = LocalBaseMap;
             if (map == null) return;
 
             var payload = new MapSnapshotPayload
@@ -494,7 +494,7 @@ namespace RimCoopMod.GameComponents
             _slowCounter++;
             bool sendSlow = (_slowCounter % 8) == 0;   // datos que casi no cambian: ~cada 0.5 s
             bool sendMedium = (_slowCounter % 4) == 0; // arma, ropa, inventario, necesidades: ~cada 0.25 s
-            foreach (var pawn in map.mapPawns.AllPawnsSpawned)
+            foreach (var pawn in map.mapPawns.AllPawnsSpawned.Concat(HeldEntities(map)))
             {
                 int owner = -1;
                 if (pawn.Faction == Faction.OfPlayer)
@@ -509,8 +509,9 @@ namespace RimCoopMod.GameComponents
                     PawnId = pawn.thingIDNumber,
                     Label = pawn.LabelShortCap,
                     OwnerPlayerId = owner,
-                    X = pawn.Position.x,
-                    Z = pawn.Position.z,
+                    X = pawn.PositionHeld.x,
+                    Z = pawn.PositionHeld.z,
+                    HeldOnPlatform = !pawn.Spawned,
                     JobLabel = pawn.CurJob?.def?.reportString ?? "",
                     Downed = pawn.Downed,
                     Dead = pawn.Dead,
@@ -597,7 +598,7 @@ namespace RimCoopMod.GameComponents
         /// <summary>Solo lo que cambió (o apareció / desapareció) desde la última vez que se le mandó a cada watcher: mucho más liviano y rápido que la foto completa.</summary>
         private void BroadcastThingsDelta()
         {
-            var map = Find.AnyPlayerHomeMap;
+            var map = LocalBaseMap;
             if (map == null) return;
 
             var current = CollectThingSnapshots(map);
@@ -653,7 +654,7 @@ namespace RimCoopMod.GameComponents
 
         private void BroadcastBaseSnapshot()
         {
-            var map = Find.AnyPlayerHomeMap;
+            var map = LocalBaseMap;
             if (map == null) return;
 
             var payload = new BaseSnapshotPayload { HostPlayerId = CoopClient.Instance.LocalPlayerId };
@@ -824,6 +825,12 @@ namespace RimCoopMod.GameComponents
                     continue;
                 }
 
+                if (known.TryGetValue(ps.PawnId, out var heldCandidate) && heldCandidate != null)
+                {
+                    if (ps.HeldOnPlatform) { if (HoldPuppetOnPlatform(heldCandidate, ps, map)) continue; }
+                    else if (!heldCandidate.Spawned && heldCandidate.holdingOwner != null) ReleaseHeldPuppet(heldCandidate, ps, map);
+                }
+
                 if (known.TryGetValue(ps.PawnId, out var puppet) && puppet != null && puppet.Spawned)
                 {
                     if (ps.Dead)
@@ -870,6 +877,7 @@ namespace RimCoopMod.GameComponents
                     _puppetCarriedKey.Remove(known[oldId]);
                     if (known[oldId].Spawned) known[oldId].Destroy(DestroyMode.Vanish);
                     else if (known[oldId].Corpse != null && !known[oldId].Corpse.Destroyed) known[oldId].Corpse.Destroy(DestroyMode.Vanish);
+                    else if (known[oldId].holdingOwner != null && !known[oldId].Destroyed) known[oldId].Destroy(DestroyMode.Vanish); // entidad que estaba en una plataforma
                 }
                 known.Remove(oldId);
             }
@@ -1295,7 +1303,7 @@ namespace RimCoopMod.GameComponents
 
         private void HandlePawnOrder(PawnOrderPayload order)
         {
-            var map = Find.AnyPlayerHomeMap;
+            var map = LocalBaseMap;
             if (map == null) return;
 
             Pawn pawn = map.mapPawns.AllPawnsSpawned.FirstOrDefault(x => x.thingIDNumber == order.PawnId);
@@ -1376,10 +1384,10 @@ namespace RimCoopMod.GameComponents
 
         private void HandleJoinRequest(JoinRequestPayload req)
         {
-            var map = Find.AnyPlayerHomeMap;
+            var map = LocalBaseMap;
             if (map == null)
             {
-                CoopLog.Warning("[RimCoop] Llegaron colonos pero no tengo Find.AnyPlayerHomeMap (¿no tenés colonia activa?).");
+                CoopLog.Warning("[RimCoop] Llegaron colonos pero no tengo LocalBaseMap (¿no tenés colonia activa?).");
                 CoopClient.Instance.SendJoinResult(req.FromPlayerId, false, "No tengo una colonia activa para recibir colonos.");
                 return;
             }
@@ -1646,7 +1654,7 @@ namespace RimCoopMod.GameComponents
         /// </summary>
         private void HandleBuildRequest(BuildRequestPayload req)
         {
-            var map = Find.AnyPlayerHomeMap;
+            var map = LocalBaseMap;
             if (map == null) return;
 
             if (HandleExtraRequest(req, map)) return;
@@ -1818,8 +1826,8 @@ namespace RimCoopMod.GameComponents
             }
             if (!sent.Add(req.PawnId)) return;
 
-            var map = Find.AnyPlayerHomeMap;
-            Pawn pawn = map?.mapPawns.AllPawnsSpawned.FirstOrDefault(x => x.thingIDNumber == req.PawnId);
+            var map = LocalBaseMap;
+            Pawn pawn = map?.mapPawns.AllPawnsSpawned.Concat(HeldEntities(map)).FirstOrDefault(x => x.thingIDNumber == req.PawnId);
             if (pawn == null) return;
 
             string xml = PawnTransfer.SerializePawn(pawn);

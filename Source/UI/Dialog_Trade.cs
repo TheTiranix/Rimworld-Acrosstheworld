@@ -27,7 +27,7 @@ namespace RimCoopMod.UI
         {
             _partnerId = partnerId;
             _partnerName = partnerName;
-            _myStock = CoopSessionManager.AggregateStock(Find.AnyPlayerHomeMap);
+            _myStock = CoopSessionManager.AggregateStock(CoopSessionManager.LocalBaseMap);
             doCloseX = true;
             absorbInputAroundWindow = false;
             Current = this;

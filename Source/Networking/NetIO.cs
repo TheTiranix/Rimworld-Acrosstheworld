@@ -157,6 +157,7 @@ namespace RimCoopMod.Networking
                             bw.Write(pawn.Z);
                             bw.Write(pawn.Rot);
                             bw.Write(pawn.Moving);
+                            bw.Write(pawn.HeldOnPlatform);
                             bw.Write(pawn.JobLabel ?? "");
                             bw.Write(pawn.Downed);
                             bw.Write(pawn.Dead);
@@ -202,6 +203,9 @@ namespace RimCoopMod.Networking
                                 bw.Write(pawn.GuestWill);
                                 bw.Write(pawn.IsPlayerFaction);
                                 bw.Write(pawn.GenesCsv ?? "");
+                                bw.Write(pawn.AbilitiesCsv ?? "");
+                                bw.Write(pawn.TitlesCsv ?? "");
+                                bw.Write(pawn.PsyCsv ?? "");
                             }
                         }
                         bw.Write(p.Interactions.Count);
@@ -574,6 +578,7 @@ namespace RimCoopMod.Networking
                                 Z = br.ReadInt32(),
                                 Rot = br.ReadInt32(),
                                 Moving = br.ReadBoolean(),
+                                HeldOnPlatform = br.ReadBoolean(),
                                 JobLabel = br.ReadString(),
                                 Downed = br.ReadBoolean(),
                                 Dead = br.ReadBoolean(),
@@ -620,6 +625,9 @@ namespace RimCoopMod.Networking
                                 ps.GuestWill = br.ReadSingle();
                                 ps.IsPlayerFaction = br.ReadBoolean();
                                 ps.GenesCsv = br.ReadString();
+                                ps.AbilitiesCsv = br.ReadString();
+                                ps.TitlesCsv = br.ReadString();
+                                ps.PsyCsv = br.ReadString();
                             }
                             p.Pawns.Add(ps);
                         }

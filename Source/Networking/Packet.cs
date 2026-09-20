@@ -56,7 +56,7 @@ namespace RimCoopMod.Networking
     public static class ProtocolInfo
     {
         /// <summary>Subir cada vez que cambia el formato de un paquete. Mod y servidor tienen que coincidir.</summary>
-        public const int Version = 9;
+        public const int Version = 10;
     }
 
     public class ServerInfoPayload
@@ -163,6 +163,7 @@ namespace RimCoopMod.Networking
         public int X;
         public int Z;
         public int Rot;         // hacia dónde mira (Rot4.AsInt)
+        public bool HeldOnPlatform; // Anomaly: es una entidad contenida en una plataforma de contención (no está "spawneada")
         public bool Moving;     // está caminando (para que el títere lo siga a pie en vez de teletransportarse)
         public bool HasMedium;  // si false, arma/ropa/inventario/necesidades no vienen en esta foto (se mandan cada tanto)
         public string JobLabel;
@@ -219,6 +220,9 @@ namespace RimCoopMod.Networking
         public float GuestWill;
         public bool IsPlayerFaction; // el pawn real es de la facción del jugador
         public string GenesCsv;      // Biotech: xenogenes ("defName;defName;...")
+        public string AbilitiesCsv;  // Royalty: psicasts y demás habilidades ("defName;...")
+        public string TitlesCsv;     // Royalty: títulos ("factionDef,titleDef,favor;...")
+        public string PsyCsv;        // Royalty: "focus=0.5;heat=0.2" 
     }
 
     public class MapSnapshotPayload

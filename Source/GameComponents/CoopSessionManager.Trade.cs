@@ -88,7 +88,7 @@ namespace RimCoopMod.GameComponents
         /// <summary>Recibe ítems como si los trajera un comerciante: caen en cápsulas cerca de la zona de comercio de mi base.</summary>
         private static void ReceiveItems(string csv, string fromName)
         {
-            var map = Find.AnyPlayerHomeMap;
+            var map = LocalBaseMap;
             if (map == null || string.IsNullOrEmpty(csv)) return;
 
             var things = new List<Thing>();
@@ -141,7 +141,7 @@ namespace RimCoopMod.GameComponents
             switch (m.Kind)
             {
                 case "stockreq":
-                    CoopClient.Instance.SendTradeMessage(m.FromPlayerId, "stock", StockToCsv(AggregateStock(Find.AnyPlayerHomeMap)));
+                    CoopClient.Instance.SendTradeMessage(m.FromPlayerId, "stock", StockToCsv(AggregateStock(LocalBaseMap)));
                     break;
 
                 case "stock":
@@ -167,7 +167,7 @@ namespace RimCoopMod.GameComponents
                         if (!_pendingOffersSent.TryGetValue(m.OfferId, out var sent)) break;
                         _pendingOffersSent.Remove(m.OfferId);
                         var give = ParseSimpleItems(sent.Data.Split('#')[0]);
-                        string removed = RemoveItems(Find.AnyPlayerHomeMap, give);
+                        string removed = RemoveItems(LocalBaseMap, give);
                         CoopClient.Instance.SendTradeMessage(m.FromPlayerId, "transfer", removed);
                         Messages.Message($"{m.FromPlayerName} aceptó tu oferta: se enviaron tus ítems.", MessageTypeDefOf.PositiveEvent, false);
                         break;
@@ -182,7 +182,7 @@ namespace RimCoopMod.GameComponents
         /// <summary>El receptor aceptó la oferta: saca lo que le piden (si lo tiene), se lo manda al oferente y le avisa.</summary>
         public static void AcceptOffer(int fromPlayerId, string fromName, int offerId, string wantCsv)
         {
-            var map = Find.AnyPlayerHomeMap;
+            var map = LocalBaseMap;
             var want = ParseSimpleItems(wantCsv);
             var stock = AggregateStock(map);
             foreach (var kv in want)
@@ -208,7 +208,7 @@ namespace RimCoopMod.GameComponents
 
         private void HandleAttack(TradeOrAttackPayload a)
         {
-            var map = Find.AnyPlayerHomeMap;
+            var map = LocalBaseMap;
             if (map == null) return;
 
             try

@@ -157,6 +157,7 @@ namespace RimCoopMod.GameComponents
                 s.AreaLabel = pawn.playerSettings?.AreaRestrictionInPawnCurrentMap?.Label ?? "";
 
                 s.IsPlayerFaction = pawn.Faction == Faction.OfPlayer;
+                FillRoyalty(pawn, s);
                 s.GenesCsv = pawn.genes == null ? "" : string.Join(";", pawn.genes.Xenogenes.Where(g => g?.def != null).Select(g => g.def.defName));
                 s.SkillsCsv = pawn.skills == null ? "" : string.Join(";", pawn.skills.skills.Select(k => k.def.defName + "," + k.Level + "," + Inv(k.xpSinceLastLevel) + "," + (int)k.passion));
                 s.TraitsCsv = pawn.story?.traits == null ? "" : string.Join(";", pawn.story.traits.allTraits.Select(t => t.def.defName + "," + t.Degree));
@@ -268,6 +269,8 @@ namespace RimCoopMod.GameComponents
             {
                 CoopLog.Warning($"[RimCoop] Error copiando habilidades/rasgos de {puppet.LabelShortCap}: {e.Message}");
             }
+
+            ApplyRoyalty(puppet, ps);
 
             try
             {
@@ -537,7 +540,7 @@ namespace RimCoopMod.GameComponents
         /// <summary>Host: el que mira (dueño del colono transferido) pidió cambiar una configuración de ese colono.</summary>
         private void HandlePawnSetting(PawnSettingPayload req)
         {
-            var map = Find.AnyPlayerHomeMap;
+            var map = LocalBaseMap;
             Pawn pawn = map?.mapPawns.AllPawnsSpawned.FirstOrDefault(x => x.thingIDNumber == req.PawnId);
             if (pawn == null) return;
 

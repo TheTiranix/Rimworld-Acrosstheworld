@@ -30,7 +30,7 @@ namespace RimCoopMod.UI
             forcePause = true;
             absorbInputAroundWindow = true;
 
-            var map = Find.AnyPlayerHomeMap;
+            var map = global::RimCoopMod.GameComponents.CoopSessionManager.LocalBaseMap;
             _candidates = map?.mapPawns?.FreeColonists?.ToList() ?? new List<Pawn>();
         }
 

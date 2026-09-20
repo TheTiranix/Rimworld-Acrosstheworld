@@ -60,8 +60,12 @@ en cada caso y se adapta a los DLC que tengas:
 - **Biotech:** se copia la contaminación del terreno y los xenogenes de los colonos.
 - **Ideology:** se copia el estilo visual de muebles y edificios.
 - Los trabajos que dependen de rituales/ceremonias no se imitan en el mapa espejo (se ve el resultado, no el ritual).
-- **Anomaly / Odyssey / Royalty:** las entidades, las condiciones de clima, el vacío y las naves gravitatorias no
-  tienen sincronización específica: lo que es un objeto o un colono normal se copia, el resto no.
+- **Odyssey:** "mi base" es siempre el asentamiento de la superficie que se avisó al servidor, no cualquier mapa propio;
+  así una nave gravitatoria que despega (y crea mapas nuevos) no confunde lo que ven los demás. Las naves y colonias
+  extra en otros mapas (órbita, otros tiles) **no se espejan**, y el vacío tampoco.
+- **Anomaly:** las entidades contenidas en plataformas de contención se ven en el mapa espejo.
+- **Royalty:** se copian los psicasts (habilidades), el enfoque psíquico, el calor neural y los títulos con su favor.
+  Lanzar un psicast no se imita (se ve el resultado, no el lanzamiento).
 
 ## Limitaciones conocidas
 
