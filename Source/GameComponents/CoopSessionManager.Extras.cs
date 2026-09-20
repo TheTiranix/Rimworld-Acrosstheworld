@@ -566,6 +566,9 @@ namespace RimCoopMod.GameComponents
                             if (def != null && int.TryParse(req.Key, out int hour) && pawn.timetable != null) pawn.timetable.SetAssignment(hour, def);
                             break;
                         }
+                    case "permit":
+                        UsePermitOnHost(pawn, req.Key, req.Value, map);
+                        break;
                     case "master":
                         if (pawn.playerSettings != null)
                             pawn.playerSettings.Master = int.TryParse(req.Value, out int masterId) && masterId >= 0

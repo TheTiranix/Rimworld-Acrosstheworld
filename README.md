@@ -65,9 +65,14 @@ en cada caso y se adapta a los DLC que tengas:
   extra en otros mapas (órbita, otros tiles) **no se espejan**, y el vacío tampoco.
 - **Anomaly:** las entidades contenidas en plataformas de contención se ven en el mapa espejo.
 - **Royalty:** se copian y se mantienen al día los psicasts (habilidades), el enfoque psíquico, el calor neural, los títulos
-  con su favor, los herederos y los permisos. Las naves de transporte posadas y los árboles de anima se ven como cualquier
-  edificio o planta. Lanzar un psicast, usar un permiso, las ceremonias de investidura, las misiones del Imperio y la
-  animación de las naves aterrizando o despegando no se trasladan al mapa espejo.
+  con su favor, los herederos y los permisos. Los psicasts y los permisos que uses con un colono tuyo en el mapa espejo
+  los ejecuta el dueño en su base real. Las naves de transporte posadas y los árboles de anima se ven como cualquier
+  edificio o planta. **Misiones compartidas:** en las bases de jugadores con los que colaboras, *Compartir misión* invita
+  a una de tus misiones en curso; quien se suma la ve en su pestaña de misiones (copia informativa con nombre, descripción y
+  estado) y ayuda con sus colonos en tu base. Las incursiones y amenazas que dispara esa misión suben un **35 % por cada
+  jugador sumado**. Las ceremonias de investidura y otros rituales no se imitan en el mapa espejo (los participantes se ven
+  en su posición, sin la animación del ritual), ni la animación de las naves aterrizando o despegando. Los objetivos internos
+  de la misión y sus recompensas son del dueño.
 
 ## Limitaciones conocidas
 

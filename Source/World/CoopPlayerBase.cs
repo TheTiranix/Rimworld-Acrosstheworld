@@ -51,6 +51,13 @@ namespace RimCoopMod.World
             {
                 yield return new Command_Action
                 {
+                    defaultLabel = "Compartir misión",
+                    defaultDesc = $"Invitar a {RemotePlayerName} a una de tus misiones en curso. Cada jugador que se suma sube su dificultad un 35 %.",
+                    action = () => Find.WindowStack.Add(new Dialog_ShareQuest(RemotePlayerId, RemotePlayerName))
+                };
+
+                yield return new Command_Action
+                {
                     defaultLabel = "Dejar de compartir",
                     defaultDesc = $"Dejar de compartir la investigación con {RemotePlayerName}. Los colonos que ya enviaron se quedan donde están; se puede volver a colaborar cuando quieran.",
                     action = () => Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(

@@ -33,6 +33,7 @@ namespace RimCoopMod.GameComponents
             int tick = Find.TickManager.TicksGame;
             if (tick % WealthCheckIntervalTicks == 0) UpdateLocalWealth(force: false);
             if (tick % ResearchProgressIntervalTicks == 0) SendResearchProgress();
+            if (tick % QuestUpdateIntervalTicks == 0) TickQuests();
         }
 
         // =====================================================================
@@ -89,6 +90,8 @@ namespace RimCoopMod.GameComponents
             var names = _collaboratorNames.ToList();
             Scribe_Collections.Look(ref names, "rimcoopCollaborators", LookMode.Value);
             if (Scribe.mode == LoadSaveMode.LoadingVars) _collaboratorNames = new HashSet<string>(names ?? new List<string>());
+
+            ExposeQuestData();
 
             var pending = _pendingLeaveNames.ToList();
             Scribe_Collections.Look(ref pending, "rimcoopPendingLeaves", LookMode.Value);

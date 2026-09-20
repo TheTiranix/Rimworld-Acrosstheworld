@@ -377,6 +377,24 @@ namespace RimCoopMod.Networking
             }));
         }
 
+        public void SendQuestMessage(int toPlayerId, string kind, int questId, string name, string description, int state, int rating, int participants)
+        {
+            if (!IsConnected) return;
+            NetIO.SendPacket(_stream, Packet.Create(PacketType.QuestMessage, new QuestMessagePayload
+            {
+                FromPlayerId = LocalPlayerId,
+                ToPlayerId = toPlayerId,
+                FromPlayerName = LocalPlayerName,
+                Kind = kind,
+                QuestId = questId,
+                Name = name,
+                Description = description,
+                State = state,
+                Rating = rating,
+                Participants = participants
+            }));
+        }
+
         public void SendModList(int toPlayerId, string modIds)
         {
             if (!IsConnected) return;

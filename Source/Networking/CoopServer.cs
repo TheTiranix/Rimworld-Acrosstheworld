@@ -314,6 +314,10 @@ namespace RimCoopMod.Networking
                     RouteTo(p.GetPayload<WorldEventPayload>().ToPlayerId, p);
                     break;
 
+                case PacketType.QuestMessage:
+                    RouteTo(p.GetPayload<QuestMessagePayload>().ToPlayerId, p);
+                    break;
+
                 case PacketType.ModList:
                     {
                         var ml = p.GetPayload<ModListPayload>();

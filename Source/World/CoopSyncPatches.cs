@@ -116,3 +116,69 @@ namespace RimCoopMod.World
         }
     }
 }
+
+namespace RimCoopMod.World
+{
+    /// <summary>
+    /// Usar un permiso de Royalty con un colono del mapa espejo: en vez de ejecutarlo acá (donde no existe la
+    /// base real), se le pide al dueño que lo use con ese colono en su mapa.
+    /// </summary>
+    [HarmonyPatch]
+    public static class RoyalPermit_OrderForceTarget_Patch
+    {
+        public static System.Collections.Generic.IEnumerable<System.Reflection.MethodBase> TargetMethods()
+        {
+            foreach (var t in new[]
+            {
+                typeof(RoyalTitlePermitWorker_CallAid), typeof(RoyalTitlePermitWorker_DropResources), typeof(RoyalTitlePermitWorker_CallLaborers),
+                typeof(RoyalTitlePermitWorker_CallShuttle), typeof(RoyalTitlePermitWorker_OrbitalStrike)
+            })
+            {
+                var m = AccessTools.DeclaredMethod(t, "OrderForceTarget");
+                if (m != null) yield return m;
+            }
+        }
+
+        [HarmonyPrefix]
+        public static bool Prefix(RoyalTitlePermitWorker_Targeted __instance, LocalTargetInfo target)
+        {
+            var caller = Traverse.Create(__instance).Field("caller").GetValue<Pawn>();
+            if (caller == null || !PuppetPawnRegistry.TryGetInfo(caller, out var info)) return true;
+
+            if (!CoopSessionManager.CanLocalPlayerCommand(caller))
+            {
+                Messages.Message("Ese no es tu colono.", MessageTypeDefOf.RejectInput, false);
+                return false;
+            }
+
+            var def = Traverse.Create(__instance).Field("def").GetValue<RoyalTitlePermitDef>();
+            CoopClient.Instance.SendPawnSetting(info.HostPlayerId, info.HostPawnId, "permit", def?.defName ?? "", target.Cell.x + "," + target.Cell.z);
+            Messages.Message("Se pidió usar el permiso en la base del dueño.", MessageTypeDefOf.NeutralEvent, false);
+            return false;
+        }
+    }
+}
+
+namespace RimCoopMod.World
+{
+    /// <summary>Misiones compartidas: cuando la misión dispara una incursión/amenaza, sube un 35 % por cada jugador sumado.</summary>
+    [HarmonyPatch(typeof(QuestPart_Incident), nameof(QuestPart_Incident.Notify_QuestSignalReceived))]
+    public static class QuestPart_Incident_Scale_Patch
+    {
+        [HarmonyPrefix]
+        public static void Prefix(QuestPart_Incident __instance, Signal signal)
+        {
+            if (signal.tag == __instance.inSignal) CoopSessionManager.ScaleQuestIncident(__instance);
+        }
+    }
+
+    [HarmonyPatch(typeof(QuestPartActivable), "Enable")]
+    public static class QuestPartActivable_Enable_Scale_Patch
+    {
+        [HarmonyPrefix]
+        public static void Prefix(QuestPartActivable __instance)
+        {
+            if (__instance is QuestPart_ThreatsGenerator generator) CoopSessionManager.ScaleQuestThreats(generator);
+        }
+    }
+}

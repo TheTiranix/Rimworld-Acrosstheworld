@@ -417,7 +417,8 @@ namespace RimCoopMod.GameComponents
                 TargetAX = targetA.Cell.x,
                 TargetAZ = targetA.Cell.z,
                 HasTargetB = job.targetB.IsValid,
-                Count = job.count
+                Count = job.count,
+                AbilityDefName = job.ability?.def?.defName
             };
 
             if (payload.HasTargetB)
@@ -1342,6 +1343,22 @@ namespace RimCoopMod.GameComponents
             }
             job.count = order.Count; // cuántas unidades recoger/llevar/comer (sin esto, tomar un ítem del piso no hacía nada)
 
+            // Lanzar un psicast/habilidad: el trabajo real lo arma la habilidad del colono REAL (lleva su verbo, cooldown y demás).
+            if (!string.IsNullOrEmpty(order.AbilityDefName))
+            {
+                var abilityDef = DefDatabase<AbilityDef>.GetNamedSilentFail(order.AbilityDefName);
+                var ability = abilityDef == null ? null : pawn.abilities?.GetAbility(abilityDef);
+                if (ability == null)
+                {
+                    CoopLog.Warning($"[RimCoop] {pawn.LabelShortCap} no tiene la habilidad {order.AbilityDefName}: se descarta el lanzamiento.");
+                    return;
+                }
+                LocalTargetInfo abilityTargetB = order.HasTargetB
+                    ? (order.TargetBThingId >= 0 ? (LocalTargetInfo)FindThingById(map, order.TargetBThingId) : (LocalTargetInfo)new IntVec3(order.TargetBX, 0, order.TargetBZ))
+                    : LocalTargetInfo.Invalid;
+                job = ability.GetJob(targetA, abilityTargetB.IsValid ? abilityTargetB : targetA);
+            }
+
             // Esta orden ya se validó arriba; Pawn_JobTracker_TryTakeOrderedJob_Patch usa esta
             // bandera para no volver a filtrarla (si no, el propio host nunca podría ejecutar
             // las órdenes que da el dueño remoto sobre SU pawn).
@@ -1635,6 +1652,10 @@ namespace RimCoopMod.GameComponents
 
                 case PacketType.ModList:
                     ReceiveModList(p.GetPayload<ModListPayload>());
+                    break;
+
+                case PacketType.QuestMessage:
+                    HandleQuestMessage(p.GetPayload<QuestMessagePayload>());
                     break;
 
                 case PacketType.ResearchSync:

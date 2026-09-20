@@ -42,7 +42,22 @@ namespace RimCoopMod.Networking
         ResearchSync = 27,       // investigación compartida (proyectos terminados y progreso)
         WorldEvent = 28,         // condición del mapa real que se ve también en el mapa espejo de quien lo mira
         ServerInfo = 29,         // lo primero que manda el servidor: su versión de protocolo (para detectar mod/servidor desparejos)
-        ModList = 30             // lista de mods/DLC activos de cada jugador, para avisar si no coinciden
+        ModList = 30,            // lista de mods/DLC activos de cada jugador, para avisar si no coinciden
+        QuestMessage = 31        // misiones compartidas entre jugadores (invitar, aceptar, actualizar, terminar)
+    }
+
+    public class QuestMessagePayload
+    {
+        public int FromPlayerId;
+        public int ToPlayerId;
+        public string FromPlayerName;
+        public string Kind;        // invite | accept | decline | update | end
+        public int QuestId;        // id de la misión en el juego del dueño
+        public string Name;
+        public string Description;
+        public int State;          // Verse QuestState como int
+        public int Rating;         // challengeRating
+        public int Participants;   // jugadores sumados (sin contar al dueño)
     }
 
     public class ModListPayload
@@ -56,7 +71,7 @@ namespace RimCoopMod.Networking
     public static class ProtocolInfo
     {
         /// <summary>Subir cada vez que cambia el formato de un paquete. Mod y servidor tienen que coincidir.</summary>
-        public const int Version = 12;
+        public const int Version = 13;
     }
 
     public class ServerInfoPayload
@@ -264,6 +279,7 @@ namespace RimCoopMod.Networking
         public int TargetBThingId;
         public int TargetBX;
         public int TargetBZ;
+        public string AbilityDefName; // si la orden es lanzar una habilidad/psicast: cuál (el trabajo real se arma del lado del dueño)
         public int Count = -1; // job.count: cuántas unidades (ej. cuánto recoger del piso). Sin esto "tomar" llegaba con cantidad 0 y no recogía nada.
     }
 

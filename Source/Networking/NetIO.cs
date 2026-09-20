@@ -66,6 +66,21 @@ namespace RimCoopMod.Networking
                         bw.Write(p.ProtocolVersion);
                         break;
                     }
+                case PacketType.QuestMessage:
+                    {
+                        var p = (QuestMessagePayload)packet.Payload;
+                        bw.Write(p.FromPlayerId);
+                        bw.Write(p.ToPlayerId);
+                        bw.Write(p.FromPlayerName ?? "");
+                        bw.Write(p.Kind ?? "");
+                        bw.Write(p.QuestId);
+                        bw.Write(p.Name ?? "");
+                        bw.Write(p.Description ?? "");
+                        bw.Write(p.State);
+                        bw.Write(p.Rating);
+                        bw.Write(p.Participants);
+                        break;
+                    }
                 case PacketType.ModList:
                     {
                         var p = (ModListPayload)packet.Payload;
@@ -234,6 +249,7 @@ namespace RimCoopMod.Networking
                         bw.Write(p.TargetBX);
                         bw.Write(p.TargetBZ);
                         bw.Write(p.Count);
+                        bw.Write(p.AbilityDefName ?? "");
                         break;
                     }
 
@@ -487,6 +503,21 @@ namespace RimCoopMod.Networking
                         return hs;
                     }
 
+                case PacketType.QuestMessage:
+                    return new QuestMessagePayload
+                    {
+                        FromPlayerId = br.ReadInt32(),
+                        ToPlayerId = br.ReadInt32(),
+                        FromPlayerName = br.ReadString(),
+                        Kind = br.ReadString(),
+                        QuestId = br.ReadInt32(),
+                        Name = br.ReadString(),
+                        Description = br.ReadString(),
+                        State = br.ReadInt32(),
+                        Rating = br.ReadInt32(),
+                        Participants = br.ReadInt32()
+                    };
+
                 case PacketType.ModList:
                     return new ModListPayload
                     {
@@ -660,7 +691,8 @@ namespace RimCoopMod.Networking
                         TargetBThingId = br.ReadInt32(),
                         TargetBX = br.ReadInt32(),
                         TargetBZ = br.ReadInt32(),
-                        Count = br.ReadInt32()
+                        Count = br.ReadInt32(),
+                        AbilityDefName = br.ReadString()
                     };
 
                 case PacketType.JoinRequest:
