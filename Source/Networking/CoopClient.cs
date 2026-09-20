@@ -345,12 +345,13 @@ namespace RimCoopMod.Networking
             }));
         }
 
-        public void SendWorldEvent(string defName, int duration)
+        public void SendWorldEvent(int toPlayerId, string defName, int duration)
         {
             if (!IsConnected) return;
             NetIO.SendPacket(_stream, Packet.Create(PacketType.WorldEvent, new WorldEventPayload
             {
                 FromPlayerId = LocalPlayerId,
+                ToPlayerId = toPlayerId,
                 FromPlayerName = LocalPlayerName,
                 DefName = defName,
                 Duration = duration

@@ -296,7 +296,7 @@ namespace RimCoopMod.Networking
                     break;
 
                 case PacketType.WorldEvent:
-                    Broadcast(p, excludePlayerId: from.PlayerId);
+                    RouteTo(p.GetPayload<WorldEventPayload>().ToPlayerId, p);
                     break;
 
                 case PacketType.TradeMessage:

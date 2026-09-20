@@ -297,6 +297,7 @@ namespace RimCoopMod.Networking
                         WriteGridList(bw, p.Snow);
                         bw.Write(p.HasPlants);
                         WriteGridList(bw, p.Plants);
+                        bw.Write(p.ConditionsCsv ?? "");
                         }
                         break;
                     }
@@ -385,6 +386,7 @@ namespace RimCoopMod.Networking
                     {
                         var p = (WorldEventPayload)packet.Payload;
                         bw.Write(p.FromPlayerId);
+                        bw.Write(p.ToPlayerId);
                         bw.Write(p.FromPlayerName ?? "");
                         bw.Write(p.DefName ?? "");
                         bw.Write(p.Duration);
@@ -711,6 +713,7 @@ namespace RimCoopMod.Networking
                         ReadGridList(br, p.Snow);
                         p.HasPlants = br.ReadBoolean();
                         ReadGridList(br, p.Plants);
+                        p.ConditionsCsv = br.ReadString();
                         }
                         return p;
                     }
@@ -791,6 +794,7 @@ namespace RimCoopMod.Networking
                     return new WorldEventPayload
                     {
                         FromPlayerId = br.ReadInt32(),
+                        ToPlayerId = br.ReadInt32(),
                         FromPlayerName = br.ReadString(),
                         DefName = br.ReadString(),
                         Duration = br.ReadInt32()

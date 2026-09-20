@@ -315,6 +315,7 @@ namespace RimCoopMod.Networking
         public List<RoofSnapshot> Roofs = new List<RoofSnapshot>(); // techos ya construidos (y naturales), comprimidos por tramos
         public List<RoofSnapshot> Terrains = new List<RoofSnapshot>(); // pisos construidos (capa superior del terreno), por tramos
         public List<RoofSnapshot> Snow = new List<RoofSnapshot>();     // nieve acumulada: DefName = nivel 1..10, por tramos
+        public string ConditionsCsv; // condiciones activas del mapa real (eclipse, lluvia tóxica...): "defName|ticksLeft;..."
         public bool HasPlants;                                         // las plantas pesan: se mandan cada tanto, no en cada foto
         public List<RoofSnapshot> Plants = new List<RoofSnapshot>();   // DefName = planta; RunsCsv = "id,x,z,crecimiento;..." 
     }
@@ -409,6 +410,7 @@ namespace RimCoopMod.Networking
     public class WorldEventPayload
     {
         public int FromPlayerId;
+        public int ToPlayerId; // solo va a quien está mirando esa base (su mapa espejo), no a todos
         public string FromPlayerName;
         public string DefName;  // GameConditionDef
         public int Duration;    // ticks que le quedan

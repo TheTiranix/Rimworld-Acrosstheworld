@@ -623,7 +623,7 @@ namespace RimCoopMod.GameComponents
             foreach (var thing in map.listerThings.AllThings)
             {
                 bool isConstructionSite = thing is Blueprint || thing is Frame; // plano o "en obra", todavía no son Building
-                bool isFilthOrFire = thing is Filth || thing is Fire;
+                bool isFilthOrFire = thing is Filth || thing is Fire || thing is Blight;
                 if (thing.def.category != ThingCategory.Building && thing.def.category != ThingCategory.Item && !isConstructionSite && !isFilthOrFire) continue;
                 if (!thing.Spawned) continue;
 
@@ -640,7 +640,7 @@ namespace RimCoopMod.GameComponents
                     X = thing.Position.x,
                     Z = thing.Position.z,
                     Rotation = thing.Rotation.AsInt,
-                    StackCount = thing is Filth filth ? filth.thickness : thing is Fire fire ? (int)(fire.fireSize * 100f) : thing.stackCount,
+                    StackCount = thing is Filth filth ? filth.thickness : thing is Fire fire ? (int)(fire.fireSize * 100f) : thing is Blight blight ? (int)(blight.Severity * 100f) : thing.stackCount,
                     HitPoints = thing.HitPoints,
                     StateStr = thing is Building ? BuildStateString(thing) : ""
                 });
@@ -707,7 +707,7 @@ namespace RimCoopMod.GameComponents
                 if (known.TryGetValue(ts.ThingId, out var existing) && existing != null && existing.Spawned)
                 {
                     ApplyThingState(existing, ts.StateStr);
-                    if (existing is Filth || existing is Fire)
+                    if (existing is Filth || existing is Fire || existing is Blight)
                     {
                         ApplySpecialCount(existing, ts.StackCount);
                         continue;

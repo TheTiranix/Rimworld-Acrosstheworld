@@ -104,6 +104,11 @@ namespace RimCoopMod.GameComponents
                 fire.fireSize = Mathf.Clamp(count / 100f, 0.1f, 1.75f);
                 return true;
             }
+            if (thing is Blight blight)
+            {
+                Traverse.Create(blight).Field("severity").SetValue(Mathf.Clamp(count / 100f, 0.05f, 1f));
+                return true;
+            }
             return false;
         }
 
@@ -155,7 +160,14 @@ namespace RimCoopMod.GameComponents
                         if (bill?.recipe == null) continue;
                         var bp = bill as Bill_Production;
                         bills.Add(bill.recipe.defName + "~" + (bp?.repeatMode?.defName ?? "") + "~" + (bp?.repeatCount ?? 0) + "~" + (bp?.targetCount ?? 0) + "~" +
-                                  (bill.suspended ? 1 : 0) + "~" + (bp != null && bp.paused ? 1 : 0));
+                                  (bill.suspended ? 1 : 0) + "~" + (bp != null && bp.paused ? 1 : 0) + "~" +
+                                  Inv(bill.ingredientSearchRadius) + "~" + bill.allowedSkillRange.min + "-" + bill.allowedSkillRange.max + "~" +
+                                  (bp?.GetStoreMode()?.defName ?? "") + "~" + (bp != null && bp.pauseWhenSatisfied ? 1 : 0) + "~" + (bp?.unpauseWhenYouHave ?? 0) + "~" +
+                                  (bp != null && bp.includeEquipped ? 1 : 0) + "~" + (bp != null && bp.includeTainted ? 1 : 0) + "~" +
+                                  Inv(bp?.hpRange.min ?? 0f) + "-" + Inv(bp?.hpRange.max ?? 1f) + "~" +
+                                  (int)(bp?.qualityRange.min ?? QualityCategory.Awful) + "-" + (int)(bp?.qualityRange.max ?? QualityCategory.Legendary) + "~" +
+                                  (bp != null && bp.limitToAllowedStuff ? 1 : 0) + "~" +
+                                  string.Join(",", bill.ingredientFilter.AllowedThingDefs.Select(d => d.defName).OrderBy(x => x)));
                     }
                     parts.Add("bills=" + string.Join("^", bills)); // vacío también cuenta: así se propaga que se borró la última receta
                 }
@@ -285,6 +297,40 @@ namespace RimCoopMod.GameComponents
                         if (int.TryParse(f[3], out int tc)) bp.targetCount = tc;
                         bp.paused = f[5] == "1";
                     }
+
+                    if (f.Length >= 17)
+                    {
+                        bill.ingredientSearchRadius = ParseF(f[6], bill.ingredientSearchRadius);
+                        var sk = f[7].Split('-');
+                        if (sk.Length == 2 && int.TryParse(sk[0], out int s0) && int.TryParse(sk[1], out int s1)) bill.allowedSkillRange = new IntRange(s0, s1);
+
+                        if (bill is Bill_Production bp2)
+                        {
+                            var store = DefDatabase<BillStoreModeDef>.GetNamedSilentFail(f[8]);
+                            if (store != null && bp2.GetStoreMode() != store) bp2.SetStoreMode(store, null);
+                            bp2.pauseWhenSatisfied = f[9] == "1";
+                            if (int.TryParse(f[10], out int unp)) bp2.unpauseWhenYouHave = unp;
+                            bp2.includeEquipped = f[11] == "1";
+                            bp2.includeTainted = f[12] == "1";
+                            var hp = f[13].Split('-');
+                            if (hp.Length == 2) bp2.hpRange = new FloatRange(ParseF(hp[0]), ParseF(hp[1], 1f));
+                            var ql = f[14].Split('-');
+                            if (ql.Length == 2 && int.TryParse(ql[0], out int q0) && int.TryParse(ql[1], out int q1)) bp2.qualityRange = new QualityRange((QualityCategory)q0, (QualityCategory)q1);
+                            bp2.limitToAllowedStuff = f[15] == "1";
+                        }
+
+                        // Filtro de ingredientes: se aplica solo si difiere (así no se pisa nada al pedo).
+                        var wantedDefs = new HashSet<string>(f[16].Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries));
+                        if (!wantedDefs.SetEquals(bill.ingredientFilter.AllowedThingDefs.Select(d => d.defName)))
+                        {
+                            bill.ingredientFilter.SetDisallowAll(null, null);
+                            foreach (var dn in wantedDefs)
+                            {
+                                var d = DefDatabase<ThingDef>.GetNamedSilentFail(dn);
+                                if (d != null) bill.ingredientFilter.SetAllow(d, true);
+                            }
+                        }
+                    }
                     result.Add(bill);
                 }
                 catch (Exception e)
@@ -390,6 +436,8 @@ namespace RimCoopMod.GameComponents
             }))
                 payload.Snow.Add(new RoofSnapshot { DefName = kv.Key, RunsCsv = kv.Value.ToString() });
 
+            payload.ConditionsCsv = ActiveConditionsCsv(map);
+
             _baseCounter++;
             payload.HasPlants = _forceFullPlants || _baseCounter % 6 == 1; // ~cada 30 s (o cuando alguien recién entra)
             _forceFullPlants = false;
@@ -462,6 +510,9 @@ namespace RimCoopMod.GameComponents
                 }
             }
             catch (Exception e) { CoopLog.Warning($"[RimCoop] No se pudo copiar la nieve: {e.Message}"); }
+
+            // ---- clima: condiciones del mapa real ----
+            ApplyConditionsToMirror(snapshot.ConditionsCsv, map);
 
             // ---- plantas y árboles ----
             if (snapshot.HasPlants) ApplyPlants(snapshot, map);

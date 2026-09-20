@@ -53,7 +53,7 @@ dotnet build server/RimCoopServer.csproj -c Release # el servidor
 ## Limitaciones conocidas
 
 - No hay simulación determinista compartida: fecha/hora, investigación y riqueza son de cada partida.
-- Los eventos aleatorios ocurren en el juego de su dueño; el resto solo ve el aviso.
+- Los eventos aleatorios ocurren en el juego de su dueño. Quien mira esa base los ve también en el mapa espejo (enemigos, plagas de cultivo, clima y condiciones como eclipse o lluvia tóxica), pero no le afectan a su colonia principal.
 - Copiar colonos entre juegos usa el sistema de guardado de RimWorld y deja errores en el log
   (edad, ideología, adicciones) que no impiden jugar.
 - El servidor confía en lo que mandan los clientes (sin anti-trampas) y no hay autenticación.

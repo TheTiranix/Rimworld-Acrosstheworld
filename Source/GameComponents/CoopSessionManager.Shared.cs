@@ -13,8 +13,8 @@ namespace RimCoopMod.GameComponents
     /// <summary>
     /// Lo que se comparte entre jugadores aunque cada uno tenga su propia simulación:
     /// la investigación (solo entre quienes COLABORAN: se mandaron colonos entre sí), la riqueza de
-    /// cada colonia (para mostrarla) y las condiciones globales (eclipse, llamarada solar...) que
-    /// pegan en todas las bases a la vez.
+    /// cada colonia (para mostrarla) y las condiciones de clima (eclipse, lluvia tóxica...) que se
+    /// ven también en el mapa espejo de quien mira esa base, sin tocar su colonia principal.
     /// La fecha/hora del juego sigue siendo de cada partida.
     /// </summary>
     public partial class CoopSessionManager
@@ -246,49 +246,76 @@ namespace RimCoopMod.GameComponents
         // Condiciones que pegan en todas las bases (eclipse, llamarada solar, ...)
         // =====================================================================
 
-        private static readonly HashSet<string> SharedConditions = new HashSet<string>
-        {
-            "Eclipse", "SolarFlare", "ToxicFallout", "VolcanicWinter", "Aurora", "HeatWave", "ColdSnap", "Flashstorm", "NoxiousHaze", "Drought"
-        };
-
+        // Un evento de clima/condición que le pasa a MI base también se ve en el mapa espejo de quien la está mirando
+        // (así no hay desincronización), pero NO le pega a la colonia principal de ese jugador.
         public static void OnLocalConditionRegistered(GameConditionManager manager, GameCondition cond)
         {
             if (ApplyingRemoteCondition || cond?.def == null || cond.Permanent) return;
-            if (!CoopClient.Instance.IsConnected || !SharedConditions.Contains(cond.def.defName)) return;
+            if (!CoopClient.Instance.IsConnected) return;
 
             var map = Traverse.Create(manager).Field("map").GetValue<Map>();
             if (map == null || !map.IsPlayerHome || GetHostPlayerIdForMap(map) >= 0) return;
 
-            CoopClient.Instance.SendWorldEvent(cond.def.defName, cond.TicksLeft);
+            var instance = Current.Game?.GetComponent<CoopSessionManager>();
+            if (instance == null) return;
+            foreach (int watcher in instance._watchers)
+                CoopClient.Instance.SendWorldEvent(watcher, cond.def.defName, cond.TicksLeft);
         }
 
         private void ReceiveWorldEvent(WorldEventPayload e)
         {
             var def = DefDatabase<GameConditionDef>.GetNamedSilentFail(e.DefName);
-            if (def == null || !SharedConditions.Contains(def.defName)) return;
+            if (def == null) return;
+            if (!_coopMaps.TryGetValue(e.FromPlayerId, out var mirror) || mirror == null) return; // no estoy mirando esa base
 
-            bool applied = false;
             ApplyingRemoteCondition = true;
             try
             {
-                foreach (var map in Find.Maps.Where(m => m.IsPlayerHome && GetHostPlayerIdForMap(m) < 0))
+                if (!mirror.gameConditionManager.ConditionIsActive(def))
                 {
-                    if (map.gameConditionManager.ConditionIsActive(def)) continue;
-                    map.gameConditionManager.RegisterCondition(GameConditionMaker.MakeCondition(def, Math.Max(600, e.Duration)));
-                    applied = true;
+                    mirror.gameConditionManager.RegisterCondition(GameConditionMaker.MakeCondition(def, Math.Max(600, e.Duration)));
+                    Messages.Message($"En la base de {e.FromPlayerName}: {def.LabelCap}.", MessageTypeDefOf.NeutralEvent, false);
                 }
             }
             catch (Exception ex)
             {
-                CoopLog.Warning($"[RimCoop] No se pudo aplicar la condición {e.DefName}: {ex.Message}");
+                CoopLog.Warning($"[RimCoop] No se pudo mostrar la condición {e.DefName} en el mapa espejo: {ex.Message}");
             }
             finally
             {
                 ApplyingRemoteCondition = false;
             }
+        }
 
-            if (applied)
-                Messages.Message($"{def.LabelCap} también afecta a tu base (originado en la de {e.FromPlayerName}).", MessageTypeDefOf.NegativeEvent, false);
+        private static string ActiveConditionsCsv(Map map) =>
+            string.Join(";", map.gameConditionManager.ActiveConditions.Where(c => c?.def != null && !c.Permanent).Select(c => c.def.defName + "|" + c.TicksLeft));
+
+        // Deja las condiciones del mapa espejo iguales a las del real (también cuando terminan, o si el espejo se abrió mientras ya estaban).
+        private static void ApplyConditionsToMirror(string csv, Map mirror)
+        {
+            if (csv == null) return;
+            var wanted = new Dictionary<string, int>();
+            foreach (var entry in csv.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                var f = entry.Split('|');
+                if (f.Length == 2 && int.TryParse(f[1], out int left)) wanted[f[0]] = left;
+            }
+
+            ApplyingRemoteCondition = true;
+            try
+            {
+                foreach (var cond in mirror.gameConditionManager.ActiveConditions.ToList())
+                    if (cond?.def != null && !cond.Permanent && !wanted.ContainsKey(cond.def.defName)) cond.End();
+
+                foreach (var kv in wanted)
+                {
+                    var def = DefDatabase<GameConditionDef>.GetNamedSilentFail(kv.Key);
+                    if (def != null && !mirror.gameConditionManager.ConditionIsActive(def))
+                        mirror.gameConditionManager.RegisterCondition(GameConditionMaker.MakeCondition(def, Math.Max(600, kv.Value)));
+                }
+            }
+            catch (Exception e) { CoopLog.Warning($"[RimCoop] No se pudieron igualar las condiciones del mapa espejo: {e.Message}"); }
+            finally { ApplyingRemoteCondition = false; }
         }
     }
 }
