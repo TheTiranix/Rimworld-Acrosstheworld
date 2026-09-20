@@ -225,7 +225,9 @@ namespace RimCoopMod.GameComponents
             if (isConnected && !_wasConnectedLastUpdate && _localTile >= 0)
             {
                 _lastSentColonistCount = -1;
+                UpdateLocalWealth(force: true);
                 CoopClient.Instance.SendUpdate(_localTile, CountLocalColonists());
+                SendResearchFull();
             }
             _wasConnectedLastUpdate = isConnected;
 
@@ -261,6 +263,7 @@ namespace RimCoopMod.GameComponents
             }
 
             if (Find.TickManager.TicksGame % 30 == 0) WatchMirrorSettingsEdits();
+            TickShared();
 
             if (_watchers.Count > 0 && Find.TickManager.TicksGame % SnapshotIntervalTicks == 0)
             {
@@ -1316,6 +1319,7 @@ namespace RimCoopMod.GameComponents
                         var info = p.GetPayload<PlayerBaseInfo>();
                         _connectedPlayerIds.Add(info.PlayerId);
                         EnsureRemoteBase(info);
+                        SendResearchFull(); // el que recién entra recibe mi investigación
                         Messages.Message($"{info.PlayerName} se unió a la partida.", MessageTypeDefOf.NeutralEvent, false);
                         break;
                     }
@@ -1341,7 +1345,8 @@ namespace RimCoopMod.GameComponents
                             PlayerId = update.PlayerId,
                             PlayerName = update.PlayerName,
                             Tile = update.Tile,
-                            ColonistCount = update.ColonistCount
+                            ColonistCount = update.ColonistCount,
+                            Wealth = update.Wealth
                         });
                         break;
                     }
@@ -1477,6 +1482,14 @@ namespace RimCoopMod.GameComponents
 
                 case PacketType.SpeedChange:
                     ReceiveSpeedChange(p.GetPayload<SpeedChangePayload>());
+                    break;
+
+                case PacketType.ResearchSync:
+                    ReceiveResearchSync(p.GetPayload<ResearchSyncPayload>());
+                    break;
+
+                case PacketType.WorldEvent:
+                    ReceiveWorldEvent(p.GetPayload<WorldEventPayload>());
                     break;
             }
         }
@@ -1728,6 +1741,7 @@ namespace RimCoopMod.GameComponents
                 wobj.RemotePlayerId = info.PlayerId;
                 wobj.RemotePlayerName = info.PlayerName;
                 wobj.ColonistCount = info.ColonistCount;
+                wobj.Wealth = info.Wealth;
 
                 Find.WorldObjects.Add(wobj);
                 _remoteBases[info.PlayerName] = wobj;
@@ -1736,6 +1750,7 @@ namespace RimCoopMod.GameComponents
             {
                 wobj.Tile = info.Tile;
                 wobj.ColonistCount = info.ColonistCount;
+                wobj.Wealth = info.Wealth;
 
                 // Si el server se reinició, el id de este jugador puede haber cambiado
                 // desde la última vez que se guardó/generó este WorldObject. Nos autocorregimos.
@@ -1761,6 +1776,7 @@ namespace RimCoopMod.GameComponents
                 instance._lastSentColonistCount = colonistCount;
             }
 
+            instance?.UpdateLocalWealth(force: true);
             CoopClient.Instance.SendUpdate(tile, colonistCount);
         }
     }

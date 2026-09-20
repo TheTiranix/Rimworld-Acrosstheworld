@@ -38,7 +38,9 @@ namespace RimCoopMod.Networking
         PawnSettingRequest = 23, // el que mira pide cambiar una configuración de un colono suyo (prioridades, horario, área)
         SpeedChange = 24,        // alguien cambió la velocidad del juego (1x/2x/3x): se avisa a todos para que vayan al mismo ritmo
         PlayersRequest = 25,     // "decime dónde están las colonias de todos": el server responde con un PlayerUpdate por cada jugador asentado
-        TradeMessage = 26        // comercio entre jugadores (pedir stock, ofertar, aceptar, rechazar, transferir ítems)
+        TradeMessage = 26,       // comercio entre jugadores (pedir stock, ofertar, aceptar, rechazar, transferir ítems)
+        ResearchSync = 27,       // investigación compartida (proyectos terminados y progreso)
+        WorldEvent = 28          // condición que afecta a todas las bases a la vez (eclipse, llamarada solar, etc.)
     }
 
     /// <summary>
@@ -85,6 +87,7 @@ namespace RimCoopMod.Networking
         public string PlayerName;
         public int Tile = -1; // -1 = todavía no asentado
         public int ColonistCount;
+        public int Wealth;    // riqueza de su colonia (aprox.), para mostrarla y guiar la fuerza de un ataque
     }
 
     public class PlayerUpdatePayload
@@ -93,6 +96,7 @@ namespace RimCoopMod.Networking
         public string PlayerName;
         public int Tile;
         public int ColonistCount;
+        public int Wealth;
     }
 
     public class TradeOrAttackPayload
@@ -382,5 +386,21 @@ namespace RimCoopMod.Networking
     {
         public int FromPlayerId;
         public int Speed; // Verse.TimeSpeed como int
+    }
+
+    public class ResearchSyncPayload
+    {
+        public int FromPlayerId;
+        public string FromPlayerName;
+        public string Kind; // finished | progress | full
+        public string Data; // finished: defName | progress: "def=valor;..." | full: "F:def,def#P:def=valor;..."
+    }
+
+    public class WorldEventPayload
+    {
+        public int FromPlayerId;
+        public string FromPlayerName;
+        public string DefName;  // GameConditionDef
+        public int Duration;    // ticks que le quedan
     }
 }

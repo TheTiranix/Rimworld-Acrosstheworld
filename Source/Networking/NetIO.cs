@@ -91,6 +91,7 @@ namespace RimCoopMod.Networking
                         bw.Write(p.PlayerName ?? "");
                         bw.Write(p.Tile);
                         bw.Write(p.ColonistCount);
+                        bw.Write(p.Wealth);
                         break;
                     }
                 case PacketType.TradeRequest:
@@ -353,6 +354,26 @@ namespace RimCoopMod.Networking
                         break;
                     }
 
+                case PacketType.ResearchSync:
+                    {
+                        var p = (ResearchSyncPayload)packet.Payload;
+                        bw.Write(p.FromPlayerId);
+                        bw.Write(p.FromPlayerName ?? "");
+                        bw.Write(p.Kind ?? "");
+                        bw.Write(p.Data ?? "");
+                        break;
+                    }
+
+                case PacketType.WorldEvent:
+                    {
+                        var p = (WorldEventPayload)packet.Payload;
+                        bw.Write(p.FromPlayerId);
+                        bw.Write(p.FromPlayerName ?? "");
+                        bw.Write(p.DefName ?? "");
+                        bw.Write(p.Duration);
+                        break;
+                    }
+
                 case PacketType.TradeMessage:
                     {
                         var p = (TradeMessagePayload)packet.Payload;
@@ -410,6 +431,7 @@ namespace RimCoopMod.Networking
             bw.Write(info.PlayerName ?? "");
             bw.Write(info.Tile);
             bw.Write(info.ColonistCount);
+            bw.Write(info.Wealth);
         }
 
         private static object ReadPayload(BinaryReader br, PacketType type)
@@ -445,7 +467,8 @@ namespace RimCoopMod.Networking
                         PlayerId = br.ReadInt32(),
                         PlayerName = br.ReadString(),
                         Tile = br.ReadInt32(),
-                        ColonistCount = br.ReadInt32()
+                        ColonistCount = br.ReadInt32(),
+                        Wealth = br.ReadInt32()
                     };
 
                 case PacketType.TradeRequest:
@@ -721,6 +744,24 @@ namespace RimCoopMod.Networking
                         Text = br.ReadString()
                     };
 
+                case PacketType.ResearchSync:
+                    return new ResearchSyncPayload
+                    {
+                        FromPlayerId = br.ReadInt32(),
+                        FromPlayerName = br.ReadString(),
+                        Kind = br.ReadString(),
+                        Data = br.ReadString()
+                    };
+
+                case PacketType.WorldEvent:
+                    return new WorldEventPayload
+                    {
+                        FromPlayerId = br.ReadInt32(),
+                        FromPlayerName = br.ReadString(),
+                        DefName = br.ReadString(),
+                        Duration = br.ReadInt32()
+                    };
+
                 case PacketType.TradeMessage:
                     return new TradeMessagePayload
                     {
@@ -758,7 +799,8 @@ namespace RimCoopMod.Networking
                 PlayerId = br.ReadInt32(),
                 PlayerName = br.ReadString(),
                 Tile = br.ReadInt32(),
-                ColonistCount = br.ReadInt32()
+                ColonistCount = br.ReadInt32(),
+                Wealth = br.ReadInt32()
             };
         }
 

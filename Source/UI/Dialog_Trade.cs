@@ -159,14 +159,17 @@ namespace RimCoopMod.UI
     {
         private readonly int _targetId;
         private readonly string _targetName;
-        private float _points = 400f;
+        private readonly int _wealth;
+        private float _points;
 
-        public override Vector2 InitialSize => new Vector2(420f, 240f);
+        public override Vector2 InitialSize => new Vector2(420f, 270f);
 
-        public Dialog_AttackStrength(int targetId, string targetName)
+        public Dialog_AttackStrength(int targetId, string targetName, int wealth)
         {
             _targetId = targetId;
             _targetName = targetName;
+            _wealth = wealth;
+            _points = wealth > 0 ? Mathf.Clamp(wealth / 200f, 100f, 3000f) : 400f; // aprox. de lo que el juego mandaría a una base de esa riqueza
             doCloseX = true;
             absorbInputAroundWindow = true;
         }
@@ -176,8 +179,10 @@ namespace RimCoopMod.UI
             Text.Font = GameFont.Medium;
             Widgets.Label(new Rect(0f, 0f, inRect.width, 34f), $"Atacar a {_targetName}");
             Text.Font = GameFont.Small;
-            Widgets.Label(new Rect(0f, 44f, inRect.width, 50f), $"Se le manda una incursión enemiga real de {(int)_points} puntos de fuerza.");
-            _points = Widgets.HorizontalSlider(new Rect(0f, 100f, inRect.width, 24f), _points, 100f, 3000f, false, null, "100", "3000");
+            Widgets.Label(new Rect(0f, 44f, inRect.width, 70f),
+                $"Se le manda una incursión enemiga real de {(int)_points} puntos de fuerza.\n" +
+                (_wealth > 0 ? $"Riqueza de su base: {_wealth:N0}. Ya te puse una fuerza parecida a la que el juego mandaría (aprox.)." : "No se conoce la riqueza de su base todavía."));
+            _points = Widgets.HorizontalSlider(new Rect(0f, 130f, inRect.width, 24f), _points, 100f, 3000f, false, null, "100", "3000");
 
             if (Widgets.ButtonText(new Rect(inRect.width / 2f - 90f, inRect.height - 44f, 180f, 36f), "Atacar"))
             {

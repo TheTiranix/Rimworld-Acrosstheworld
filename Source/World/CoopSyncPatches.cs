@@ -59,3 +59,28 @@ namespace RimCoopMod.World
         }
     }
 }
+
+namespace RimCoopMod.World
+{
+    /// <summary>Cuando yo termino un proyecto, todos lo tienen (investigación compartida).</summary>
+    [HarmonyPatch(typeof(ResearchManager), nameof(ResearchManager.FinishProject))]
+    public static class ResearchManager_FinishProject_Patch
+    {
+        [HarmonyPostfix]
+        public static void Postfix(ResearchProjectDef proj)
+        {
+            CoopSessionManager.OnLocalProjectFinished(proj);
+        }
+    }
+
+    /// <summary>Condiciones globales (eclipse, llamarada solar, etc.): se avisa para aplicarlas en todas las bases.</summary>
+    [HarmonyPatch(typeof(GameConditionManager), nameof(GameConditionManager.RegisterCondition))]
+    public static class GameConditionManager_RegisterCondition_Patch
+    {
+        [HarmonyPostfix]
+        public static void Postfix(GameConditionManager __instance, GameCondition cond)
+        {
+            CoopSessionManager.OnLocalConditionRegistered(__instance, cond);
+        }
+    }
+}

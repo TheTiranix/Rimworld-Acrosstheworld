@@ -215,6 +215,7 @@ namespace RimCoopMod.Networking
                         {
                             info.Tile = update.Tile;
                             info.ColonistCount = update.ColonistCount;
+                            info.Wealth = update.Wealth;
                         }
                     }
                     // Retransmitir a todos los demás
@@ -290,6 +291,11 @@ namespace RimCoopMod.Networking
                     RouteTo(p.GetPayload<EventNoticePayload>().ToPlayerId, p);
                     break;
 
+                case PacketType.ResearchSync:
+                case PacketType.WorldEvent:
+                    Broadcast(p, excludePlayerId: from.PlayerId);
+                    break;
+
                 case PacketType.TradeMessage:
                     RouteTo(p.GetPayload<TradeMessagePayload>().ToPlayerId, p);
                     break;
@@ -305,7 +311,8 @@ namespace RimCoopMod.Networking
                                 PlayerId = info.PlayerId,
                                 PlayerName = info.PlayerName,
                                 Tile = info.Tile,
-                                ColonistCount = info.ColonistCount
+                                ColonistCount = info.ColonistCount,
+                                Wealth = info.Wealth
                             }));
                         }
                     }

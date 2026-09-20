@@ -84,6 +84,9 @@ namespace RimCoopMod.Networking
             }
         }
 
+        // Riqueza de mi colonia (la actualiza CoopSessionManager); viaja junto con cada aviso de posición.
+        public int LocalWealth;
+
         public void SendUpdate(int tile, int colonistCount)
         {
             if (!IsConnected) return;
@@ -92,7 +95,8 @@ namespace RimCoopMod.Networking
                 PlayerId = LocalPlayerId,
                 PlayerName = LocalPlayerName,
                 Tile = tile,
-                ColonistCount = colonistCount
+                ColonistCount = colonistCount,
+                Wealth = LocalWealth
             };
             NetIO.SendPacket(_stream, Packet.Create(PacketType.PlayerUpdate, payload));
         }
@@ -325,6 +329,30 @@ namespace RimCoopMod.Networking
         {
             if (!IsConnected) return;
             NetIO.SendPacket(_stream, Packet.Create(PacketType.PlayersRequest, new WatchRequestPayload { FromPlayerId = LocalPlayerId, ToPlayerId = 0 }));
+        }
+
+        public void SendResearchSync(string kind, string data)
+        {
+            if (!IsConnected) return;
+            NetIO.SendPacket(_stream, Packet.Create(PacketType.ResearchSync, new ResearchSyncPayload
+            {
+                FromPlayerId = LocalPlayerId,
+                FromPlayerName = LocalPlayerName,
+                Kind = kind,
+                Data = data
+            }));
+        }
+
+        public void SendWorldEvent(string defName, int duration)
+        {
+            if (!IsConnected) return;
+            NetIO.SendPacket(_stream, Packet.Create(PacketType.WorldEvent, new WorldEventPayload
+            {
+                FromPlayerId = LocalPlayerId,
+                FromPlayerName = LocalPlayerName,
+                DefName = defName,
+                Duration = duration
+            }));
         }
 
         public void SendSpeedChange(int speed)

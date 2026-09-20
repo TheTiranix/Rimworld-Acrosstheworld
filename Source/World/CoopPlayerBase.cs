@@ -21,6 +21,7 @@ namespace RimCoopMod.World
         public int RemotePlayerId;
         public string RemotePlayerName;
         public int ColonistCount;
+        public int Wealth;
 
         public override string Label => RemotePlayerName ?? "Jugador";
 
@@ -57,13 +58,13 @@ namespace RimCoopMod.World
             {
                 defaultLabel = "Atacar",
                 defaultDesc = $"Mandar una incursión contra la base de {RemotePlayerName}.",
-                action = () => Find.WindowStack.Add(new Dialog_AttackStrength(RemotePlayerId, RemotePlayerName))
+                action = () => Find.WindowStack.Add(new Dialog_AttackStrength(RemotePlayerId, RemotePlayerName, Wealth))
             };
         }
 
         public override string GetInspectString()
         {
-            return $"Jugador: {RemotePlayerName}\nColonos: {ColonistCount}";
+            return $"Jugador: {RemotePlayerName}\nColonos: {ColonistCount}\nRiqueza: {Wealth:N0}";
         }
 
         public override void ExposeData()
@@ -72,6 +73,7 @@ namespace RimCoopMod.World
             Scribe_Values.Look(ref RemotePlayerId, "remotePlayerId");
             Scribe_Values.Look(ref RemotePlayerName, "remotePlayerName");
             Scribe_Values.Look(ref ColonistCount, "colonistCount");
+            Scribe_Values.Look(ref Wealth, "wealth");
         }
     }
 }
