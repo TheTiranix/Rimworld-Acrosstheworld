@@ -110,6 +110,10 @@ namespace RimCoopMod.GameComponents
                 .Where(t => t?.faction != null && t.def != null)
                 .Select(t => t.faction.def.defName + "," + t.def.defName + "," + pawn.royalty.GetFavor(t.faction)));
 
+            s.PermitsCsv = pawn.royalty == null ? "" : string.Join(";", pawn.royalty.AllFactionPermits
+                .Where(fp => fp?.Faction != null && fp.Permit != null)
+                .Select(fp => fp.Faction.def.defName + "," + fp.Permit.defName));
+
             if (pawn.psychicEntropy != null && pawn.psychicEntropy.NeedsPsyfocus)
                 s.PsyCsv = "focus=" + Inv(pawn.psychicEntropy.CurrentPsyfocus) + ";heat=" + Inv(pawn.psychicEntropy.EntropyValue);
         }
@@ -142,6 +146,24 @@ namespace RimCoopMod.GameComponents
                         if (faction == null || title == null) continue;
                         if (puppet.royalty.GetCurrentTitle(faction) != title) puppet.royalty.SetTitle(faction, title, false, false, false);
                         if (int.TryParse(f[2], out int favor) && puppet.royalty.GetFavor(faction) != favor) puppet.royalty.SetFavor(faction, favor, false);
+                    }
+                }
+
+                if (puppet.royalty != null && ps.PermitsCsv != null)
+                {
+                    var wantedPermits = new HashSet<string>(ps.PermitsCsv.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries));
+
+                    // Los que el colono real ya no tiene se sacan de la lista interna (no hay método público para quitar uno solo).
+                    var owned = Traverse.Create(puppet.royalty).Field("factionPermits").GetValue<List<FactionPermit>>();
+                    owned?.RemoveAll(fp => fp?.Faction != null && fp.Permit != null && !wantedPermits.Contains(fp.Faction.def.defName + "," + fp.Permit.defName));
+
+                    foreach (var entry in wantedPermits)
+                    {
+                        var f = entry.Split(',');
+                        if (f.Length != 2) continue;
+                        var faction = Find.FactionManager.AllFactionsListForReading.FirstOrDefault(x => x.def.defName == f[0]);
+                        var permit = DefDatabase<RoyalTitlePermitDef>.GetNamedSilentFail(f[1]);
+                        if (faction != null && permit != null && !puppet.royalty.HasPermit(permit, faction)) puppet.royalty.AddPermit(permit, faction);
                     }
                 }
 

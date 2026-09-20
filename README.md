@@ -64,8 +64,8 @@ en cada caso y se adapta a los DLC que tengas:
   así una nave gravitatoria que despega (y crea mapas nuevos) no confunde lo que ven los demás. Las naves y colonias
   extra en otros mapas (órbita, otros tiles) **no se espejan**, y el vacío tampoco.
 - **Anomaly:** las entidades contenidas en plataformas de contención se ven en el mapa espejo.
-- **Royalty:** se copian los psicasts (habilidades), el enfoque psíquico, el calor neural y los títulos con su favor.
-  Lanzar un psicast no se imita (se ve el resultado, no el lanzamiento).
+- **Royalty:** se copian y se mantienen al día los psicasts (habilidades), el enfoque psíquico, el calor neural, los títulos
+  con su favor y los permisos. Lanzar un psicast o usar un permiso desde el mapa espejo no se traslada: se ve el resultado, no la acción.
 
 ## Limitaciones conocidas
 

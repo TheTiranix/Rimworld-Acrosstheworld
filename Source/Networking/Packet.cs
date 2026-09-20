@@ -56,7 +56,7 @@ namespace RimCoopMod.Networking
     public static class ProtocolInfo
     {
         /// <summary>Subir cada vez que cambia el formato de un paquete. Mod y servidor tienen que coincidir.</summary>
-        public const int Version = 10;
+        public const int Version = 11;
     }
 
     public class ServerInfoPayload
@@ -222,7 +222,8 @@ namespace RimCoopMod.Networking
         public string GenesCsv;      // Biotech: xenogenes ("defName;defName;...")
         public string AbilitiesCsv;  // Royalty: psicasts y demás habilidades ("defName;...")
         public string TitlesCsv;     // Royalty: títulos ("factionDef,titleDef,favor;...")
-        public string PsyCsv;        // Royalty: "focus=0.5;heat=0.2" 
+        public string PsyCsv;        // Royalty: "focus=0.5;heat=0.2"
+        public string PermitsCsv;    // Royalty: permisos ("factionDef,permitDef;...") 
     }
 
     public class MapSnapshotPayload
