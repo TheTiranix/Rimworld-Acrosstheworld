@@ -65,7 +65,9 @@ en cada caso y se adapta a los DLC que tengas:
   extra en otros mapas (órbita, otros tiles) **no se espejan**, y el vacío tampoco.
 - **Anomaly:** las entidades contenidas en plataformas de contención se ven en el mapa espejo.
 - **Royalty:** se copian y se mantienen al día los psicasts (habilidades), el enfoque psíquico, el calor neural, los títulos
-  con su favor y los permisos. Lanzar un psicast o usar un permiso desde el mapa espejo no se traslada: se ve el resultado, no la acción.
+  con su favor, los herederos y los permisos. Las naves de transporte posadas y los árboles de anima se ven como cualquier
+  edificio o planta. Lanzar un psicast, usar un permiso, las ceremonias de investidura, las misiones del Imperio y la
+  animación de las naves aterrizando o despegando no se trasladan al mapa espejo.
 
 ## Limitaciones conocidas
 

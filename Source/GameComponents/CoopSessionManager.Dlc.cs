@@ -108,7 +108,7 @@ namespace RimCoopMod.GameComponents
 
             s.TitlesCsv = pawn.royalty == null ? "" : string.Join(";", pawn.royalty.AllTitlesForReading
                 .Where(t => t?.faction != null && t.def != null)
-                .Select(t => t.faction.def.defName + "," + t.def.defName + "," + pawn.royalty.GetFavor(t.faction)));
+                .Select(t => t.faction.def.defName + "," + t.def.defName + "," + pawn.royalty.GetFavor(t.faction) + "," + (pawn.royalty.GetHeir(t.faction)?.thingIDNumber ?? -1)));
 
             s.PermitsCsv = pawn.royalty == null ? "" : string.Join(";", pawn.royalty.AllFactionPermits
                 .Where(fp => fp?.Faction != null && fp.Permit != null)
@@ -118,7 +118,7 @@ namespace RimCoopMod.GameComponents
                 s.PsyCsv = "focus=" + Inv(pawn.psychicEntropy.CurrentPsyfocus) + ";heat=" + Inv(pawn.psychicEntropy.EntropyValue);
         }
 
-        private static void ApplyRoyalty(Pawn puppet, PawnSnapshot ps)
+        private static void ApplyRoyalty(Pawn puppet, PawnSnapshot ps, Dictionary<int, Pawn> knownPawns)
         {
             if (!ModsConfig.RoyaltyActive) return;
             try
@@ -140,12 +140,17 @@ namespace RimCoopMod.GameComponents
                     foreach (var entry in ps.TitlesCsv.Split(';'))
                     {
                         var f = entry.Split(',');
-                        if (f.Length != 3) continue;
+                        if (f.Length < 3) continue;
                         var faction = Find.FactionManager.AllFactionsListForReading.FirstOrDefault(x => x.def.defName == f[0]);
                         var title = DefDatabase<RoyalTitleDef>.GetNamedSilentFail(f[1]);
                         if (faction == null || title == null) continue;
                         if (puppet.royalty.GetCurrentTitle(faction) != title) puppet.royalty.SetTitle(faction, title, false, false, false);
                         if (int.TryParse(f[2], out int favor) && puppet.royalty.GetFavor(faction) != favor) puppet.royalty.SetFavor(faction, favor, false);
+
+                        // Heredero: solo si es otro pawn de esa misma base que ya tenemos en el espejo.
+                        if (f.Length >= 4 && int.TryParse(f[3], out int heirId) && heirId >= 0 && knownPawns != null
+                            && knownPawns.TryGetValue(heirId, out var heir) && heir != null && puppet.royalty.GetHeir(faction) != heir)
+                            puppet.royalty.SetHeir(heir, faction);
                     }
                 }
 

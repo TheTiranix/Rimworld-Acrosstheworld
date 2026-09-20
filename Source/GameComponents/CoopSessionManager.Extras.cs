@@ -270,7 +270,7 @@ namespace RimCoopMod.GameComponents
                 CoopLog.Warning($"[RimCoop] Error copiando habilidades/rasgos de {puppet.LabelShortCap}: {e.Message}");
             }
 
-            ApplyRoyalty(puppet, ps);
+            ApplyRoyalty(puppet, ps, pawns);
 
             try
             {
