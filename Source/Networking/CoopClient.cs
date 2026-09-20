@@ -210,6 +210,7 @@ namespace RimCoopMod.Networking
             NetIO.SendPacket(_stream, Packet.Create(PacketType.JoinResult, new JoinResultPayload
             {
                 ToPlayerId = toPlayerId,
+                FromPlayerId = LocalPlayerId,
                 Success = success,
                 Message = message
             }));
@@ -331,12 +332,13 @@ namespace RimCoopMod.Networking
             NetIO.SendPacket(_stream, Packet.Create(PacketType.PlayersRequest, new WatchRequestPayload { FromPlayerId = LocalPlayerId, ToPlayerId = 0 }));
         }
 
-        public void SendResearchSync(string kind, string data)
+        public void SendResearchSync(int toPlayerId, string kind, string data)
         {
             if (!IsConnected) return;
             NetIO.SendPacket(_stream, Packet.Create(PacketType.ResearchSync, new ResearchSyncPayload
             {
                 FromPlayerId = LocalPlayerId,
+                ToPlayerId = toPlayerId,
                 FromPlayerName = LocalPlayerName,
                 Kind = kind,
                 Data = data

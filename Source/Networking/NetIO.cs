@@ -230,6 +230,7 @@ namespace RimCoopMod.Networking
                     {
                         var p = (JoinResultPayload)packet.Payload;
                         bw.Write(p.ToPlayerId);
+                        bw.Write(p.FromPlayerId);
                         bw.Write(p.Success);
                         bw.Write(p.Message ?? "");
                         break;
@@ -373,6 +374,7 @@ namespace RimCoopMod.Networking
                     {
                         var p = (ResearchSyncPayload)packet.Payload;
                         bw.Write(p.FromPlayerId);
+                        bw.Write(p.ToPlayerId);
                         bw.Write(p.FromPlayerName ?? "");
                         bw.Write(p.Kind ?? "");
                         bw.Write(p.Data ?? "");
@@ -630,6 +632,7 @@ namespace RimCoopMod.Networking
                     return new JoinResultPayload
                     {
                         ToPlayerId = br.ReadInt32(),
+                        FromPlayerId = br.ReadInt32(),
                         Success = br.ReadBoolean(),
                         Message = br.ReadString()
                     };
@@ -778,6 +781,7 @@ namespace RimCoopMod.Networking
                     return new ResearchSyncPayload
                     {
                         FromPlayerId = br.ReadInt32(),
+                        ToPlayerId = br.ReadInt32(),
                         FromPlayerName = br.ReadString(),
                         Kind = br.ReadString(),
                         Data = br.ReadString()

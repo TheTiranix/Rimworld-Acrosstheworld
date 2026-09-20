@@ -1410,6 +1410,7 @@ namespace RimCoopMod.GameComponents
 
             CoopClient.Instance.SendJoinResult(req.FromPlayerId, added > 0,
                 added > 0 ? $"{added} colono(s) se unieron a la base." : "No se pudo recibir a los colonos.");
+            if (added > 0) AddCollaborator(req.FromPlayerId); // me mandaron colonos: colaboramos
         }
 
         private static int CountLocalColonists()
@@ -1429,7 +1430,11 @@ namespace RimCoopMod.GameComponents
                 case PacketType.WorldData:
                     {
                         var wd = p.GetPayload<WorldDataPayload>();
-                        foreach (var existing in wd.ExistingPlayers) _connectedPlayerIds.Add(existing.PlayerId);
+                        foreach (var existing in wd.ExistingPlayers)
+                        {
+                            _connectedPlayerIds.Add(existing.PlayerId);
+                            _playerNames[existing.PlayerId] = existing.PlayerName;
+                        }
                         break;
                     }
 
@@ -1437,8 +1442,9 @@ namespace RimCoopMod.GameComponents
                     {
                         var info = p.GetPayload<PlayerBaseInfo>();
                         _connectedPlayerIds.Add(info.PlayerId);
+                        _playerNames[info.PlayerId] = info.PlayerName;
                         EnsureRemoteBase(info);
-                        SendResearchFull(); // el que recién entra recibe mi investigación
+                        if (IsCollaborator(info.PlayerId)) SendResearchFullTo(info.PlayerId); // un colaborador que vuelve recibe mi investigación
                         Messages.Message($"{info.PlayerName} se unió a la partida.", MessageTypeDefOf.NeutralEvent, false);
                         break;
                     }
@@ -1459,6 +1465,7 @@ namespace RimCoopMod.GameComponents
                 case PacketType.PlayerUpdate:
                     {
                         var update = p.GetPayload<PlayerUpdatePayload>();
+                        if (!string.IsNullOrEmpty(update.PlayerName)) _playerNames[update.PlayerId] = update.PlayerName;
                         EnsureRemoteBase(new PlayerBaseInfo
                         {
                             PlayerId = update.PlayerId,
@@ -1538,6 +1545,7 @@ namespace RimCoopMod.GameComponents
                         var r = p.GetPayload<JoinResultPayload>();
                         CoopLog.Message($"[RimCoop] JoinResult recibido: éxito={r.Success} - {r.Message}");
                         Messages.Message(r.Message, r.Success ? MessageTypeDefOf.PositiveEvent : MessageTypeDefOf.RejectInput, false);
+                        if (r.Success) AddCollaborator(r.FromPlayerId); // mandaste colonos y los aceptaron: ahora colaboran
                         break;
                     }
 

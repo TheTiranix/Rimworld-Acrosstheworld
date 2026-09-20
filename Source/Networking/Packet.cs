@@ -249,6 +249,7 @@ namespace RimCoopMod.Networking
     public class JoinResultPayload
     {
         public int ToPlayerId; // a quién se le avisa (el que mandó los colonos)
+        public int FromPlayerId; // quién responde: con él se empieza a colaborar (y a compartir investigación)
         public bool Success;
         public string Message;
     }
@@ -399,6 +400,7 @@ namespace RimCoopMod.Networking
     public class ResearchSyncPayload
     {
         public int FromPlayerId;
+        public int ToPlayerId; // la investigación solo se comparte con quienes colaboran: va dirigida, no a todos
         public string FromPlayerName;
         public string Kind; // finished | progress | full
         public string Data; // finished: defName | progress: "def=valor;..." | full: "F:def,def#P:def=valor;..."

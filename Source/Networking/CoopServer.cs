@@ -292,6 +292,9 @@ namespace RimCoopMod.Networking
                     break;
 
                 case PacketType.ResearchSync:
+                    RouteTo(p.GetPayload<ResearchSyncPayload>().ToPlayerId, p);
+                    break;
+
                 case PacketType.WorldEvent:
                     Broadcast(p, excludePlayerId: from.PlayerId);
                     break;

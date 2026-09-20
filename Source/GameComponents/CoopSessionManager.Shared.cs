@@ -11,9 +11,10 @@ using Verse;
 namespace RimCoopMod.GameComponents
 {
     /// <summary>
-    /// Lo que se comparte entre TODOS los jugadores aunque cada uno tenga su propia simulación:
-    /// la investigación (un árbol tecnológico común), la riqueza de cada colonia (para mostrarla)
-    /// y las condiciones globales (eclipse, llamarada solar...) que pegan en todas las bases a la vez.
+    /// Lo que se comparte entre jugadores aunque cada uno tenga su propia simulación:
+    /// la investigación (solo entre quienes COLABORAN: se mandaron colonos entre sí), la riqueza de
+    /// cada colonia (para mostrarla) y las condiciones globales (eclipse, llamarada solar...) que
+    /// pegan en todas las bases a la vez.
     /// La fecha/hora del juego sigue siendo de cada partida.
     /// </summary>
     public partial class CoopSessionManager
@@ -76,6 +77,34 @@ namespace RimCoopMod.GameComponents
         // Investigación compartida
         // =====================================================================
 
+        // ---- Con quién se comparte: solo con quienes colaboran (se mandaron colonos entre sí) ----
+
+        private HashSet<string> _collaboratorNames = new HashSet<string>();
+        private readonly Dictionary<int, string> _playerNames = new Dictionary<int, string>();
+
+        public override void ExposeData()
+        {
+            base.ExposeData();
+            var names = _collaboratorNames.ToList();
+            Scribe_Collections.Look(ref names, "rimcoopCollaborators", LookMode.Value);
+            if (Scribe.mode == LoadSaveMode.LoadingVars) _collaboratorNames = new HashSet<string>(names ?? new List<string>());
+        }
+
+        private bool IsCollaborator(int playerId) =>
+            _playerNames.TryGetValue(playerId, out var name) && _collaboratorNames.Contains(name);
+
+        private List<int> OnlineCollaborators(int exceptPlayerId = -1) =>
+            _connectedPlayerIds.Where(id => id != CoopClient.Instance.LocalPlayerId && id != exceptPlayerId && IsCollaborator(id)).ToList();
+
+        /// <summary>Empieza (o se confirma) una colaboración: desde ahora se comparte la investigación con ese jugador.</summary>
+        private void AddCollaborator(int playerId)
+        {
+            if (!_playerNames.TryGetValue(playerId, out var name) || string.IsNullOrEmpty(name)) return;
+            bool isNew = _collaboratorNames.Add(name);
+            if (isNew) Messages.Message($"Ahora colaborás con {name}: comparten la investigación.", MessageTypeDefOf.PositiveEvent, false);
+            SendResearchFullTo(playerId);
+        }
+
         private static string ResearchProgressString()
         {
             var rm = Find.ResearchManager;
@@ -90,24 +119,31 @@ namespace RimCoopMod.GameComponents
         private void SendResearchProgress()
         {
             if (!CoopClient.Instance.IsConnected) return;
+            var targets = OnlineCollaborators();
+            if (targets.Count == 0) return;
             try
             {
                 string now = ResearchProgressString();
                 if (now == _lastSentResearchProgress) return;
                 _lastSentResearchProgress = now;
-                CoopClient.Instance.SendResearchSync("progress", now);
+                foreach (int id in targets) CoopClient.Instance.SendResearchSync(id, "progress", now);
             }
             catch (Exception e) { CoopLog.Warning($"[RimCoop] No se pudo mandar el progreso de investigación: {e.Message}"); }
         }
 
-        /// <summary>Todo lo que ya investigué (terminado y en curso): lo recibe quien recién entra, y lo mezcla con lo suyo.</summary>
+        /// <summary>Al conectarme: mi investigación completa a cada colaborador que esté conectado.</summary>
         private void SendResearchFull()
         {
-            if (!CoopClient.Instance.IsConnected || Current.ProgramState != ProgramState.Playing) return;
+            foreach (int id in OnlineCollaborators()) SendResearchFullTo(id);
+        }
+
+        private void SendResearchFullTo(int playerId)
+        {
+            if (!CoopClient.Instance.IsConnected || Current.ProgramState != ProgramState.Playing || !IsCollaborator(playerId)) return;
             try
             {
                 string finished = string.Join(",", DefDatabase<ResearchProjectDef>.AllDefsListForReading.Where(p => p.IsFinished).Select(p => p.defName));
-                CoopClient.Instance.SendResearchSync("full", "F:" + finished + "#P:" + ResearchProgressString());
+                CoopClient.Instance.SendResearchSync(playerId, "full", "F:" + finished + "#P:" + ResearchProgressString());
             }
             catch (Exception e) { CoopLog.Warning($"[RimCoop] No se pudo mandar la investigación completa: {e.Message}"); }
         }
@@ -115,13 +151,17 @@ namespace RimCoopMod.GameComponents
         public static void OnLocalProjectFinished(ResearchProjectDef proj)
         {
             if (ApplyingRemoteResearch || proj == null || !CoopClient.Instance.IsConnected) return;
-            CoopClient.Instance.SendResearchSync("finished", proj.defName);
+            var instance = Current.Game?.GetComponent<CoopSessionManager>();
+            if (instance == null) return;
+            foreach (int id in instance.OnlineCollaborators()) CoopClient.Instance.SendResearchSync(id, "finished", proj.defName);
         }
 
         private void ReceiveResearchSync(ResearchSyncPayload m)
         {
             if (Find.ResearchManager == null) return;
+            if (!IsCollaborator(m.FromPlayerId)) return; // solo se acepta de quienes colaboran conmigo
             var completed = new List<ResearchProjectDef>();
+            string progressChanged = "";
 
             ApplyingRemoteResearch = true;
             try
@@ -132,7 +172,7 @@ namespace RimCoopMod.GameComponents
                         MergeFinished(new[] { m.Data }, completed);
                         break;
                     case "progress":
-                        MergeProgress(m.Data);
+                        progressChanged = MergeProgress(m.Data);
                         break;
                     case "full":
                         {
@@ -140,7 +180,7 @@ namespace RimCoopMod.GameComponents
                             string fin = parts.Length > 0 && parts[0].StartsWith("F:") ? parts[0].Substring(2) : "";
                             string prog = parts.Length > 1 && parts[1].StartsWith("P:") ? parts[1].Substring(2) : "";
                             MergeFinished(fin.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries), completed);
-                            MergeProgress(prog);
+                            progressChanged = MergeProgress(prog);
                             break;
                         }
                 }
@@ -158,6 +198,14 @@ namespace RimCoopMod.GameComponents
                 Messages.Message($"Investigación compartida: {completed[0].LabelCap} (por {m.FromPlayerName}).", MessageTypeDefOf.PositiveEvent, false);
             else if (completed.Count > 1)
                 Messages.Message($"Investigación compartida: {completed.Count} proyectos nuevos de {m.FromPlayerName}.", MessageTypeDefOf.PositiveEvent, false);
+
+            // Si aprendí algo nuevo, se lo paso a MIS otros colaboradores (así un grupo de 3 o más queda parejo).
+            // Solo se reenvía lo que cambió acá, así que no da vueltas para siempre.
+            foreach (int id in OnlineCollaborators(exceptPlayerId: m.FromPlayerId))
+            {
+                foreach (var proj in completed) CoopClient.Instance.SendResearchSync(id, "finished", proj.defName);
+                if (progressChanged.Length > 0) CoopClient.Instance.SendResearchSync(id, "progress", progressChanged);
+            }
         }
 
         private static void MergeFinished(IEnumerable<string> defNames, List<ResearchProjectDef> completed)
@@ -176,9 +224,10 @@ namespace RimCoopMod.GameComponents
         }
 
         // El progreso es un "pozo" común: se queda el mayor de los dos.
-        private static void MergeProgress(string data)
+        private static string MergeProgress(string data)
         {
-            if (string.IsNullOrEmpty(data)) return;
+            var changed = new List<string>();
+            if (string.IsNullOrEmpty(data)) return "";
             var dict = Traverse.Create(Find.ResearchManager).Field("progress").GetValue<Dictionary<ResearchProjectDef, float>>();
             foreach (var entry in data.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries))
             {
@@ -188,8 +237,9 @@ namespace RimCoopMod.GameComponents
                 if (proj == null || proj.IsFinished) continue;
                 float remote = ParseF(kv[1]);
                 dict.TryGetValue(proj, out float local);
-                if (remote > local) dict[proj] = remote;
+                if (remote > local) { dict[proj] = remote; changed.Add(proj.defName + "=" + Inv(remote)); }
             }
+            return string.Join(";", changed);
         }
 
         // =====================================================================
