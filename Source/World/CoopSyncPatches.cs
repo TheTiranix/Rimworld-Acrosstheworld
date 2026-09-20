@@ -182,3 +182,41 @@ namespace RimCoopMod.World
         }
     }
 }
+
+namespace RimCoopMod.World
+{
+    /// <summary>
+    /// Las copias de misiones compartidas no "juegan": no avanzan por su cuenta ni reaccionan a señales o eventos. Solo las
+    /// actualiza el dueño (que es quien corre la misión de verdad); así no se duplican amenazas ni recompensas.
+    /// </summary>
+    [HarmonyPatch]
+    public static class Quest_Inert_Patches
+    {
+        public static System.Collections.Generic.IEnumerable<System.Reflection.MethodBase> TargetMethods()
+        {
+            foreach (var name in new[] { "QuestTick", "Notify_SignalReceived", "Notify_PawnDiscarded", "Notify_ThingsProduced", "Notify_PlantHarvested", "Notify_PawnKilled", "Notify_PawnBorn", "Notify_FactionRemoved" })
+            {
+                var m = AccessTools.DeclaredMethod(typeof(Quest), name);
+                if (m != null) yield return m;
+            }
+        }
+
+        [HarmonyPrefix]
+        public static bool Prefix(Quest __instance) => !CoopSessionManager.IsMirroredQuest(__instance);
+    }
+
+    /// <summary>Recompensa de objetos de una misión compartida: llega a todos los que se sumaron, no solo al dueño.</summary>
+    [HarmonyPatch(typeof(QuestPart_DropPods), nameof(QuestPart_DropPods.Notify_QuestSignalReceived))]
+    public static class QuestPart_DropPods_Share_Patch
+    {
+        [HarmonyPrefix]
+        public static void Prefix(QuestPart_DropPods __instance, Signal signal) => CoopSessionManager.ShareQuestRewardItems(__instance, signal);
+    }
+
+    [HarmonyPatch(typeof(QuestPart_GiveRoyalFavor), nameof(QuestPart_GiveRoyalFavor.Notify_QuestSignalReceived))]
+    public static class QuestPart_GiveRoyalFavor_Share_Patch
+    {
+        [HarmonyPrefix]
+        public static void Prefix(QuestPart_GiveRoyalFavor __instance, Signal signal) => CoopSessionManager.ShareQuestRoyalFavor(__instance, signal);
+    }
+}

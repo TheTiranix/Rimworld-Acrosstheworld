@@ -377,7 +377,7 @@ namespace RimCoopMod.Networking
             }));
         }
 
-        public void SendQuestMessage(int toPlayerId, string kind, int questId, string name, string description, int state, int rating, int participants)
+        public void SendQuestMessage(int toPlayerId, string kind, int questId, string name, string description, int state, int rating, int participants, int ownerTicks = 0)
         {
             if (!IsConnected) return;
             NetIO.SendPacket(_stream, Packet.Create(PacketType.QuestMessage, new QuestMessagePayload
@@ -391,7 +391,8 @@ namespace RimCoopMod.Networking
                 Description = description,
                 State = state,
                 Rating = rating,
-                Participants = participants
+                Participants = participants,
+                OwnerTicks = ownerTicks
             }));
         }
 

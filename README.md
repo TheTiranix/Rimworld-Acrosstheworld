@@ -68,11 +68,14 @@ en cada caso y se adapta a los DLC que tengas:
   con su favor, los herederos y los permisos. Los psicasts y los permisos que uses con un colono tuyo en el mapa espejo
   los ejecuta el dueño en su base real. Las naves de transporte posadas y los árboles de anima se ven como cualquier
   edificio o planta. **Misiones compartidas:** en las bases de jugadores con los que colaboras, *Compartir misión* invita
-  a una de tus misiones en curso; quien se suma la ve en su pestaña de misiones (copia informativa con nombre, descripción y
-  estado) y ayuda con sus colonos en tu base. Las incursiones y amenazas que dispara esa misión suben un **35 % por cada
-  jugador sumado**. Las ceremonias de investidura y otros rituales no se imitan en el mapa espejo (los participantes se ven
-  en su posición, sin la animación del ritual), ni la animación de las naves aterrizando o despegando. Los objetivos internos
-  de la misión y sus recompensas son del dueño.
+  a una de tus misiones en curso. Quien se suma recibe la misión **entera** (nombre, descripción, objetivos, partes,
+  tiempos y estado, siempre al día) y la ve idéntica en su pestaña de misiones; la copia no "juega" por su cuenta:
+  la corre solo el dueño. Los objetos de recompensa y el favor real que da la misión llegan a **todos** los que se
+  sumaron, y las incursiones y amenazas que dispara suben un **35 % por cada jugador sumado**. Los objetivos que
+  apuntan a algo del mundo del dueño (un sitio, un mapa, un colono suyo) se ven, pero "ir a verlo" no encuentra el
+  objeto en el juego de los demás. Otras recompensas (colonos, cambios de relación con facciones) son solo del dueño.
+  Las ceremonias de investidura y otros rituales no se imitan en el mapa espejo (los participantes se ven
+  en su posición, sin la animación del ritual), ni la animación de las naves aterrizando o despegando.
 
 ## Limitaciones conocidas
 

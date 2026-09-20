@@ -58,6 +58,7 @@ namespace RimCoopMod.Networking
         public int State;          // Verse QuestState como int
         public int Rating;         // challengeRating
         public int Participants;   // jugadores sumados (sin contar al dueño)
+        public int OwnerTicks;     // TicksGame del dueño al armar el mensaje (para alinear los relojes de cada juego)
     }
 
     public class ModListPayload
@@ -71,7 +72,7 @@ namespace RimCoopMod.Networking
     public static class ProtocolInfo
     {
         /// <summary>Subir cada vez que cambia el formato de un paquete. Mod y servidor tienen que coincidir.</summary>
-        public const int Version = 13;
+        public const int Version = 14;
     }
 
     public class ServerInfoPayload

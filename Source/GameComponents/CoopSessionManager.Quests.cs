@@ -4,6 +4,7 @@ using System.Linq;
 using HarmonyLib;
 using RimCoopMod.Networking;
 using RimCoopMod.UI;
+using RimCoopMod.World;
 using RimWorld;
 using Verse;
 
@@ -90,6 +91,8 @@ namespace RimCoopMod.GameComponents
             Messages.Message($"Invitación a la misión \"{quest.name}\" enviada.", MessageTypeDefOf.NeutralEvent, false);
         }
 
+        private readonly Dictionary<int, string> _sharedQuestLastXml = new Dictionary<int, string>();
+
         private void TickQuests()
         {
             if (!CoopClient.Instance.IsConnected || _sharedQuestParticipants.Count == 0) return;
@@ -100,20 +103,22 @@ namespace RimCoopMod.GameComponents
                 var participants = _sharedQuestParticipants[questId];
                 var ids = _connectedPlayerIds.Where(id => _playerNames.TryGetValue(id, out var n) && participants.Contains(n)).ToList();
 
-                if (quest == null || quest.State != QuestState.Ongoing)
-                {
-                    foreach (int id in ids)
-                        CoopClient.Instance.SendQuestMessage(id, "end", questId, quest?.name ?? "", "", (int)(quest?.State ?? QuestState.EndedUnknownOutcome), 0, participants.Count);
-                    _sharedQuestParticipants.Remove(questId);
-                    _sharedQuestLastSig.Remove(questId);
-                    continue;
-                }
+                bool ended = quest == null || quest.State != QuestState.Ongoing;
+                string xml = quest == null ? null : QuestTransfer.Serialize(quest);
 
-                string sig = quest.name + "|" + quest.description + "|" + participants.Count;
-                if (_sharedQuestLastSig.TryGetValue(questId, out var old) && old == sig) continue;
-                _sharedQuestLastSig[questId] = sig;
+                if (!ended && (xml == null || (_sharedQuestLastXml.TryGetValue(questId, out var old) && old == xml))) continue;
+                _sharedQuestLastXml[questId] = xml;
+
+                // La misión ENTERA (objetivos, partes, estado) viaja tal cual; cada jugador la ve idéntica a la del dueño.
                 foreach (int id in ids)
-                    CoopClient.Instance.SendQuestMessage(id, "update", questId, quest.name, quest.description.ToString(), (int)quest.State, quest.challengeRating, participants.Count);
+                    CoopClient.Instance.SendQuestMessage(id, ended ? "end" : "update", questId, quest?.name ?? "", xml ?? "",
+                        (int)(quest?.State ?? QuestState.EndedUnknownOutcome), quest?.challengeRating ?? 0, participants.Count, Find.TickManager.TicksGame);
+
+                if (ended)
+                {
+                    _sharedQuestParticipants.Remove(questId);
+                    _sharedQuestLastXml.Remove(questId);
+                }
             }
         }
 
@@ -140,7 +145,7 @@ namespace RimCoopMod.GameComponents
                         }
                         if (set.Add(joiner))
                             Messages.Message($"{joiner} se sumó a la misión: su dificultad ahora es ×{QuestMultiplier(set.Count):0.##}.", MessageTypeDefOf.NeutralEvent, false);
-                        _sharedQuestLastSig.Remove(m.QuestId); // fuerza el próximo update a todos (cambió la cantidad de jugadores)
+                        _sharedQuestLastXml.Remove(m.QuestId); // fuerza el próximo envío: el que se suma recibe la misión entera
                         break;
                     }
 
@@ -152,21 +157,34 @@ namespace RimCoopMod.GameComponents
                 case "end":
                     ApplyMirroredQuest(m);
                     break;
+
+                // Recompensas: lo que el dueño recibe al cumplir la misión, los que se sumaron lo reciben también.
+                case "reward":
+                    ReceiveItems(m.Description, m.FromPlayerName ?? "la misión compartida");
+                    break;
+
+                case "favor":
+                    GiveSharedQuestFavor(m.Name, m.State);
+                    break;
             }
         }
 
-        /// <summary>Participante: acepta la invitación y crea la copia informativa en su pestaña de misiones.</summary>
+        /// <summary>Participante: acepta la invitación. La misión entera llega enseguida desde el dueño.</summary>
         public static void AcceptQuestInvite(QuestMessagePayload invite)
         {
-            var instance = Current.Game?.GetComponent<CoopSessionManager>();
-            if (instance == null) return;
-            instance.ApplyMirroredQuest(new QuestMessagePayload
-            {
-                FromPlayerId = invite.FromPlayerId, FromPlayerName = invite.FromPlayerName, Kind = "update", QuestId = invite.QuestId,
-                Name = invite.Name, Description = invite.Description, State = (int)QuestState.Ongoing, Rating = invite.Rating,
-                Participants = invite.Participants + 1
-            });
             CoopClient.Instance.SendQuestMessage(invite.FromPlayerId, "accept", invite.QuestId, invite.Name, "", (int)QuestState.Ongoing, invite.Rating, 0);
+            Messages.Message($"Te sumaste a la misión. Su dificultad ahora es ×{QuestMultiplier(invite.Participants + 1):0.##}.", MessageTypeDefOf.NeutralEvent, false);
+        }
+
+        // Copias de misiones de otros jugadores: no corren su propia lógica (la corre el dueño), solo se muestran.
+        private static readonly HashSet<Quest> _transientInert = new HashSet<Quest>();
+
+        public static bool IsMirroredQuest(Quest quest)
+        {
+            if (quest == null) return false;
+            if (_transientInert.Contains(quest)) return true;
+            var instance = Current.Game?.GetComponent<CoopSessionManager>();
+            return instance != null && instance._mirroredQuestIds.ContainsValue(quest.id);
         }
 
         private void ApplyMirroredQuest(QuestMessagePayload m)
@@ -174,42 +192,92 @@ namespace RimCoopMod.GameComponents
             try
             {
                 string key = m.FromPlayerId + ":" + m.QuestId;
-                Quest quest = null;
+                Quest fresh = QuestTransfer.Deserialize(m.Description);
+                if (fresh == null) { CoopLog.Warning($"[RimCoop] No se pudo reconstruir la misión compartida {m.Name}."); return; }
+
+                _transientInert.Add(fresh); // desde ya no reacciona a nada: el dueño es el único que la "juega"
+                QuestTransfer.ShiftAbsoluteTicks(fresh, Find.TickManager.TicksGame - m.OwnerTicks); // los relojes de cada juego son independientes
+
+                Quest local = null;
                 if (_mirroredQuestIds.TryGetValue(key, out int localId))
-                    quest = Find.QuestManager.QuestsListForReading.FirstOrDefault(q => q.id == localId);
+                    local = Find.QuestManager.QuestsListForReading.FirstOrDefault(q => q.id == localId);
 
-                string header = $"[Misión compartida de {m.FromPlayerName} — dificultad ×{QuestMultiplier(m.Participants):0.##} ({m.Participants} jugador(es) sumado(s))]\n\n";
-
-                if (quest == null)
+                if (local == null)
                 {
-                    if (m.Kind == "end") return; // ya no la tengo
-                    quest = Quest.MakeRaw();
-                    quest.id = Find.UniqueIDsManager.GetNextQuestID();
-                    quest.root = DefDatabase<QuestScriptDef>.AllDefsListForReading.FirstOrDefault();
-                    quest.appearanceTick = Find.TickManager.TicksGame;
-                    quest.acceptanceExpireTick = -1;
-                    Find.QuestManager.Add(quest);
-                    quest.SetInitiallyAccepted();
-                    _mirroredQuestIds[key] = quest.id;
+                    fresh.id = Find.UniqueIDsManager.GetNextQuestID();
+                    _mirroredQuestIds[key] = fresh.id;
+                    Find.QuestManager.Add(fresh);
                 }
-
-                quest.name = "[Compartida] " + m.Name;
-                quest.description = header + m.Description;
-                quest.challengeRating = m.Rating;
-
-                if (m.Kind == "end" && quest.State == QuestState.Ongoing)
+                else
                 {
-                    var outcome = (QuestState)m.State == QuestState.EndedSuccess ? QuestEndOutcome.Success
-                                : (QuestState)m.State == QuestState.EndedFailed ? QuestEndOutcome.Fail
-                                : QuestEndOutcome.Unknown;
-                    quest.End(outcome, true, true);
-                    _mirroredQuestIds.Remove(key);
+                    QuestTransfer.CopyInto(local, fresh); // se actualiza la misma entrada de la pestaña, sin duplicarla
+                    QuestTransfer.Detach(fresh);
                 }
+                _transientInert.Remove(fresh);
             }
             catch (Exception e)
             {
                 CoopLog.Warning($"[RimCoop] No se pudo actualizar la misión compartida {m.Name}: {e.Message}");
             }
+        }
+
+        // =====================================================================
+        // Recompensas: las que el dueño recibe llegan también a los que se sumaron
+        // =====================================================================
+
+        private List<int> OnlineParticipantIds(Quest quest)
+        {
+            if (quest == null || !_sharedQuestParticipants.TryGetValue(quest.id, out var names)) return new List<int>();
+            return _connectedPlayerIds.Where(id => _playerNames.TryGetValue(id, out var n) && names.Contains(n)).ToList();
+        }
+
+        public static void ShareQuestRewardItems(QuestPart_DropPods part, Signal signal)
+        {
+            try
+            {
+                var instance = Current.Game?.GetComponent<CoopSessionManager>();
+                if (instance == null || signal.tag != Traverse.Create(part).Field("inSignal").GetValue<string>()) return;
+                if (!Traverse.Create(part).Field("joinPlayer").GetValue<bool>() || !IsQuestShared(part.quest, out _)) return;
+
+                var items = Traverse.Create(part).Field("items").GetValue<List<Thing>>();
+                var lines = (items ?? new List<Thing>()).Where(t => t != null && !t.Destroyed).Select(t =>
+                    t.def.defName + "," + (t.Stuff?.defName ?? "") + "," + t.stackCount + "," + QualityOf(t) + "," + t.HitPoints).ToList();
+                if (lines.Count == 0) return;
+
+                foreach (int id in instance.OnlineParticipantIds(part.quest))
+                    CoopClient.Instance.SendQuestMessage(id, "reward", part.quest.id, "", string.Join(";", lines), 0, 0, 0);
+                CoopLog.Message($"[RimCoop] Recompensa de la misión compartida \"{part.quest.name}\" enviada a los jugadores sumados.");
+            }
+            catch (Exception e) { CoopLog.Warning($"[RimCoop] No se pudo compartir la recompensa: {e.Message}"); }
+        }
+
+        public static void ShareQuestRoyalFavor(QuestPart_GiveRoyalFavor part, Signal signal)
+        {
+            try
+            {
+                var instance = Current.Game?.GetComponent<CoopSessionManager>();
+                var faction = Traverse.Create(part).Field("faction").GetValue<Faction>();
+                if (instance == null || faction == null || signal.tag != Traverse.Create(part).Field("inSignal").GetValue<string>() || !IsQuestShared(part.quest, out _)) return;
+                int amount = Traverse.Create(part).Field("amount").GetValue<int>();
+                foreach (int id in instance.OnlineParticipantIds(part.quest))
+                    CoopClient.Instance.SendQuestMessage(id, "favor", part.quest.id, faction.def.defName, "", amount, 0, 0);
+            }
+            catch (Exception e) { CoopLog.Warning($"[RimCoop] No se pudo compartir el favor real: {e.Message}"); }
+        }
+
+        private static void GiveSharedQuestFavor(string factionDefName, int amount)
+        {
+            try
+            {
+                var faction = Find.FactionManager.AllFactionsListForReading.FirstOrDefault(f => f.def.defName == factionDefName);
+                if (faction == null || amount <= 0) return;
+                var pawn = Find.Maps.Where(mp => mp.IsPlayerHome).SelectMany(mp => mp.mapPawns.FreeColonists)
+                    .FirstOrDefault(p => p.royalty != null && p.royalty.HasAnyTitleIn(faction));
+                if (pawn == null) return;
+                pawn.royalty.GainFavor(faction, amount);
+                Messages.Message($"{pawn.LabelShortCap} recibió {amount} de favor de {faction.Name} por la misión compartida.", MessageTypeDefOf.PositiveEvent, false);
+            }
+            catch (Exception e) { CoopLog.Warning($"[RimCoop] No se pudo dar el favor real: {e.Message}"); }
         }
 
         // =====================================================================

@@ -79,6 +79,7 @@ namespace RimCoopMod.Networking
                         bw.Write(p.State);
                         bw.Write(p.Rating);
                         bw.Write(p.Participants);
+                        bw.Write(p.OwnerTicks);
                         break;
                     }
                 case PacketType.ModList:
@@ -515,7 +516,8 @@ namespace RimCoopMod.Networking
                         Description = br.ReadString(),
                         State = br.ReadInt32(),
                         Rating = br.ReadInt32(),
-                        Participants = br.ReadInt32()
+                        Participants = br.ReadInt32(),
+                        OwnerTicks = br.ReadInt32()
                     };
 
                 case PacketType.ModList:
