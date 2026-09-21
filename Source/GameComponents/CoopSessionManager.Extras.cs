@@ -492,7 +492,7 @@ namespace RimCoopMod.GameComponents
             foreach (var w in wanted)
             {
                 var def = DefDatabase<ThoughtDef>.GetNamedSilentFail(w.Key);
-                if (def == null) continue;
+                if (def == null || def.IsSocial) continue; // los sociales exigen otro pawn, que el títere no tiene
                 try
                 {
                     handler.TryGainMemoryFast(def, null);

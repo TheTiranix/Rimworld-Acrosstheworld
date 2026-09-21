@@ -29,6 +29,7 @@ namespace RimCoopMod.World
             "SaveableFromNode exception",
             "Could not resolve reference to object",
             "Notify_LifeStageStarted",
+            "with null pawn after loading",
         };
 
         public static bool ShouldSuppressLog(string text)
