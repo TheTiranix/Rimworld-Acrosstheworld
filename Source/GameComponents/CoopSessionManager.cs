@@ -1288,6 +1288,9 @@ namespace RimCoopMod.GameComponents
             {
                 GenSpawn.Spawn(puppet, cell, map, WipeMode.Vanish);
                 PuppetPawnRegistry.Register(puppet, payload.HostPlayerId, payload.PawnId);
+                // Una copia sacada con el colono drafteado nacería drafteada, y un pawn drafteado ejecuta sus órdenes
+                // de clic derecho sin abrir el menú (solo le quedan opciones "auto").
+                try { if (puppet.drafter != null && puppet.Drafted) puppet.drafter.Drafted = false; } catch { /* no crítico */ }
 
                 if (!_syncedPawns.TryGetValue(payload.HostPlayerId, out known))
                 {
