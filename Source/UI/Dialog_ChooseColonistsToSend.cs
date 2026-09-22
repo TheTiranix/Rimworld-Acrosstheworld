@@ -103,14 +103,20 @@ namespace RimCoopMod.UI
             }
 
             var blobs = new List<string>();
+            var ownerNames = new List<string>();
             foreach (var pawn in _selected)
             {
+                // Si este colono no es originalmente mío (me lo habían prestado), lo estoy reenviando o
+                // devolviendo: el destino tiene que respetar a SU dueño real, no anotarme a mí.
+                string ownerName = global::RimCoopMod.GameComponents.CoopSessionManager.GetOwnerName(pawn) ?? "";
+
                 SanitizeForTransfer(pawn);
 
                 string xml = PawnTransfer.SerializePawn(pawn);
                 if (string.IsNullOrEmpty(xml)) continue;
 
                 blobs.Add(xml);
+                ownerNames.Add(ownerName);
                 if (pawn.Spawned) pawn.Destroy(DestroyMode.Vanish);
             }
 
@@ -120,7 +126,7 @@ namespace RimCoopMod.UI
                 return;
             }
 
-            CoopClient.Instance.SendJoinRequest(_target.RemotePlayerId, blobs);
+            CoopClient.Instance.SendJoinRequest(_target.RemotePlayerId, blobs, ownerNames);
             Messages.Message($"Se mandaron {blobs.Count} colono(s). Esperando confirmación del destino...", MessageTypeDefOf.NeutralEvent, false);
             Close();
         }

@@ -939,6 +939,11 @@ namespace RimCoopMod.GameComponents
 
         private void SyncPuppetJob(Map map, int hostPlayerId, Pawn puppet, PawnSnapshot ps)
         {
+            // Incapacitado: no le tocamos el trabajo. Forzarle o cortarle un job a un títere caído
+            // (por ej. porque el real quedó tirado en el piso) lo dejaba en un estado raro que a veces
+            // no se dibujaba más, aunque el pawn real siguiera ahí, incapacitado, con vida.
+            if (ps.Downed || puppet.Downed) return;
+
             string fingerprint = string.IsNullOrEmpty(ps.CurJobDefName)
                 ? ""
                 : $"{ps.CurJobDefName}|{(ps.CurJobTargetAThingId >= 0 ? "t" + ps.CurJobTargetAThingId : "c" + ps.CurJobTargetAX + "," + ps.CurJobTargetAZ)}|{(ps.CurJobTargetBThingId >= 0 ? "t" + ps.CurJobTargetBThingId : "")}";
@@ -1387,6 +1392,18 @@ namespace RimCoopMod.GameComponents
         /// (este proceso) tiene permitido dar órdenes directas a un pawn. Si el pawn no está en
         /// el diccionario de dueños es porque es un colono propio de toda la vida: siempre se puede.
         /// </summary>
+        /// <summary>
+        /// Nombre del dueño remoto anotado para este pawn (me lo mandaron prestado), o null si para
+        /// mí es un colono común y corriente. Lo usa Dialog_ChooseColonistsToSend para no pisar el
+        /// dueño real cuando reenvío/devuelvo un colono que no es originalmente mío.
+        /// </summary>
+        public static string GetOwnerName(Pawn pawn)
+        {
+            var instance = Current.Game?.GetComponent<CoopSessionManager>();
+            if (instance == null || pawn == null) return null;
+            return instance._pawnOwnerNames.TryGetValue(pawn.thingIDNumber, out var name) ? name : null;
+        }
+
         public static bool CanLocalPlayerCommand(Pawn pawn)
         {
             if (_processingRemoteOrder) return true;
@@ -1412,9 +1429,13 @@ namespace RimCoopMod.GameComponents
                 return;
             }
 
+            _playerNames.TryGetValue(req.FromPlayerId, out var senderName);
+            string localName = CoopClient.Instance.LocalPlayerName;
+
             int added = 0;
-            foreach (var xml in req.SerializedPawns)
+            for (int i = 0; i < req.SerializedPawns.Count; i++)
             {
+                string xml = req.SerializedPawns[i];
                 try
                 {
                     Pawn pawn = PawnTransfer.DeserializePawn(xml);
@@ -1437,10 +1458,35 @@ namespace RimCoopMod.GameComponents
 
                     IntVec3 cell = CellFinder.RandomClosewalkCellNear(map.Center, map, 10);
                     GenSpawn.Spawn(pawn, cell, map);
-                    _pawnOwners[pawn.thingIDNumber] = req.FromPlayerId;
-                    if (_playerNames.TryGetValue(req.FromPlayerId, out var ownerName)) _pawnOwnerNames[pawn.thingIDNumber] = ownerName; // por nombre: el id cambia entre sesiones, el nombre no
+
+                    // Dueño real: normalmente quien lo manda (req.FromPlayerId). Pero si quien lo manda
+                    // ya lo tenía prestado de un tercero (OwnerNames[i] no vacío), respetamos a ese dueño
+                    // real en vez de anotar a quien solo lo está reenviando/devolviendo. Si ese dueño real
+                    // soy yo, el colono "vuelve a casa": queda libre, sin dueño remoto, como uno más de mi colonia.
+                    string ownerName = (req.OwnerNames != null && i < req.OwnerNames.Count && !string.IsNullOrEmpty(req.OwnerNames[i]))
+                        ? req.OwnerNames[i]
+                        : senderName;
+
+                    if (!string.IsNullOrEmpty(ownerName) && ownerName == localName)
+                    {
+                        CoopLog.Message($"[RimCoop] Colono {pawn.LabelShortCap} volvió a mi colonia en {cell}: queda libre, sin dueño remoto.");
+                    }
+                    else
+                    {
+                        // Si el dueño real no es quien lo manda (reenvío/devolución de un tercero), tratamos de
+                        // resolver su id actual por nombre; si no está conectado ahora, igual anotamos el nombre
+                        // (RestorePawnOwners lo resuelve apenas se lo vea) y usamos al que lo mandó como id provisorio.
+                        int ownerId = req.FromPlayerId;
+                        if (!string.IsNullOrEmpty(ownerName) && ownerName != senderName)
+                        {
+                            var match = _playerNames.FirstOrDefault(p => p.Value == ownerName);
+                            if (!string.IsNullOrEmpty(match.Value)) ownerId = match.Key;
+                        }
+                        _pawnOwners[pawn.thingIDNumber] = ownerId;
+                        if (!string.IsNullOrEmpty(ownerName)) _pawnOwnerNames[pawn.thingIDNumber] = ownerName; // por nombre: el id cambia entre sesiones, el nombre no
+                        CoopLog.Message($"[RimCoop] Colono {pawn.LabelShortCap} apareció en {cell} y quedó asignado a {(ownerName ?? req.FromPlayerId.ToString())}.");
+                    }
                     added++;
-                    CoopLog.Message($"[RimCoop] Colono {pawn.LabelShortCap} apareció en {cell} y quedó asignado al jugador {req.FromPlayerId}.");
                 }
                 catch (System.Exception e)
                 {

@@ -285,6 +285,8 @@ namespace RimCoopMod.Networking
                         bw.Write(p.ToPlayerId);
                         bw.Write(p.SerializedPawns.Count);
                         foreach (var xml in p.SerializedPawns) bw.Write(xml ?? "");
+                        for (int i = 0; i < p.SerializedPawns.Count; i++)
+                            bw.Write((p.OwnerNames != null && i < p.OwnerNames.Count) ? (p.OwnerNames[i] ?? "") : "");
                         break;
                     }
 
@@ -749,6 +751,7 @@ namespace RimCoopMod.Networking
                         };
                         int count = br.ReadInt32();
                         for (int i = 0; i < count; i++) p.SerializedPawns.Add(br.ReadString());
+                        for (int i = 0; i < count; i++) p.OwnerNames.Add(br.ReadString());
                         return p;
                     }
 

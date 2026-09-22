@@ -96,7 +96,7 @@ namespace RimCoopMod.Networking
     public static class ProtocolInfo
     {
         /// <summary>Subir cada vez que cambia el formato de un paquete. Mod y servidor tienen que coincidir.</summary>
-        public const int Version = 15;
+        public const int Version = 16;
     }
 
     public class ServerInfoPayload
@@ -313,6 +313,12 @@ namespace RimCoopMod.Networking
         public int FromPlayerId;
         public int ToPlayerId;
         public List<string> SerializedPawns = new List<string>();
+        // Dueño real de cada colono (mismo índice que SerializedPawns), por NOMBRE (el id cambia entre sesiones).
+        // Vacío = "el dueño soy yo, quien lo manda" (caso normal). Si no es vacío es porque yo mismo lo tenía
+        // prestado de otro jugador y se lo estoy reenviando/devolviendo: el destino tiene que respetar a ese
+        // dueño en vez de anotarme a mí. Si el nombre coincide con el del destino, el colono "vuelve a casa"
+        // y queda libre (sin dueño remoto) ahí.
+        public List<string> OwnerNames = new List<string>();
     }
 
     public class JoinResultPayload

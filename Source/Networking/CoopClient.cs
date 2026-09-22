@@ -206,7 +206,7 @@ namespace RimCoopMod.Networking
             NetIO.SendPacket(_stream, Packet.Create(PacketType.PawnOrder, payload));
         }
 
-        public void SendJoinRequest(int hostPlayerId, System.Collections.Generic.List<string> serializedPawns)
+        public void SendJoinRequest(int hostPlayerId, System.Collections.Generic.List<string> serializedPawns, System.Collections.Generic.List<string> ownerNames = null)
         {
             if (!IsConnected)
             {
@@ -218,7 +218,8 @@ namespace RimCoopMod.Networking
             {
                 FromPlayerId = LocalPlayerId,
                 ToPlayerId = hostPlayerId,
-                SerializedPawns = serializedPawns
+                SerializedPawns = serializedPawns,
+                OwnerNames = ownerNames ?? new System.Collections.Generic.List<string>()
             }));
             CoopLog.Message($"[RimCoop] JoinRequest enviado a jugador {hostPlayerId} con {serializedPawns.Count} colono(s) (yo soy el jugador {LocalPlayerId}).");
         }
