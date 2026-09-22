@@ -37,6 +37,8 @@ namespace RimCoopMod.World
             "Could not resolve reference to object",
             "Notify_LifeStageStarted",
             "with null pawn after loading",
+            "Removed null ideos",
+            "Used SetFaction to change",
         };
 
         public static bool ShouldSuppressLog(string text)

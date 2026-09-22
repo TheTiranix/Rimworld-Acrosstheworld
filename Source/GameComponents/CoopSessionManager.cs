@@ -1620,6 +1620,11 @@ namespace RimCoopMod.GameComponents
                     {
                         var w = p.GetPayload<WatchRequestPayload>();
                         _watchers.Add(w.FromPlayerId);
+                        // Siempre arranca de cero: si ya lo teníamos anotado (por ej. guardó y cargó
+                        // sin avisar que dejaba de mirar, o se reconectó), su mapa espejo es nuevo y no
+                        // tiene nada — si asumíamos que ya tenía la foto vieja, de acá en más solo le
+                        // mandábamos lo que cambiaba y su base le quedaba a medias, con pedazos sueltos.
+                        _sentThingSigs.Remove(w.FromPlayerId);
                         CoopLog.Message($"[RimCoop] Jugador {w.FromPlayerId} empezó a mirar tu base en vivo.");
                         Messages.Message("Otro jugador está mirando tu base en vivo.", MessageTypeDefOf.NeutralEvent, false);
                         break;
