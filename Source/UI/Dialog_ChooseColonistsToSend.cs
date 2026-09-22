@@ -117,7 +117,14 @@ namespace RimCoopMod.UI
 
                 blobs.Add(xml);
                 ownerNames.Add(ownerName);
-                if (pawn.Spawned) pawn.Destroy(DestroyMode.Vanish);
+                if (pawn.Spawned)
+                {
+                    // No se murió, se va a ayudar a otra base: que no le corte las relaciones a
+                    // los que quedan ni les meta el pensamiento de "lo perdí" (ver PawnTransfer).
+                    PawnTransfer.SuppressRelationLossOnDestroy = true;
+                    try { pawn.Destroy(DestroyMode.Vanish); }
+                    finally { PawnTransfer.SuppressRelationLossOnDestroy = false; }
+                }
             }
 
             if (blobs.Count == 0)

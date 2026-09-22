@@ -24,6 +24,18 @@ namespace RimCoopMod.World
         }
     }
 
+    /// <summary>
+    /// Ver PawnTransfer.SuppressRelationLossOnDestroy: mientras mandamos un colono a otro jugador, no
+    /// le cortamos las relaciones a los que quedan ni les damos el pensamiento de "lo perdí" como si
+    /// hubiera muerto.
+    /// </summary>
+    [HarmonyPatch(typeof(Pawn_RelationsTracker), nameof(Pawn_RelationsTracker.Notify_PawnDestroyed))]
+    public static class Pawn_RelationsTracker_Notify_PawnDestroyed_Patch
+    {
+        [HarmonyPrefix]
+        public static bool Prefix() => !PawnTransfer.SuppressRelationLossOnDestroy;
+    }
+
     /// <summary>Un títere no tiene crisis mentales propias: si el pawn real la tiene, se ve por su trabajo.</summary>
     [HarmonyPatch(typeof(MentalStateHandler), nameof(MentalStateHandler.TryStartMentalState))]
     public static class MentalStateHandler_TryStartMentalState_Patch

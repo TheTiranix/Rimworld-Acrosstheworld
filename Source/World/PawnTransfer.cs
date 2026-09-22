@@ -14,6 +14,13 @@ namespace RimCoopMod.World
     /// </summary>
     public static class PawnTransfer
     {
+        // Mandar un colono a otro jugador lo saca del mapa con Destroy(Vanish). Para el juego eso es
+        // indistinguible de un colono que muere: le corta las relaciones (familia, pareja, vínculos) y
+        // les mete a los que quedan el pensamiento de "perdí a mi amigo/padre/etc." — sin sentido acá,
+        // porque el colono no murió, solo se fue a ayudar a otra base. Mientras esta bandera está
+        // prendida (ver Dialog_ChooseColonistsToSend) se lo salteamos, ver CoopSyncPatches.
+        public static bool SuppressRelationLossOnDestroy;
+
         // Copiar un pawn con el sistema de guardado del juego deja mensajes de error inofensivos (edad, ideología,
         // adicciones, referencias a otros pawns que no viajan). Durante unos segundos después de cada copia se
         // filtran SOLO esos mensajes conocidos; cualquier otro error se sigue viendo.

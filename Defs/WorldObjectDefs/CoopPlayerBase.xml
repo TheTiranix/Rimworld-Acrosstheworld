@@ -4,10 +4,13 @@
     <defName>RimCoop_CoopPlayerBase</defName>
     <label>base de jugador</label>
     <worldObjectClass>RimCoopMod.World.CoopPlayerBase</worldObjectClass>
-    <texture>World/WorldObjects/Camp</texture>
+    <!-- Antes usaba el ícono de campamento de bandidos (World/WorldObjects/Camp) en rojo: se veía
+         igual que una base hostil de un NPC. Usamos el mismo ícono que un asentamiento normal,
+         pero en un color propio (celeste) para que se distinga de tu colonia y de facciones hostiles. -->
+    <texture>World/WorldObjects/DefaultSettlement</texture>
     <expandingIcon>true</expandingIcon>
-    <expandingIconTexture>World/WorldObjects/Expanding/Camp</expandingIconTexture>
-    <expandingIconColor>(0.9, 0.2, 0.2)</expandingIconColor>
+    <expandingIconTexture>World/WorldObjects/DefaultSettlement</expandingIconTexture>
+    <expandingIconColor>(0.35, 0.65, 0.9)</expandingIconColor>
     <selectable>true</selectable>
   </WorldObjectDef>
 </Defs>
