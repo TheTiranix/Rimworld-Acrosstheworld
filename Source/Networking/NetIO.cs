@@ -1,16 +1,24 @@
 using System;
 using System.IO;
+using System.IO.Compression;
 using System.Collections.Generic;
 using System.Net.Sockets;
 
 namespace RimCoopMod.Networking
 {
     /// <summary>
-    /// Framing: [4 bytes longitud][cuerpo binario: 1 byte tipo + campos].
+    /// Framing: [4 bytes longitud del frame][1 byte flag de compresión][cuerpo binario: 1 byte tipo + campos].
     /// Serialización manual con BinaryWriter/BinaryReader, sin dependencias externas.
+    /// Un snapshot completo de base (terreno/nieve/contaminación/plantas como texto) puede pesar
+    /// decenas de MB sin comprimir y superaba el límite de tamaño, cortando la conexión — por eso
+    /// los paquetes grandes se comprimen con gzip antes de mandarse (los chicos no, para no gastar
+    /// CPU de más en algo que se manda todo el tiempo, como las órdenes de trabajo).
     /// </summary>
     public static class NetIO
     {
+        private const int CompressionThreshold = 4096;
+        private const int MaxFrameSize = 96 * 1024 * 1024;
+
         public static void SendPacket(NetworkStream stream, Packet packet)
         {
             byte[] body;
@@ -22,13 +30,27 @@ namespace RimCoopMod.Networking
                 body = ms.ToArray();
             }
 
-            byte[] lenPrefix = BitConverter.GetBytes(body.Length);
+            byte flag = 0;
+            byte[] payload = body;
+            if (body.Length > CompressionThreshold)
+            {
+                byte[] compressed = Compress(body);
+                if (compressed.Length < body.Length)
+                {
+                    flag = 1;
+                    payload = compressed;
+                }
+            }
+
+            int frameLen = 1 + payload.Length;
+            byte[] lenPrefix = BitConverter.GetBytes(frameLen);
             if (BitConverter.IsLittleEndian) Array.Reverse(lenPrefix);
 
             lock (stream)
             {
                 stream.Write(lenPrefix, 0, 4);
-                stream.Write(body, 0, body.Length);
+                stream.WriteByte(flag);
+                stream.Write(payload, 0, payload.Length);
                 stream.Flush();
             }
         }
@@ -38,13 +60,16 @@ namespace RimCoopMod.Networking
             byte[] lenBuf = ReadExact(stream, 4);
             if (lenBuf == null) return null;
             if (BitConverter.IsLittleEndian) Array.Reverse(lenBuf);
-            int len = BitConverter.ToInt32(lenBuf, 0);
+            int frameLen = BitConverter.ToInt32(lenBuf, 0);
 
-            if (len <= 0 || len > 16 * 1024 * 1024)
-                throw new IOException("Tamaño de paquete inválido: " + len);
+            if (frameLen <= 0 || frameLen > MaxFrameSize)
+                throw new IOException("Tamaño de paquete inválido: " + frameLen);
 
-            byte[] body = ReadExact(stream, len);
-            if (body == null) return null;
+            byte[] frame = ReadExact(stream, frameLen);
+            if (frame == null) return null;
+
+            byte flag = frame[0];
+            byte[] body = flag == 1 ? Decompress(frame, 1, frame.Length - 1) : SubArray(frame, 1, frame.Length - 1);
 
             using (var ms = new MemoryStream(body))
             using (var br = new BinaryReader(ms))
@@ -53,6 +78,34 @@ namespace RimCoopMod.Networking
                 object payload = ReadPayload(br, type);
                 return new Packet { Type = type, Payload = payload };
             }
+        }
+
+        private static byte[] Compress(byte[] data)
+        {
+            using (var outMs = new MemoryStream())
+            {
+                using (var gzip = new GZipStream(outMs, CompressionMode.Compress, leaveOpen: true))
+                    gzip.Write(data, 0, data.Length);
+                return outMs.ToArray();
+            }
+        }
+
+        private static byte[] Decompress(byte[] data, int offset, int count)
+        {
+            using (var inMs = new MemoryStream(data, offset, count))
+            using (var gzip = new GZipStream(inMs, CompressionMode.Decompress))
+            using (var outMs = new MemoryStream())
+            {
+                gzip.CopyTo(outMs);
+                return outMs.ToArray();
+            }
+        }
+
+        private static byte[] SubArray(byte[] data, int offset, int count)
+        {
+            var result = new byte[count];
+            Buffer.BlockCopy(data, offset, result, 0, count);
+            return result;
         }
 
         private static void WritePayload(BinaryWriter bw, Packet packet)

@@ -96,7 +96,7 @@ namespace RimCoopMod.Networking
     public static class ProtocolInfo
     {
         /// <summary>Subir cada vez que cambia el formato de un paquete. Mod y servidor tienen que coincidir.</summary>
-        public const int Version = 16;
+        public const int Version = 17;
     }
 
     public class ServerInfoPayload
