@@ -86,7 +86,12 @@ namespace RimCoopMod.GameComponents
 
         // hostPlayerId -> ids de pawn cuya apariencia ya pedí, para no pedirla de nuevo cada 0.5s
         // mientras el dueño todavía no contestó (esto es pesado, se pide una sola vez por pawn).
-        private readonly Dictionary<int, HashSet<int>> _requestedAppearances = new Dictionary<int, HashSet<int>>();
+        // Cuándo (Time.realtimeSinceStartup) se pidió por última vez el "look" de cada pawn. Antes
+        // era un HashSet que marcaba "ya pedido" para siempre — si la respuesta se perdía (corte de
+        // conexión a mitad de camino, por ejemplo), el pawn quedaba como un puntito de color para
+        // toda la partida, porque nunca se volvía a pedir. Ahora se reintenta cada tanto.
+        private readonly Dictionary<int, Dictionary<int, float>> _requestedAppearances = new Dictionary<int, Dictionary<int, float>>();
+        private const float AppearanceRequestRetrySeconds = 8f;
 
         // Última "huella" de trabajo que le forzamos a cada títere, para no reiniciar la animación
         // desde cero en cada foto si en realidad sigue haciendo lo mismo.
@@ -810,7 +815,7 @@ namespace RimCoopMod.GameComponents
 
             if (!_requestedAppearances.TryGetValue(snapshot.HostPlayerId, out var requested))
             {
-                requested = new HashSet<int>();
+                requested = new Dictionary<int, float>();
                 _requestedAppearances[snapshot.HostPlayerId] = requested;
             }
 
@@ -860,13 +865,18 @@ namespace RimCoopMod.GameComponents
 
                 if (ps.Dead) continue; // no tiene sentido pedir el look de alguien que ya murió
 
-                if (requested.Add(ps.PawnId))
+                float now = Time.realtimeSinceStartup;
+                if (!requested.TryGetValue(ps.PawnId, out float lastRequest) || now - lastRequest > AppearanceRequestRetrySeconds)
                 {
+                    requested[ps.PawnId] = now;
                     CoopClient.Instance.SendPawnAppearanceRequest(snapshot.HostPlayerId, ps.PawnId);
                 }
             }
 
             ApplyInteractions(snapshot);
+
+            foreach (var oldId in requested.Keys.Where(id => !seenIds.Contains(id)).ToList())
+                requested.Remove(oldId);
 
             foreach (var oldId in known.Keys.Where(id => !seenIds.Contains(id)).ToList())
             {
