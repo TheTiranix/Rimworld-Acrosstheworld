@@ -963,8 +963,13 @@ namespace RimCoopMod.GameComponents
             var mirrorJobDef = DefDatabase<JobDef>.GetNamedSilentFail(ps.CurJobDefName);
             string driverName = mirrorJobDef?.driverClass?.Name ?? "";
             bool needsLord = driverName.Contains("Ritual") || driverName.Contains("Spectate") || driverName.Contains("Lord") || driverName.Contains("Ceremon");
+            // Estos jobs abren una ventana apenas arrancan (el toil que empieza a comerciar hace
+            // Find.WindowStack.Add(new Dialog_Trade(...)) él solo): si al real le arranca una compra
+            // con un mercader visitante, replicárselo al títere le abría el mismo diálogo de comercio
+            // a CUALQUIERA que estuviera mirando esa base. No tiene sentido "comerciar" desde un títere.
+            bool opensUi = driverName.Contains("TradeWithPawn");
 
-            if (MovementOnlyJobs.Contains(ps.CurJobDefName) || needsLord)
+            if (MovementOnlyJobs.Contains(ps.CurJobDefName) || needsLord || opensUi)
             {
                 try { if (puppet.CurJob != null) puppet.jobs.EndCurrentJob(JobCondition.InterruptForced, false); } catch { }
                 return;
