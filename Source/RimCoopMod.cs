@@ -11,10 +11,12 @@ namespace RimCoopMod
     public class RimCoopMod : Mod
     {
         public static RimCoopMod Instance;
+        public RimCoopModSettings Settings;
 
         public RimCoopMod(ModContentPack content) : base(content)
         {
             Instance = this;
+            Settings = GetSettings<RimCoopModSettings>();
 
             // Verse.Log escribe siempre a Player.log, que Unity comparte por USUARIO, no por
             // proceso: si corrés dos instancias de RimWorld en la misma PC (host + cliente para

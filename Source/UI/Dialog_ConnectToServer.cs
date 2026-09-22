@@ -7,9 +7,9 @@ namespace RimCoopMod.UI
 {
     public class Dialog_ConnectToServer : Window
     {
-        private string _ip = "127.0.0.1";
-        private string _port = "34500";
-        private string _playerName = "Jugador";
+        private string _ip;
+        private string _port;
+        private string _playerName;
         private string _statusMessage = "";
 
         public override Vector2 InitialSize => new Vector2(400f, 340f);
@@ -19,6 +19,12 @@ namespace RimCoopMod.UI
             doCloseX = true;
             forcePause = true;
             absorbInputAroundWindow = true;
+
+            // Recordar lo último tipeado para no escribirlo de nuevo cada vez.
+            var settings = global::RimCoopMod.RimCoopMod.Instance?.Settings;
+            _ip = settings?.LastServerIp ?? "127.0.0.1";
+            _port = settings?.LastServerPort ?? "34500";
+            _playerName = settings?.LastPlayerName ?? "Jugador";
         }
 
         public override void DoWindowContents(Rect inRect)
@@ -71,6 +77,17 @@ namespace RimCoopMod.UI
             {
                 _statusMessage = "Ingresá una IP válida.";
                 return;
+            }
+
+            // Guardar ya, no solo si la conexión funciona: así no se pierde lo tipeado si el
+            // servidor está apagado o la red falla justo esta vez.
+            var settings = global::RimCoopMod.RimCoopMod.Instance?.Settings;
+            if (settings != null)
+            {
+                settings.LastServerIp = _ip;
+                settings.LastServerPort = _port;
+                settings.LastPlayerName = _playerName;
+                global::RimCoopMod.RimCoopMod.Instance.WriteSettings();
             }
 
             _statusMessage = "Conectando...";
