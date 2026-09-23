@@ -434,5 +434,68 @@ namespace RimCoopMod.Networking
             try { _stream?.Close(); } catch { }
             try { _tcpClient?.Close(); } catch { }
         }
+
+        public class ServerPingResult
+        {
+            public bool Success;
+            public int ProtocolVersion;
+            public int ConnectedPlayers;
+            public string WorldSeed;
+            public string Error;
+        }
+
+        /// <summary>
+        /// Conexión corta y aparte (no toca _stream/IsConnected, que son de la conexión de juego):
+        /// abre un socket propio nada más para preguntarle al servidor si está vivo y cuánta gente
+        /// tiene conectada, para la lista de servidores guardados. Llama a callback en un hilo de
+        /// fondo, nunca en el principal.
+        /// </summary>
+        public static void PingServer(string ip, int port, Action<ServerPingResult> callback, int timeoutMs = 2500)
+        {
+            ThreadPool.QueueUserWorkItem(_ =>
+            {
+                var result = new ServerPingResult();
+                try
+                {
+                    using (var tcp = new TcpClient())
+                    {
+                        var connectTask = tcp.ConnectAsync(ip, port);
+                        if (!connectTask.Wait(timeoutMs))
+                        {
+                            result.Error = "Tiempo de espera agotado";
+                            callback(result);
+                            return;
+                        }
+
+                        using (var stream = tcp.GetStream())
+                        {
+                            stream.ReadTimeout = timeoutMs;
+                            stream.WriteTimeout = timeoutMs;
+
+                            NetIO.SendPacket(stream, Packet.Create(PacketType.PingRequest, new PingRequestPayload()));
+                            Packet resp = NetIO.ReadPacket(stream);
+
+                            if (resp != null && resp.Type == PacketType.PingResponse)
+                            {
+                                var p = resp.GetPayload<PingResponsePayload>();
+                                result.Success = true;
+                                result.ProtocolVersion = p.ProtocolVersion;
+                                result.ConnectedPlayers = p.ConnectedPlayers;
+                                result.WorldSeed = p.WorldSeed;
+                            }
+                            else
+                            {
+                                result.Error = "El servidor no entendió la consulta (¿versión muy vieja?)";
+                            }
+                        }
+                    }
+                }
+                catch (Exception e)
+                {
+                    result.Error = e.Message;
+                }
+                callback(result);
+            });
+        }
     }
 }

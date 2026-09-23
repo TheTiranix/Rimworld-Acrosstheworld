@@ -29,13 +29,17 @@ y puede ver, visitar, ayudar, comerciar o atacar a los demás.
 
 Bajá `RimCoop-Server-*.zip`, descomprimilo y ejecutá `RimCoopServer.exe` (Windows; en Linux/macOS con Mono).
 
-- Puerto por defecto: **34500** (TCP). Si jugás por internet, abrí/redirigí ese puerto.
-- La seed y la configuración quedan en `ServerData/` junto al `.exe`. Escribí `salir` para apagarlo.
+- Al abrirlo pide elegir una **partida**: cada una tiene su propia seed, puerto y lista de jugadores,
+  así podés tener una para un grupo de amigos y otra totalmente distinta para otro grupo sin que se
+  mezclen ni se pisen. Quedan en `ServerData/<nombre-de-la-partida>/` junto al `.exe`.
+- Puerto por defecto: **34500** (TCP), configurable por partida. Si jugás por internet, abrí/redirigí ese puerto.
+- Escribí `salir` para apagarlo.
 - El servidor solo reenvía mensajes: no ejecuta el juego.
 
 ## Cómo jugar
 
-1. Todos: menú principal → **RimCoop: Conectar** → IP, puerto y nombre → *Conectar*.
+1. Todos: menú principal → **RimCoop: Conectar** → IP, puerto y nombre → *Conectar* (o *Servidores
+   guardados...* para elegir de una lista con apodo y ver cuánta gente hay conectada antes de entrar).
 2. Crear un mundo nuevo: se usa la seed del servidor. Elegí tu sitio; ya ves las bases de los demás.
 3. Al fundar, tu colonia aparece en el mapa mundial de los otros.
 4. Clic en la base de otro jugador: *Entrar a la base*, *Colaborar*, *Comerciar*, *Atacar*.

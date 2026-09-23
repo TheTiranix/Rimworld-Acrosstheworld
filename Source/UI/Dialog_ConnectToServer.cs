@@ -12,7 +12,7 @@ namespace RimCoopMod.UI
         private string _playerName;
         private string _statusMessage = "";
 
-        public override Vector2 InitialSize => new Vector2(400f, 340f);
+        public override Vector2 InitialSize => new Vector2(400f, 380f);
 
         public Dialog_ConnectToServer()
         {
@@ -52,6 +52,13 @@ namespace RimCoopMod.UI
             if (listing.ButtonText("Conectar"))
             {
                 TryConnect();
+            }
+
+            listing.Gap(6f);
+            if (listing.ButtonText("Servidores guardados..."))
+            {
+                Find.WindowStack.Add(new Dialog_ServerBrowser());
+                Close();
             }
 
             if (!string.IsNullOrEmpty(_statusMessage))

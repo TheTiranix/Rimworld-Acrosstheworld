@@ -543,6 +543,18 @@ namespace RimCoopMod.Networking
                         bw.Write(p.Value ?? "");
                         break;
                     }
+
+                case PacketType.PingRequest:
+                    break; // sin campos: solo importa que llegó
+
+                case PacketType.PingResponse:
+                    {
+                        var p = (PingResponsePayload)packet.Payload;
+                        bw.Write(p.ProtocolVersion);
+                        bw.Write(p.ConnectedPlayers);
+                        bw.Write(p.WorldSeed ?? "");
+                        break;
+                    }
             }
         }
 
@@ -1003,6 +1015,17 @@ namespace RimCoopMod.Networking
                         Kind = br.ReadString(),
                         Key = br.ReadString(),
                         Value = br.ReadString()
+                    };
+
+                case PacketType.PingRequest:
+                    return new PingRequestPayload();
+
+                case PacketType.PingResponse:
+                    return new PingResponsePayload
+                    {
+                        ProtocolVersion = br.ReadInt32(),
+                        ConnectedPlayers = br.ReadInt32(),
+                        WorldSeed = br.ReadString()
                     };
 
                 default:

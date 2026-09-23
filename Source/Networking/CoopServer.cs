@@ -28,8 +28,7 @@ namespace RimCoopMod.Networking
         // estable entre reinicios del servidor (si no, un CoopPlayerBase guardado en una
         // partida vieja queda apuntando a un id que ya no existe).
         private readonly Dictionary<string, int> _nameToId = new Dictionary<string, int>();
-        private static readonly string PlayerIdsFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ServerData");
-        private static readonly string PlayerIdsPath = Path.Combine(PlayerIdsFolder, "player_ids.txt");
+        private string _playerIdsPath;
 
         // Datos del mundo que el servidor decide y reparte a todos.
         public string WorldSeed;
@@ -51,13 +50,22 @@ namespace RimCoopMod.Networking
             public Thread ReadThread;
         }
 
-        public void Start(int port, string seed, float coverage, string rainfall, string temperature, string population)
+        /// <summary>
+        /// dataFolder: dónde persistir player_ids.txt (id estable de cada jugador). Cada "partida"
+        /// del servidor dedicado usa su propia carpeta (ver ServerConfig) para no mezclar ids entre
+        /// mundos distintos; si no se especifica, se usa la carpeta de siempre junto al ejecutable
+        /// (así el host-desde-el-juego, que no elige partida, sigue funcionando igual que antes).
+        /// </summary>
+        public void Start(int port, string seed, float coverage, string rainfall, string temperature, string population, string dataFolder = null)
         {
             WorldSeed = seed;
             PlanetCoverage = coverage;
             OverallRainfall = rainfall;
             OverallTemperature = temperature;
             OverallPopulation = population;
+
+            string folder = dataFolder ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ServerData");
+            _playerIdsPath = Path.Combine(folder, "player_ids.txt");
 
             LoadPlayerIds();
 
@@ -114,7 +122,27 @@ namespace RimCoopMod.Networking
             {
                 // 1. Esperar handshake
                 Packet first = NetIO.ReadPacket(handle.Stream);
-                if (first == null || first.Type != PacketType.Handshake)
+                if (first == null)
+                {
+                    handle.TcpClient.Close();
+                    return;
+                }
+
+                // Consulta corta para la lista de servidores (estilo Half-Life/CS): no es un jugador
+                // uniéndose, solo quiere saber si el server responde y cuánta gente hay conectada.
+                if (first.Type == PacketType.PingRequest)
+                {
+                    NetIO.SendPacket(handle.Stream, Packet.Create(PacketType.PingResponse, new PingResponsePayload
+                    {
+                        ProtocolVersion = ProtocolInfo.Version,
+                        ConnectedPlayers = _clients.Count,
+                        WorldSeed = WorldSeed
+                    }));
+                    handle.TcpClient.Close();
+                    return;
+                }
+
+                if (first.Type != PacketType.Handshake)
                 {
                     handle.TcpClient.Close();
                     return;
@@ -370,9 +398,9 @@ namespace RimCoopMod.Networking
         {
             try
             {
-                if (!File.Exists(PlayerIdsPath)) return;
+                if (!File.Exists(_playerIdsPath)) return;
 
-                foreach (var line in File.ReadAllLines(PlayerIdsPath))
+                foreach (var line in File.ReadAllLines(_playerIdsPath))
                 {
                     var parts = line.Split(new[] { '=' }, 2);
                     if (parts.Length != 2 || !int.TryParse(parts[1], out int id)) continue;
@@ -381,7 +409,7 @@ namespace RimCoopMod.Networking
                     if (id >= _nextPlayerId) _nextPlayerId = id + 1;
                 }
 
-                CoopLog.Message($"[RimCoop] Se cargaron {_nameToId.Count} id(s) de jugador persistidos desde {PlayerIdsPath}");
+                CoopLog.Message($"[RimCoop] Se cargaron {_nameToId.Count} id(s) de jugador persistidos desde {_playerIdsPath}");
             }
             catch (Exception e)
             {
@@ -394,8 +422,8 @@ namespace RimCoopMod.Networking
         {
             try
             {
-                Directory.CreateDirectory(PlayerIdsFolder);
-                File.WriteAllLines(PlayerIdsPath, _nameToId.Select(kv => $"{kv.Key}={kv.Value}"));
+                Directory.CreateDirectory(Path.GetDirectoryName(_playerIdsPath));
+                File.WriteAllLines(_playerIdsPath, _nameToId.Select(kv => $"{kv.Key}={kv.Value}"));
             }
             catch (Exception e)
             {

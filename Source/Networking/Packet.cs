@@ -45,7 +45,22 @@ namespace RimCoopMod.Networking
         ModList = 30,            // lista de mods/DLC activos de cada jugador, para avisar si no coinciden
         QuestMessage = 31,       // misiones compartidas entre jugadores (invitar, aceptar, actualizar, terminar)
         ShipMessage = 32,        // naves comerciales compartidas entre colaboradores (aparece, cambia el stock, se va)
-        SaveAll = 33             // "guardemos todos la partida ahora": mantiene las partidas de los jugadores parejas
+        SaveAll = 33,            // "guardemos todos la partida ahora": mantiene las partidas de los jugadores parejas
+
+        // ---- Lista de servidores guardados (estilo Half-Life/CS) ----
+        PingRequest = 34,  // conexión corta y aparte, sin handshake: "¿estás vivo?"
+        PingResponse = 35  // el server contesta con su versión y cuántos jugadores tiene conectados AHORA
+    }
+
+    public class PingRequestPayload
+    {
+    }
+
+    public class PingResponsePayload
+    {
+        public int ProtocolVersion;
+        public int ConnectedPlayers;
+        public string WorldSeed;
     }
 
     public class ShipMessagePayload
