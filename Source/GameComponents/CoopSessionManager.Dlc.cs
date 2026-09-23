@@ -269,16 +269,16 @@ namespace RimCoopMod.GameComponents
 
         /// <summary>
         /// Lado de quien mira: la base de otro jugador cambió de tile (se mudó). El mapa espejo viejo tiene el terreno del lugar
-        /// anterior, así que se descarta (junto con todo lo sincronizado de él) y se deja de mirar; hay que volver a entrar.
+        /// anterior, así que se descarta (junto con todo lo sincronizado de él) y se deja de mirar (EnsureRemoteBase vuelve a entrar solo).
         /// </summary>
-        private void DropMirrorMap(CoopPlayerBase wobj, int playerId)
+        private void DropMirrorMap(CoopPlayerBase wobj, int playerId, bool jumpToHome = true)
         {
             try
             {
                 if (wobj.HasMap)
                 {
                     var mirrorMap = wobj.Map;
-                    if (Find.CurrentMap == mirrorMap) CameraJumper.TryJump(CameraJumper.GetWorldTarget(LocalBaseMap != null ? (GlobalTargetInfo)new GlobalTargetInfo(LocalBaseMap.Center, LocalBaseMap) : GlobalTargetInfo.Invalid));
+                    if (jumpToHome && Find.CurrentMap == mirrorMap) CameraJumper.TryJump(CameraJumper.GetWorldTarget(LocalBaseMap != null ? (GlobalTargetInfo)new GlobalTargetInfo(LocalBaseMap.Center, LocalBaseMap) : GlobalTargetInfo.Invalid));
                     Current.Game.DeinitAndRemoveMap(mirrorMap, false);
                 }
             }

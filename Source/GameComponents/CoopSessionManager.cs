@@ -180,7 +180,7 @@ namespace RimCoopMod.GameComponents
         /// la cámara ahí, tal cual como visitar el campamento de una caravana. Además arranca
         /// (o mantiene) la sincronización de pawns y construcciones para ese mapa.
         /// </summary>
-        public static void EnterCoopMap(CoopPlayerBase target)
+        public static void EnterCoopMap(CoopPlayerBase target, bool jumpCamera = true)
         {
             var instance = Current.Game?.GetComponent<CoopSessionManager>();
             if (instance == null) return;
@@ -198,7 +198,7 @@ namespace RimCoopMod.GameComponents
             RequestWatch(target.RemotePlayerId);
             CoopClient.Instance.SendBaseSnapshotRequest(target.RemotePlayerId);
 
-            CameraJumper.TryJump(new GlobalTargetInfo(map.Center, map));
+            if (jumpCamera) CameraJumper.TryJump(new GlobalTargetInfo(map.Center, map));
         }
 
         /// <summary>
@@ -2064,11 +2064,11 @@ namespace RimCoopMod.GameComponents
             else
             {
                 // Se mudó de tile (nave gravitatoria de Odyssey): su mapa espejo viejo tiene el terreno del lugar anterior.
-                if ((int)wobj.Tile != info.Tile)
-                {
-                    DropMirrorMap(wobj, info.PlayerId);
-                    Messages.Message($"{info.PlayerName} movió su base. Volvé a entrar para verla en el lugar nuevo.", MessageTypeDefOf.NeutralEvent, false);
-                }
+                // Si lo estaba mirando, se descarta y se vuelve a entrar solo al lugar nuevo (y la cámara lo sigue si estaba ahí).
+                bool relocated = (int)wobj.Tile != info.Tile;
+                bool wasWatching = relocated && wobj.HasMap;
+                bool wasViewing = wasWatching && Find.CurrentMap == wobj.Map;
+                if (relocated) DropMirrorMap(wobj, info.PlayerId, jumpToHome: false); // si estaba ahí, la cámara salta directo al mapa nuevo
 
                 wobj.Tile = info.Tile;
                 wobj.ColonistCount = info.ColonistCount;
@@ -2080,6 +2080,20 @@ namespace RimCoopMod.GameComponents
                 {
                     CoopLog.Message($"[RimCoop] Corrigiendo id de {info.PlayerName}: {wobj.RemotePlayerId} -> {info.PlayerId}");
                     wobj.RemotePlayerId = info.PlayerId;
+                }
+
+                if (relocated)
+                {
+                    if (wasWatching)
+                    {
+                        Messages.Message($"{info.PlayerName} movió su base: te llevo a su lugar nuevo.", MessageTypeDefOf.NeutralEvent, false);
+                        try { EnterCoopMap(wobj, jumpCamera: wasViewing); }
+                        catch (Exception ex) { CoopLog.Warning($"[RimCoop] No se pudo volver a entrar a la base de {info.PlayerName} tras su mudanza: {ex.Message}"); }
+                    }
+                    else
+                    {
+                        Messages.Message($"{info.PlayerName} movió su base.", MessageTypeDefOf.NeutralEvent, false);
+                    }
                 }
             }
         }

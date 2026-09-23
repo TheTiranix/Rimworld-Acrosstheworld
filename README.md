@@ -74,8 +74,8 @@ en cada caso y se adapta a los DLC que tengas:
 - Los trabajos que dependen de rituales/ceremonias no se imitan en el mapa espejo (se ve el resultado, no el ritual).
 - **Odyssey:** "mi base" es siempre el asentamiento de la superficie que se avisó al servidor, no cualquier mapa propio;
   así una nave gravitatoria que despega (y crea mapas nuevos) no confunde lo que ven los demás. Si la nave **muda la
-  base a otro tile** (y abandona la anterior), se re-avisa la ubicación nueva: los demás ven el punto moverse y el mapa
-  espejo viejo se descarta (hay que volver a entrar para ver el lugar nuevo). Las naves y colonias extra en otros mapas
+  base a otro tile** (y abandona la anterior), se re-avisa la ubicación nueva: los demás ven el punto moverse y, si la estaban
+  mirando, el mapa espejo viejo se descarta y se vuelve a entrar solo al lugar nuevo (la cámara los sigue). Las naves y colonias extra en otros mapas
   (órbita, otros tiles) **no se espejan** como mapa, y el vacío tampoco; se resumen como texto en el panel de la base
   ("Odyssey: 1 nave(s) gravitatoria(s), 2 mapa(s) propio(s) más (1 en órbita)"). El **motor gravitatorio no se espeja**
   como edificio: el juego decide qué mapas son "base propia" mirando si hay un motor (sin mirar la facción), y uno
