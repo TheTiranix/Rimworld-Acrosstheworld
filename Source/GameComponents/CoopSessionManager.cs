@@ -273,6 +273,7 @@ namespace RimCoopMod.GameComponents
 
             if (_localTile >= 0 && Find.TickManager.TicksGame % ColonistCheckIntervalTicks == 0)
             {
+                CheckLocalBaseRelocation();
                 int currentCount = CountLocalColonists();
                 if (currentCount != _lastSentColonistCount)
                 {
@@ -506,7 +507,7 @@ namespace RimCoopMod.GameComponents
                 MapHeight = map.Size.z,
                 WeatherDefName = map.weatherManager.CurWeatherLerped?.defName ?? "",
                 SkyGlow = map.skyManager.CurSkyGlow,
-                AnomalyInfo = BuildAnomalyInfo()
+                DlcInfo = BuildDlcInfo()
             };
 
             _slowCounter++;
@@ -655,8 +656,13 @@ namespace RimCoopMod.GameComponents
 
                 // El monolito real registra su propia instancia como EL monolito de la partida (Find.Anomaly.monolith), usa el
                 // nivel de la partida local para sus gráficos y dispara eventos en su Tick: espejarlo le rompería el monolito
-                // propio a quien mira. Su nivel viaja como texto (AnomalyInfo).
+                // propio a quien mira. Su nivel viaja como texto (DlcInfo).
                 if (thing is Building_VoidMonolith) continue;
+
+                // Igual con el motor gravitatorio (Odyssey): Map.IsPlayerHome se fija en GravshipUtility.PlayerHasGravEngine(map),
+                // que NO mira la facción, solo si hay un motor en el mapa. Un motor espejado haría que el mapa espejo cuente
+                // como base propia de quien mira (incidentes que lo apuntan, colonos contados de más, AnyPlayerHomeMap).
+                if (thing is Building_GravEngine) continue;
 
                 result.Add(new ThingSnapshot
                 {
@@ -2057,6 +2063,13 @@ namespace RimCoopMod.GameComponents
             }
             else
             {
+                // Se mudó de tile (nave gravitatoria de Odyssey): su mapa espejo viejo tiene el terreno del lugar anterior.
+                if ((int)wobj.Tile != info.Tile)
+                {
+                    DropMirrorMap(wobj, info.PlayerId);
+                    Messages.Message($"{info.PlayerName} movió su base. Volvé a entrar para verla en el lugar nuevo.", MessageTypeDefOf.NeutralEvent, false);
+                }
+
                 wobj.Tile = info.Tile;
                 wobj.ColonistCount = info.ColonistCount;
                 wobj.Wealth = info.Wealth;

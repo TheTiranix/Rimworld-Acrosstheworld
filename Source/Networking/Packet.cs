@@ -302,7 +302,7 @@ namespace RimCoopMod.Networking
         public int MapHeight;
         public string WeatherDefName; // clima actual de la base real
         public float SkyGlow;         // brillo del cielo real (0=noche, 1=mediodía), para que se vea la misma hora
-        public string AnomalyInfo;    // Anomaly: nivel del monolito y su estudio (texto; el monolito real NO se espeja, ver CollectThingSnapshots)
+        public string DlcInfo;    // Anomaly: nivel del monolito y su estudio (texto; el monolito real NO se espeja, ver CollectThingSnapshots)
         public List<PawnSnapshot> Pawns = new List<PawnSnapshot>();
         public List<InteractionEvent> Interactions = new List<InteractionEvent>(); // charlas/insultos recientes, para mostrar la burbuja
     }

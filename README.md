@@ -73,8 +73,13 @@ en cada caso y se adapta a los DLC que tengas:
   no cruza entre juegos, así que no se sincronizan sus preceptos ni se puede "editarla" desde el espejo).
 - Los trabajos que dependen de rituales/ceremonias no se imitan en el mapa espejo (se ve el resultado, no el ritual).
 - **Odyssey:** "mi base" es siempre el asentamiento de la superficie que se avisó al servidor, no cualquier mapa propio;
-  así una nave gravitatoria que despega (y crea mapas nuevos) no confunde lo que ven los demás. Las naves y colonias
-  extra en otros mapas (órbita, otros tiles) **no se espejan**, y el vacío tampoco.
+  así una nave gravitatoria que despega (y crea mapas nuevos) no confunde lo que ven los demás. Si la nave **muda la
+  base a otro tile** (y abandona la anterior), se re-avisa la ubicación nueva: los demás ven el punto moverse y el mapa
+  espejo viejo se descarta (hay que volver a entrar para ver el lugar nuevo). Las naves y colonias extra en otros mapas
+  (órbita, otros tiles) **no se espejan** como mapa, y el vacío tampoco; se resumen como texto en el panel de la base
+  ("Odyssey: 1 nave(s) gravitatoria(s), 2 mapa(s) propio(s) más (1 en órbita)"). El **motor gravitatorio no se espeja**
+  como edificio: el juego decide qué mapas son "base propia" mirando si hay un motor (sin mirar la facción), y uno
+  espejado haría que el mapa espejo cuente como base tuya (incidentes apuntándole, colonos contados de más).
 - **Anomaly:** las entidades contenidas en plataformas de contención se ven en el mapa espejo, con su nivel de actividad,
   su progreso de estudio y su modo de contención (los textos del panel salen solos de los componentes del propio
   títere), y los colonos que se vuelven mutantes (ghoul) se actualizan. El estudio de estructuras también se copia.

@@ -84,7 +84,7 @@ namespace RimCoopMod.World
         public override string GetInspectString()
         {
             string text = $"Jugador: {RemotePlayerName}\nColonos: {ColonistCount}\nRiqueza: {Wealth:N0}";
-            string anomaly = CoopSessionManager.GetRemoteSnapshot(RemotePlayerId)?.AnomalyInfo;
+            string anomaly = CoopSessionManager.GetRemoteSnapshot(RemotePlayerId)?.DlcInfo;
             if (!string.IsNullOrEmpty(anomaly)) text += "\n" + anomaly;
             return text;
         }

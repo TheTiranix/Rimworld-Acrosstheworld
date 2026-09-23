@@ -5,6 +5,7 @@ using HarmonyLib;
 using RimCoopMod.Networking;
 using RimCoopMod.World;
 using RimWorld;
+using RimWorld.Planet;
 using UnityEngine;
 using Verse;
 
@@ -190,8 +191,19 @@ namespace RimCoopMod.GameComponents
             }
         }
 
+        /// <summary>Texto de info de DLC de mi base para quien me mira (Anomaly y Odyssey): se muestra en el panel de mi base.</summary>
+        private static string BuildDlcInfo()
+        {
+            var lines = new List<string>();
+            string anomaly = BuildAnomalyLine();
+            if (!string.IsNullOrEmpty(anomaly)) lines.Add(anomaly);
+            string odyssey = BuildOdysseyLine();
+            if (!string.IsNullOrEmpty(odyssey)) lines.Add(odyssey);
+            return string.Join("\n", lines);
+        }
+
         /// <summary>Nivel del monolito de quien mira: el edificio real NO se espeja (ver CollectThingSnapshots), se muestra como texto.</summary>
-        private static string BuildAnomalyInfo()
+        private static string BuildAnomalyLine()
         {
             if (!ModsConfig.AnomalyActive) return "";
             try
@@ -202,6 +214,97 @@ namespace RimCoopMod.GameComponents
                 return "Monolito: nivel " + anomaly.Level + (string.IsNullOrEmpty(label) ? "" : " (" + label + ")");
             }
             catch { return ""; }
+        }
+
+        // =====================================================================
+        // Odyssey: naves gravitatorias y mapas extra. Solo "mi base" (la de superficie que se avisó al servidor) se
+        // espeja; lo demás (órbita, otras colonias, la nave en vuelo) se resume como texto, y si la nave gravitatoria
+        // MUDA la base a otro tile se re-avisa la ubicación nueva.
+        // =====================================================================
+
+        private static string BuildOdysseyLine()
+        {
+            if (!ModsConfig.OdysseyActive) return "";
+            try
+            {
+                var main = LocalBaseMap;
+                int engines = 0, extraHomes = 0, orbit = 0;
+                foreach (var m in Find.Maps)
+                {
+                    if (GetHostPlayerIdForMap(m) >= 0) continue; // mapa espejo de otro jugador
+                    if (GravshipUtility.PlayerHasGravEngine(m)) engines++;
+                    if (m == main || !m.IsPlayerHome) continue;
+                    extraHomes++;
+                    if (m.Biome?.inVacuum ?? false) orbit++;
+                }
+
+                var parts = new List<string>();
+                if (engines > 0) parts.Add(engines + " nave(s) gravitatoria(s)");
+                if (extraHomes > 0) parts.Add(extraHomes + " mapa(s) propio(s) más" + (orbit > 0 ? " (" + orbit + " en órbita)" : ""));
+                return parts.Count == 0 ? "" : "Odyssey: " + string.Join(", ", parts);
+            }
+            catch { return ""; }
+        }
+
+        /// <summary>
+        /// Una nave gravitatoria puede llevar la colonia a otro tile (y abandonar el anterior). Si "mi base" de superficie
+        /// dejó de estar en el tile avisado, se re-avisa el nuevo: si no, los demás seguirían viendo la base en el lugar
+        /// viejo y su mapa espejo se generaría con el terreno equivocado.
+        /// </summary>
+        private void CheckLocalBaseRelocation()
+        {
+            if (!ModsConfig.OdysseyActive) return;
+            var map = LocalBaseMap;
+            if (map == null || !map.IsPlayerHome || (map.Biome?.inVacuum ?? false) || GetHostPlayerIdForMap(map) >= 0) return;
+
+            int tile = (int)map.Tile;
+            if (tile < 0 || tile == _localTile) return;
+
+            CoopLog.Message($"[RimCoop] Mi base se mudó del tile {_localTile} al {tile} (nave gravitatoria): se avisa la ubicación nueva.");
+            _localTile = tile;
+            _lastSentColonistCount = CountLocalColonists();
+            UpdateLocalWealth(force: true);
+            CoopClient.Instance.SendUpdate(tile, _lastSentColonistCount);
+        }
+
+        /// <summary>
+        /// Lado de quien mira: la base de otro jugador cambió de tile (se mudó). El mapa espejo viejo tiene el terreno del lugar
+        /// anterior, así que se descarta (junto con todo lo sincronizado de él) y se deja de mirar; hay que volver a entrar.
+        /// </summary>
+        private void DropMirrorMap(CoopPlayerBase wobj, int playerId)
+        {
+            try
+            {
+                if (wobj.HasMap)
+                {
+                    var mirrorMap = wobj.Map;
+                    if (Find.CurrentMap == mirrorMap) CameraJumper.TryJump(CameraJumper.GetWorldTarget(LocalBaseMap != null ? (GlobalTargetInfo)new GlobalTargetInfo(LocalBaseMap.Center, LocalBaseMap) : GlobalTargetInfo.Invalid));
+                    Current.Game.DeinitAndRemoveMap(mirrorMap, false);
+                }
+            }
+            catch (Exception ex) { CoopLog.Warning($"[RimCoop] No se pudo cerrar el mapa espejo de {wobj.RemotePlayerName}: {ex.Message}"); }
+
+            if (_syncedPawns.TryGetValue(playerId, out var pawns))
+            {
+                foreach (var pawn in pawns.Values)
+                {
+                    if (pawn == null) continue;
+                    PuppetPawnRegistry.Unregister(pawn);
+                    _puppetJobFingerprints.Remove(pawn);
+                    _puppetItems.Remove(pawn);
+                    _puppetCarriedKey.Remove(pawn);
+                    _puppetIdeoNames.Remove(pawn);
+                    _puppetBiotechInfo.Remove(pawn);
+                }
+            }
+
+            _coopMaps.Remove(playerId);
+            _syncedThings.Remove(playerId);
+            _syncedPawns.Remove(playerId);
+            _syncedPlants.Remove(playerId);
+            _remoteSnapshots.Remove(playerId);
+            _requestedAppearances.Remove(playerId);
+            CoopClient.Instance.SendUnwatchRequest(playerId);
         }
 
         // =====================================================================

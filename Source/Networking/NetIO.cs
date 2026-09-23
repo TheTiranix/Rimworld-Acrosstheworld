@@ -240,7 +240,7 @@ namespace RimCoopMod.Networking
                         bw.Write(p.MapHeight);
                         bw.Write(p.WeatherDefName ?? "");
                         bw.Write(p.SkyGlow);
-                        bw.Write(p.AnomalyInfo ?? "");
+                        bw.Write(p.DlcInfo ?? "");
                         bw.Write(p.Pawns.Count);
                         foreach (var pawn in p.Pawns)
                         {
@@ -718,7 +718,7 @@ namespace RimCoopMod.Networking
                             MapHeight = br.ReadInt32(),
                             WeatherDefName = br.ReadString(),
                             SkyGlow = br.ReadSingle(),
-                            AnomalyInfo = br.ReadString()
+                            DlcInfo = br.ReadString()
                         };
                         int count = br.ReadInt32();
                         for (int i = 0; i < count; i++)
