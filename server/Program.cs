@@ -9,6 +9,7 @@ namespace RimCoopServer
         static void Main(string[] args)
         {
             Console.WriteLine("=== RimCoop Server ===");
+            Console.WriteLine($"Versión de protocolo: {ProtocolInfo.Version} (tiene que coincidir con la del mod de todos los jugadores)");
 
             ServerConfig.MigrateLegacyIfNeeded();
             var config = PickOrCreateSave();
@@ -23,6 +24,7 @@ namespace RimCoopServer
                 config.DataFolder);
 
             Console.WriteLine($"Partida: {config.SaveName}");
+            Console.WriteLine($"Versión de protocolo: {ProtocolInfo.Version}");
             Console.WriteLine($"Servidor escuchando en el puerto {config.Port}");
             Console.WriteLine($"Seed del mundo: {config.Seed}");
             Console.WriteLine($"La configuración quedó guardada en {config.DataFolder}");
