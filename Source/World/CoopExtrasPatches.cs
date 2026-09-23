@@ -58,8 +58,13 @@ namespace RimCoopMod.World
         public static void Postfix(Pawn __instance, ref string __result)
         {
             string ideoName = CoopSessionManager.GetPuppetIdeoName(__instance);
-            if (string.IsNullOrEmpty(ideoName)) return;
-            __result = string.IsNullOrEmpty(__result) ? $"Ideología: {ideoName}" : __result + $"\nIdeología: {ideoName}";
+            if (!string.IsNullOrEmpty(ideoName))
+                __result = string.IsNullOrEmpty(__result) ? $"Ideología: {ideoName}" : __result + $"\nIdeología: {ideoName}";
+
+            // Biotech: ancho de banda del mecanitor, o supervisor y modo de trabajo del mech.
+            string biotech = CoopSessionManager.GetPuppetBiotechInfo(__instance);
+            if (!string.IsNullOrEmpty(biotech))
+                __result = string.IsNullOrEmpty(__result) ? biotech : __result + "\n" + biotech;
         }
     }
 

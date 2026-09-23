@@ -857,6 +857,7 @@ namespace RimCoopMod.GameComponents
                         _puppetItems.Remove(puppet);
                         _puppetCarriedKey.Remove(puppet);
                         _puppetIdeoNames.Remove(puppet);
+                        _puppetBiotechInfo.Remove(puppet);
                         puppet.Destroy(DestroyMode.Vanish);
                         known.Remove(ps.PawnId);
                         continue;
@@ -899,6 +900,7 @@ namespace RimCoopMod.GameComponents
                     _puppetItems.Remove(known[oldId]);
                     _puppetCarriedKey.Remove(known[oldId]);
                     _puppetIdeoNames.Remove(known[oldId]);
+                    _puppetBiotechInfo.Remove(known[oldId]);
                     if (known[oldId].Spawned) known[oldId].Destroy(DestroyMode.Vanish);
                     else if (known[oldId].Corpse != null && !known[oldId].Corpse.Destroyed) known[oldId].Corpse.Destroy(DestroyMode.Vanish);
                     else if (known[oldId].holdingOwner != null && !known[oldId].Destroyed) known[oldId].Destroy(DestroyMode.Vanish); // entidad que estaba en una plataforma

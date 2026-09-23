@@ -125,6 +125,9 @@ namespace RimCoopMod.GameComponents
                 if (needs.rest != null) parts.Add("rest=" + Inv(needs.rest.CurLevel));
                 if (needs.mood != null) parts.Add("mood=" + Inv(needs.mood.CurLevel));
                 if (needs.joy != null) parts.Add("joy=" + Inv(needs.joy.CurLevel));
+                if (needs.energy != null) parts.Add("energy=" + Inv(needs.energy.CurLevel));     // Biotech: batería de los mechs
+                if (needs.learning != null) parts.Add("learning=" + Inv(needs.learning.CurLevel)); // Biotech: niños
+                if (needs.play != null) parts.Add("play=" + Inv(needs.play.CurLevel));             // Biotech: niños
                 s.NeedsCsv = string.Join(";", parts);
             }
 
@@ -163,6 +166,7 @@ namespace RimCoopMod.GameComponents
                 // el nombre como texto para mostrarlo, sin intentar resolver una referencia que del
                 // otro lado no existe.
                 s.IdeoName = ModsConfig.IdeologyActive ? pawn.Ideo?.name : null;
+                FillBiotech(pawn, s);
                 s.SkillsCsv = pawn.skills == null ? "" : string.Join(";", pawn.skills.skills.Select(k => k.def.defName + "," + k.Level + "," + Inv(k.xpSinceLastLevel) + "," + (int)k.passion));
                 s.TraitsCsv = pawn.story?.traits == null ? "" : string.Join(";", pawn.story.traits.allTraits.Select(t => t.def.defName + "," + t.Degree));
 
@@ -201,6 +205,8 @@ namespace RimCoopMod.GameComponents
 
                 if (string.IsNullOrEmpty(ps.IdeoName)) _puppetIdeoNames.Remove(puppet);
                 else _puppetIdeoNames[puppet] = ps.IdeoName;
+
+                ApplyBiotech(puppet, ps);
 
                 ApplyHediffs(puppet, ps.HediffsCsv);
                 ApplyMemories(puppet, ps.MemoriesCsv);
@@ -407,6 +413,9 @@ namespace RimCoopMod.GameComponents
                     case "rest": if (needs.rest != null) needs.rest.CurLevel = v; break;
                     case "mood": if (needs.mood != null) needs.mood.CurLevel = v; break;
                     case "joy": if (needs.joy != null) needs.joy.CurLevel = v; break;
+                    case "energy": if (needs.energy != null) needs.energy.CurLevel = v; break;
+                    case "learning": if (needs.learning != null) needs.learning.CurLevel = v; break;
+                    case "play": if (needs.play != null) needs.play.CurLevel = v; break;
                 }
             }
         }

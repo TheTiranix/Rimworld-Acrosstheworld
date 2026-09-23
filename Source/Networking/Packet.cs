@@ -111,7 +111,7 @@ namespace RimCoopMod.Networking
     public static class ProtocolInfo
     {
         /// <summary>Subir cada vez que cambia el formato de un paquete. Mod y servidor tienen que coincidir.</summary>
-        public const int Version = 18;
+        public const int Version = 19;
     }
 
     public class ServerInfoPayload
@@ -280,6 +280,15 @@ namespace RimCoopMod.Networking
         public string PsyCsv;        // Royalty: "focus=0.5;heat=0.2"
         public string PermitsCsv;    // Royalty: permisos ("factionDef,permitDef;...")
         public string IdeoName;      // Ideology: nombre de la ideología (solo texto: el objeto Ideo real es de ESA partida y no cruza)
+
+        // Biotech. Los títeres no simulan nada (Tick salteado), así que crecer, cambiar de etapa de vida o
+        // gastar hemógeno solo pasa si el dueño lo manda.
+        public long AgeBiologicalTicks;  // niños que crecen (bebé -> niño -> adolescente -> adulto) y cambian de cuerpo
+        public float GrowthPoints = -1f; // puntos de crecimiento (para los momentos de crecimiento)
+        public string XenotypeDefName;   // "Baseliner", "Sanguophage", etc.
+        public string XenotypeName;      // nombre propio si es un xenotipo personalizado
+        public string GeneResourcesCsv;  // "geneDef=valor;..." (hemógeno y otros recursos de genes)
+        public string BiotechInfo;       // texto para el panel: ancho de banda del mecanitor / supervisor y modo de trabajo del mech
     }
 
     public class MapSnapshotPayload

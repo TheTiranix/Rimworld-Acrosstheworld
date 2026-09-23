@@ -96,6 +96,124 @@ namespace RimCoopMod.GameComponents
         }
 
         // =====================================================================
+        // Biotech: crecimiento de niños, xenotipo, recursos de genes (hemógeno), y mecanitores/mechs.
+        // Los títeres no ejecutan Tick(), así que nada de esto avanza solo: todo lo manda el dueño real.
+        // (Embarazos y partos ya viajan como hediffs comunes; los xenogenes, en ApplyHistoryAndStatus.)
+        // =====================================================================
+
+        // Texto del panel de inspección (ancho de banda del mecanitor, supervisor y modo de trabajo del mech).
+        private readonly Dictionary<Pawn, string> _puppetBiotechInfo = new Dictionary<Pawn, string>();
+
+        public static string GetPuppetBiotechInfo(Pawn puppet)
+        {
+            var instance = Current.Game?.GetComponent<CoopSessionManager>();
+            if (instance == null || puppet == null) return null;
+            return instance._puppetBiotechInfo.TryGetValue(puppet, out var text) ? text : null;
+        }
+
+        private static void FillBiotech(Pawn pawn, PawnSnapshot s)
+        {
+            if (!ModsConfig.BiotechActive) return;
+
+            try
+            {
+                if (pawn.ageTracker != null)
+                {
+                    s.AgeBiologicalTicks = pawn.ageTracker.AgeBiologicalTicks;
+                    s.GrowthPoints = pawn.ageTracker.growthPoints;
+                }
+
+                if (pawn.genes != null)
+                {
+                    s.XenotypeDefName = pawn.genes.Xenotype?.defName;
+                    s.XenotypeName = pawn.genes.xenotypeName;
+                    s.GeneResourcesCsv = string.Join(";", pawn.genes.GenesListForReading
+                        .OfType<Gene_Resource>()
+                        .Where(g => g?.def != null)
+                        .Select(g => g.def.defName + "=" + Inv(g.Value)));
+                }
+
+                var info = new List<string>();
+
+                if (pawn.mechanitor != null && MechanitorUtility.IsMechanitor(pawn))
+                {
+                    var mt = pawn.mechanitor;
+                    info.Add($"Mecanitor: ancho de banda {mt.UsedBandwidth}/{mt.TotalBandwidth}, {mt.OverseenPawns.Count} mech(s) a cargo");
+                }
+
+                if (pawn.RaceProps != null && pawn.RaceProps.IsMechanoid && pawn.Faction == Faction.OfPlayer)
+                {
+                    var overseer = pawn.GetOverseer();
+                    info.Add("Supervisor: " + (overseer != null ? overseer.LabelShortCap : "nadie"));
+                    var mode = pawn.GetMechWorkMode();
+                    if (mode != null) info.Add("Modo de trabajo: " + mode.LabelCap);
+                }
+
+                s.BiotechInfo = string.Join("\n", info);
+            }
+            catch (Exception e)
+            {
+                CoopLog.Warning($"[RimCoop] Error juntando datos de Biotech de {pawn.LabelShortCap}: {e.Message}");
+            }
+        }
+
+        private void ApplyBiotech(Pawn puppet, PawnSnapshot ps)
+        {
+            if (!ModsConfig.BiotechActive) return;
+
+            if (string.IsNullOrEmpty(ps.BiotechInfo)) _puppetBiotechInfo.Remove(puppet);
+            else _puppetBiotechInfo[puppet] = ps.BiotechInfo;
+
+            try
+            {
+                // ---- Crecimiento: la etapa de vida depende de la edad, y cambia el cuerpo/cabeza que se dibuja ----
+                var age = puppet.ageTracker;
+                if (age != null && ps.AgeBiologicalTicks > 0)
+                {
+                    bool humanlike = puppet.RaceProps != null && puppet.RaceProps.Humanlike;
+                    long diff = Math.Abs(age.AgeBiologicalTicks - ps.AgeBiologicalTicks);
+                    // Humanos: la etapa depende de los años enteros. Animales: del avance de crecimiento, por eso un umbral en días.
+                    bool changed = humanlike ? age.AgeBiologicalYears != (int)(ps.AgeBiologicalTicks / 3600000L) : diff > 900000L;
+                    if (changed)
+                    {
+                        age.AgeBiologicalTicks = ps.AgeBiologicalTicks;
+                        PortraitsCache.SetDirty(puppet);
+                    }
+                }
+                if (age != null && Math.Abs(age.growthPoints - ps.GrowthPoints) > 0.5f) age.growthPoints = ps.GrowthPoints;
+
+                // ---- Xenotipo (nombre/ícono en el panel) ----
+                if (puppet.genes != null && !string.IsNullOrEmpty(ps.XenotypeDefName))
+                {
+                    var xd = DefDatabase<XenotypeDef>.GetNamedSilentFail(ps.XenotypeDefName);
+                    if (xd != null && puppet.genes.Xenotype != xd)
+                    {
+                        Traverse.Create(puppet.genes).Field("xenotype").SetValue(xd);
+                        Traverse.Create(puppet.genes).Field("cachedHasCustomXenotype").SetValue(null);
+                    }
+                    string wantedName = string.IsNullOrEmpty(ps.XenotypeName) ? null : ps.XenotypeName;
+                    if (puppet.genes.xenotypeName != wantedName) puppet.genes.xenotypeName = wantedName;
+                }
+
+                // ---- Recursos de genes (hemógeno, etc.) ----
+                if (puppet.genes != null && !string.IsNullOrEmpty(ps.GeneResourcesCsv))
+                {
+                    foreach (var entry in ps.GeneResourcesCsv.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries))
+                    {
+                        var kv = entry.Split('=');
+                        if (kv.Length != 2) continue;
+                        var gene = puppet.genes.GenesListForReading.OfType<Gene_Resource>().FirstOrDefault(g => g?.def != null && g.def.defName == kv[0]);
+                        if (gene != null) gene.Value = ParseF(kv[1]);
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                CoopLog.Warning($"[RimCoop] Error aplicando datos de Biotech al títere {puppet.LabelShortCap}: {e.Message}");
+            }
+        }
+
+        // =====================================================================
         // Royalty: psicasts (habilidades), enfoque psíquico, calor neural y títulos.
         // (Lanzar un psicast sigue sin imitarse en el espejo: se ve el resultado, no el lanzamiento.)
         // =====================================================================

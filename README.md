@@ -61,7 +61,13 @@ en cada caso y se adapta a los DLC que tengas:
 
 - Al conectarse, cada jugador manda su lista de DLC/mods; si no coinciden, el mod avisa exactamente qué falta
   de cada lado (lo que dependa de eso puede no aparecer del otro lado). **Conviene que todos usen los mismos DLC y mods.**
-- **Biotech:** se copia la contaminación del terreno y los xenogenes de los colonos.
+- **Biotech:** se copia la contaminación del terreno, los xenogenes y el xenotipo de los colonos, los recursos de genes
+  (hemógeno), el crecimiento de los niños (edad biológica, cambio de etapa de vida, puntos de crecimiento, necesidades de
+  aprendizaje y juego) y los embarazos (como cualquier otra condición de salud; el parto solo lo dispara el dueño real).
+  Los mechs se ven en el mapa espejo con su batería (energía), y en su panel se ve el supervisor y el modo de trabajo; el
+  mecanitor muestra su ancho de banda y cuántos mechs tiene a cargo. El vínculo real mecanitor-mech no cruza entre partidas
+  (es un objeto de la partida del dueño), así que los grupos de control y el modo de trabajo solo se pueden cambiar desde
+  el juego del dueño.
 - **Ideology:** se copia el estilo visual de muebles, edificios y ropa, y el nombre de la ideología de
   cada colono se muestra en su panel de inspección (el objeto Ideo en sí es de la partida del dueño y
   no cruza entre juegos, así que no se sincronizan sus preceptos ni se puede "editarla" desde el espejo).
