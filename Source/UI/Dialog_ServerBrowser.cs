@@ -110,7 +110,7 @@ namespace RimCoopMod.UI
             listing.GapLine();
 
             var outRect = listing.GetRect(inRect.height - 330f);
-            float rowHeight = 44f;
+            float rowHeight = 58f;
             var viewRect = new Rect(0f, 0f, outRect.width - 16f, _entries.Count * rowHeight + 4f);
             Widgets.BeginScrollView(outRect, ref _scroll, viewRect);
 
@@ -192,7 +192,8 @@ namespace RimCoopMod.UI
                 {
                     bool sameVersion = result.ProtocolVersion == ProtocolInfo.Version;
                     GUI.color = sameVersion ? Color.green : Color.yellow;
-                    string text = $"{result.ConnectedPlayers} jugador(es)";
+                    string text = $"{result.ConnectedPlayers} jugador(es) - {result.LatencyMs} ms";
+                    if (!string.IsNullOrEmpty(result.WorldSeed)) text += $"\nseed: {result.WorldSeed}";
                     if (!sameVersion) text += "\nversión distinta";
                     Widgets.Label(rect, text);
                 }

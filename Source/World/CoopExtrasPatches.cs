@@ -46,6 +46,23 @@ namespace RimCoopMod.World
         }
     }
 
+    /// <summary>
+    /// El títere nunca tiene su propio Ideo real resuelto (es un objeto de la partida del dueño, no
+    /// cruza — ver PawnSnapshot.IdeoName), así que se le agrega el nombre a mano en el panel de
+    /// inspección para no perder esa info del todo.
+    /// </summary>
+    [HarmonyPatch(typeof(Pawn), nameof(Pawn.GetInspectString))]
+    public static class Pawn_GetInspectString_PuppetIdeo_Patch
+    {
+        [HarmonyPostfix]
+        public static void Postfix(Pawn __instance, ref string __result)
+        {
+            string ideoName = CoopSessionManager.GetPuppetIdeoName(__instance);
+            if (string.IsNullOrEmpty(ideoName)) return;
+            __result = string.IsNullOrEmpty(__result) ? $"Ideología: {ideoName}" : __result + $"\nIdeología: {ideoName}";
+        }
+    }
+
     // ---- Configuración de colonos transferidos, vista desde el espejo: se le pide al dueño real ----
 
     internal static class PuppetSettingHelper

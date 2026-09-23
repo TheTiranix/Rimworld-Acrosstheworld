@@ -300,6 +300,7 @@ namespace RimCoopMod.Networking
                                 bw.Write(pawn.TitlesCsv ?? "");
                                 bw.Write(pawn.PsyCsv ?? "");
                                 bw.Write(pawn.PermitsCsv ?? "");
+                                bw.Write(pawn.IdeoName ?? "");
                             }
                         }
                         bw.Write(p.Interactions.Count);
@@ -773,6 +774,7 @@ namespace RimCoopMod.Networking
                                 ps.TitlesCsv = br.ReadString();
                                 ps.PsyCsv = br.ReadString();
                                 ps.PermitsCsv = br.ReadString();
+                                ps.IdeoName = br.ReadString();
                             }
                             p.Pawns.Add(ps);
                         }

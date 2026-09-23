@@ -159,6 +159,10 @@ namespace RimCoopMod.GameComponents
                 s.IsPlayerFaction = pawn.Faction == Faction.OfPlayer;
                 FillRoyalty(pawn, s);
                 s.GenesCsv = pawn.genes == null ? "" : string.Join(";", pawn.genes.Xenogenes.Where(g => g?.def != null).Select(g => g.def.defName));
+                // El objeto Ideo real no cruza (es de ESTA partida, ver PawnTransfer): mandamos solo
+                // el nombre como texto para mostrarlo, sin intentar resolver una referencia que del
+                // otro lado no existe.
+                s.IdeoName = ModsConfig.IdeologyActive ? pawn.Ideo?.name : null;
                 s.SkillsCsv = pawn.skills == null ? "" : string.Join(";", pawn.skills.skills.Select(k => k.def.defName + "," + k.Level + "," + Inv(k.xpSinceLastLevel) + "," + (int)k.passion));
                 s.TraitsCsv = pawn.story?.traits == null ? "" : string.Join(";", pawn.story.traits.allTraits.Select(t => t.def.defName + "," + t.Degree));
 
@@ -194,6 +198,9 @@ namespace RimCoopMod.GameComponents
             {
                 ApplyNeeds(puppet, ps.NeedsCsv);
                 if (!ps.HasSlowData) return;
+
+                if (string.IsNullOrEmpty(ps.IdeoName)) _puppetIdeoNames.Remove(puppet);
+                else _puppetIdeoNames[puppet] = ps.IdeoName;
 
                 ApplyHediffs(puppet, ps.HediffsCsv);
                 ApplyMemories(puppet, ps.MemoriesCsv);

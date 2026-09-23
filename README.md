@@ -62,7 +62,9 @@ en cada caso y se adapta a los DLC que tengas:
 - Al conectarse, cada jugador manda su lista de DLC/mods; si no coinciden, el mod avisa exactamente qué falta
   de cada lado (lo que dependa de eso puede no aparecer del otro lado). **Conviene que todos usen los mismos DLC y mods.**
 - **Biotech:** se copia la contaminación del terreno y los xenogenes de los colonos.
-- **Ideology:** se copia el estilo visual de muebles y edificios.
+- **Ideology:** se copia el estilo visual de muebles, edificios y ropa, y el nombre de la ideología de
+  cada colono se muestra en su panel de inspección (el objeto Ideo en sí es de la partida del dueño y
+  no cruza entre juegos, así que no se sincronizan sus preceptos ni se puede "editarla" desde el espejo).
 - Los trabajos que dependen de rituales/ceremonias no se imitan en el mapa espejo (se ve el resultado, no el ritual).
 - **Odyssey:** "mi base" es siempre el asentamiento de la superficie que se avisó al servidor, no cualquier mapa propio;
   así una nave gravitatoria que despega (y crea mapas nuevos) no confunde lo que ven los demás. Las naves y colonias

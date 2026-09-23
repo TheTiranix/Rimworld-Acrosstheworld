@@ -441,6 +441,7 @@ namespace RimCoopMod.Networking
             public int ProtocolVersion;
             public int ConnectedPlayers;
             public string WorldSeed;
+            public long LatencyMs;
             public string Error;
         }
 
@@ -455,6 +456,7 @@ namespace RimCoopMod.Networking
             ThreadPool.QueueUserWorkItem(_ =>
             {
                 var result = new ServerPingResult();
+                var sw = System.Diagnostics.Stopwatch.StartNew();
                 try
                 {
                     using (var tcp = new TcpClient())
@@ -474,6 +476,7 @@ namespace RimCoopMod.Networking
 
                             NetIO.SendPacket(stream, Packet.Create(PacketType.PingRequest, new PingRequestPayload()));
                             Packet resp = NetIO.ReadPacket(stream);
+                            sw.Stop();
 
                             if (resp != null && resp.Type == PacketType.PingResponse)
                             {
@@ -482,6 +485,7 @@ namespace RimCoopMod.Networking
                                 result.ProtocolVersion = p.ProtocolVersion;
                                 result.ConnectedPlayers = p.ConnectedPlayers;
                                 result.WorldSeed = p.WorldSeed;
+                                result.LatencyMs = sw.ElapsedMilliseconds;
                             }
                             else
                             {

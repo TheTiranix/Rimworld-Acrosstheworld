@@ -97,6 +97,17 @@ namespace RimCoopMod.GameComponents
         // desde cero en cada foto si en realidad sigue haciendo lo mismo.
         private readonly Dictionary<Pawn, string> _puppetJobFingerprints = new Dictionary<Pawn, string>();
 
+        // Nombre de la ideología del títere (solo texto, ver PawnSnapshot.IdeoName): nunca se toca
+        // pawn.ideo del títere porque el objeto Ideo real es de la partida del dueño y no cruza.
+        private readonly Dictionary<Pawn, string> _puppetIdeoNames = new Dictionary<Pawn, string>();
+
+        public static string GetPuppetIdeoName(Pawn puppet)
+        {
+            var instance = Current.Game?.GetComponent<CoopSessionManager>();
+            if (instance == null || puppet == null) return null;
+            return instance._puppetIdeoNames.TryGetValue(puppet, out var name) ? name : null;
+        }
+
         // (soy host) watcherId -> ids de pawn cuya apariencia ya le mandé, para no repetir el
         // envío pesado si me la vuelve a pedir por las dudas.
         private readonly Dictionary<int, HashSet<int>> _sentAppearances = new Dictionary<int, HashSet<int>>();
@@ -845,6 +856,7 @@ namespace RimCoopMod.GameComponents
                         _puppetJobFingerprints.Remove(puppet);
                         _puppetItems.Remove(puppet);
                         _puppetCarriedKey.Remove(puppet);
+                        _puppetIdeoNames.Remove(puppet);
                         puppet.Destroy(DestroyMode.Vanish);
                         known.Remove(ps.PawnId);
                         continue;
@@ -886,6 +898,7 @@ namespace RimCoopMod.GameComponents
                     _puppetJobFingerprints.Remove(known[oldId]);
                     _puppetItems.Remove(known[oldId]);
                     _puppetCarriedKey.Remove(known[oldId]);
+                    _puppetIdeoNames.Remove(known[oldId]);
                     if (known[oldId].Spawned) known[oldId].Destroy(DestroyMode.Vanish);
                     else if (known[oldId].Corpse != null && !known[oldId].Corpse.Destroyed) known[oldId].Corpse.Destroy(DestroyMode.Vanish);
                     else if (known[oldId].holdingOwner != null && !known[oldId].Destroyed) known[oldId].Destroy(DestroyMode.Vanish); // entidad que estaba en una plataforma
@@ -1121,8 +1134,11 @@ namespace RimCoopMod.GameComponents
             catch { }
         }
 
+        // El StyleDef (Ideology) al final es lo que hace que una prenda se vea "tribal", "regia", etc.
+        // en vez del sprite genérico del def — sin esto la ropa del títere se ve siempre igual sin
+        // importar la ideología del dueño real.
         private static string ApparelEntry(Apparel a) =>
-            a.def.defName + "," + (a.Stuff?.defName ?? "") + "," + QualityOf(a) + "," + a.HitPoints;
+            a.def.defName + "," + (a.Stuff?.defName ?? "") + "," + QualityOf(a) + "," + a.HitPoints + "," + (a.StyleDef?.defName ?? "");
 
         // Iguala la ropa puesta del títere con la del pawn real (si difiere, la reemplaza entera).
         private static void SyncPuppetApparel(Pawn puppet, PawnSnapshot ps)
@@ -1131,8 +1147,12 @@ namespace RimCoopMod.GameComponents
 
             var wantedDefs = string.IsNullOrEmpty(ps.ApparelCsv)
                 ? new List<string>()
-                : ps.ApparelCsv.Split(';').Select(e => e.Split(',')[0] + "|" + e.Split(',')[1]).OrderBy(x => x).ToList();
-            var currentDefs = puppet.apparel.WornApparel.Select(a => a.def.defName + "|" + (a.Stuff?.defName ?? "")).OrderBy(x => x).ToList();
+                : ps.ApparelCsv.Split(';').Select(e =>
+                {
+                    var f = e.Split(',');
+                    return f[0] + "|" + f[1] + "|" + (f.Length > 4 ? f[4] : "");
+                }).OrderBy(x => x).ToList();
+            var currentDefs = puppet.apparel.WornApparel.Select(a => a.def.defName + "|" + (a.Stuff?.defName ?? "") + "|" + (a.StyleDef?.defName ?? "")).OrderBy(x => x).ToList();
             if (wantedDefs.SequenceEqual(currentDefs)) return;
 
             try
@@ -1153,6 +1173,7 @@ namespace RimCoopMod.GameComponents
                     var stuff = string.IsNullOrEmpty(f[1]) ? null : DefDatabase<ThingDef>.GetNamedSilentFail(f[1]);
                     var apparel = (Apparel)ThingMaker.MakeThing(def, stuff);
                     ApplyQualityAndHp(apparel, int.TryParse(f[2], out int q) ? q : -1, int.TryParse(f[3], out int hp) ? hp : 0);
+                    if (f.Length > 4) ApplyThingStyle(apparel, f[4]);
                     puppet.apparel.Wear(apparel, false, false);
                 }
             }
