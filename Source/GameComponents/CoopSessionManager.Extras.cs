@@ -167,6 +167,7 @@ namespace RimCoopMod.GameComponents
                 // otro lado no existe.
                 s.IdeoName = ModsConfig.IdeologyActive ? pawn.Ideo?.name : null;
                 FillBiotech(pawn, s);
+                FillAnomaly(pawn, s);
                 s.SkillsCsv = pawn.skills == null ? "" : string.Join(";", pawn.skills.skills.Select(k => k.def.defName + "," + k.Level + "," + Inv(k.xpSinceLastLevel) + "," + (int)k.passion));
                 s.TraitsCsv = pawn.story?.traits == null ? "" : string.Join(";", pawn.story.traits.allTraits.Select(t => t.def.defName + "," + t.Degree));
 
@@ -207,6 +208,7 @@ namespace RimCoopMod.GameComponents
                 else _puppetIdeoNames[puppet] = ps.IdeoName;
 
                 ApplyBiotech(puppet, ps);
+                ApplyAnomaly(puppet, ps);
 
                 ApplyHediffs(puppet, ps.HediffsCsv);
                 ApplyMemories(puppet, ps.MemoriesCsv);

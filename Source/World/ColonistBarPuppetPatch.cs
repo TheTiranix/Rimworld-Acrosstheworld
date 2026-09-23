@@ -32,7 +32,7 @@ namespace RimCoopMod.World
             __result = __result.Where(p => !IsForeignPuppet(p)).ToList();
         }
 
-        private static bool IsForeignPuppet(Pawn pawn)
+        internal static bool IsForeignPuppet(Pawn pawn)
         {
             if (!PuppetPawnRegistry.TryGetInfo(pawn, out var info)) return false;
 
@@ -41,6 +41,27 @@ namespace RimCoopMod.World
             if (ps == null) return true; // sin datos todavía: por las dudas no lo mostramos como propio
 
             return ps.OwnerPlayerId != CoopClient.Instance.LocalPlayerId;
+        }
+    }
+
+    /// <summary>
+    /// Anomaly: los ghouls/shamblers de tu facción (subhumanos controlables) también salen en la barra de colonos.
+    /// Mismo problema y mismo arreglo que MapPawns_FreeColonists_ExcludePuppets_Patch.
+    /// </summary>
+    [HarmonyPatch(typeof(MapPawns), nameof(MapPawns.ColonySubhumansControllable), MethodType.Getter)]
+    public static class MapPawns_ColonySubhumansControllable_ExcludePuppets_Patch
+    {
+        [HarmonyPostfix]
+        public static void Postfix(ref List<Pawn> __result)
+        {
+            if (__result == null || __result.Count == 0) return;
+            bool anyForeignPuppet = false;
+            for (int i = 0; i < __result.Count; i++)
+            {
+                if (MapPawns_FreeColonists_ExcludePuppets_Patch.IsForeignPuppet(__result[i])) { anyForeignPuppet = true; break; }
+            }
+            if (!anyForeignPuppet) return;
+            __result = __result.Where(p => !MapPawns_FreeColonists_ExcludePuppets_Patch.IsForeignPuppet(p)).ToList();
         }
     }
 }

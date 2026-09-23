@@ -5,6 +5,7 @@ using HarmonyLib;
 using RimCoopMod.Networking;
 using RimCoopMod.World;
 using RimWorld;
+using UnityEngine;
 using Verse;
 
 namespace RimCoopMod.GameComponents
@@ -93,6 +94,114 @@ namespace RimCoopMod.GameComponents
             {
                 CoopLog.Warning($"[RimCoop] No se pudo sacar a la entidad {puppet.LabelShortCap} de la plataforma espejo: {e.Message}");
             }
+        }
+
+        // Estado de las entidades de Anomaly: actividad, estudio, contención y mutación (ghoul/shambler).
+        // Los títeres no ejecutan Tick(), así que la actividad no sube sola: la manda el dueño. El nivel de
+        // actividad se escribe directo en el campo (SetActivity() dispara el "estado activo" de verdad: lord,
+        // ataques, cartas) y los textos del panel ("Estudio: 3/5", "Actividad: 40%") salen solos de los
+        // componentes del propio títere.
+        private static void FillAnomaly(Pawn pawn, PawnSnapshot s)
+        {
+            if (!ModsConfig.AnomalyActive) return;
+            try
+            {
+                var parts = new List<string>();
+
+                var act = pawn.GetComp<CompActivity>();
+                if (act != null) parts.Add("act=" + Inv(act.ActivityLevel) + "," + (act.suppressionEnabled ? 1 : 0) + "," + Inv(act.suppressIfAbove));
+
+                var study = pawn.GetComp<CompStudiable>();
+                if (study != null) parts.Add("stdy=" + Inv(study.studyPoints) + "," + (study.studyEnabled ? 1 : 0) + "," + Inv(study.anomalyKnowledgeGained));
+
+                var target = pawn.GetComp<CompHoldingPlatformTarget>();
+                if (target != null) parts.Add("cont=" + (int)target.containmentMode + "," + (target.extractBioferrite ? 1 : 0));
+
+                if (pawn.IsMutant && pawn.mutant?.Def != null) parts.Add("mut=" + pawn.mutant.Def.defName);
+
+                s.AnomalyCsv = string.Join(";", parts);
+            }
+            catch (Exception e)
+            {
+                CoopLog.Warning($"[RimCoop] Error juntando datos de Anomaly de {pawn.LabelShortCap}: {e.Message}");
+            }
+        }
+
+        private static void ApplyAnomaly(Pawn puppet, PawnSnapshot ps)
+        {
+            if (!ModsConfig.AnomalyActive || string.IsNullOrEmpty(ps.AnomalyCsv)) return;
+            try
+            {
+                foreach (var part in ps.AnomalyCsv.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries))
+                {
+                    int eq = part.IndexOf('=');
+                    if (eq < 0) continue;
+                    string key = part.Substring(0, eq);
+                    string[] v = part.Substring(eq + 1).Split(',');
+
+                    switch (key)
+                    {
+                        case "act":
+                            {
+                                var act = puppet.GetComp<CompActivity>();
+                                if (act == null || v.Length < 3) break;
+                                float level = ParseF(v[0]);
+                                float old = act.ActivityLevel;
+                                if (Mathf.Abs(old - level) > 0.001f)
+                                {
+                                    Traverse.Create(act).Field("activityLevelPercent").SetValue(level);
+                                    if (act.Props.dirtyGraphicsOnActivityChange && Mathf.Abs(old - level) > 0.05f) puppet.Drawer.renderer.SetAllGraphicsDirty();
+                                }
+                                act.suppressionEnabled = v[1] == "1";
+                                act.suppressIfAbove = ParseF(v[2]);
+                                break;
+                            }
+                        case "stdy":
+                            {
+                                var study = puppet.GetComp<CompStudiable>();
+                                if (study == null || v.Length < 3) break;
+                                study.studyPoints = ParseF(v[0]);
+                                study.studyEnabled = v[1] == "1";
+                                study.anomalyKnowledgeGained = ParseF(v[2]);
+                                break;
+                            }
+                        case "cont":
+                            {
+                                var target = puppet.GetComp<CompHoldingPlatformTarget>();
+                                if (target == null || v.Length < 2) break;
+                                if (int.TryParse(v[0], out int mode)) target.containmentMode = (EntityContainmentMode)mode;
+                                target.extractBioferrite = v[1] == "1";
+                                break;
+                            }
+                        case "mut":
+                            {
+                                // Solo el caso "se volvió mutante" (ej. un colono que pasa a ghoul); volver atrás no tiene un camino seguro.
+                                if (puppet.IsMutant) break;
+                                var def = DefDatabase<MutantDef>.GetNamedSilentFail(v[0]);
+                                if (def != null) MutantUtility.SetPawnAsMutantInstantly(puppet, def);
+                                break;
+                            }
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                CoopLog.Warning($"[RimCoop] Error aplicando datos de Anomaly al títere {puppet.LabelShortCap}: {e.Message}");
+            }
+        }
+
+        /// <summary>Nivel del monolito de quien mira: el edificio real NO se espeja (ver CollectThingSnapshots), se muestra como texto.</summary>
+        private static string BuildAnomalyInfo()
+        {
+            if (!ModsConfig.AnomalyActive) return "";
+            try
+            {
+                var anomaly = Find.Anomaly;
+                if (anomaly == null || (!anomaly.MonolithSpawned && anomaly.Level <= 0)) return "";
+                string label = anomaly.LevelDef?.label;
+                return "Monolito: nivel " + anomaly.Level + (string.IsNullOrEmpty(label) ? "" : " (" + label + ")");
+            }
+            catch { return ""; }
         }
 
         // =====================================================================

@@ -83,7 +83,10 @@ namespace RimCoopMod.World
 
         public override string GetInspectString()
         {
-            return $"Jugador: {RemotePlayerName}\nColonos: {ColonistCount}\nRiqueza: {Wealth:N0}";
+            string text = $"Jugador: {RemotePlayerName}\nColonos: {ColonistCount}\nRiqueza: {Wealth:N0}";
+            string anomaly = CoopSessionManager.GetRemoteSnapshot(RemotePlayerId)?.AnomalyInfo;
+            if (!string.IsNullOrEmpty(anomaly)) text += "\n" + anomaly;
+            return text;
         }
 
         public override void ExposeData()

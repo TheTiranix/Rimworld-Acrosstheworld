@@ -75,7 +75,12 @@ en cada caso y se adapta a los DLC que tengas:
 - **Odyssey:** "mi base" es siempre el asentamiento de la superficie que se avisó al servidor, no cualquier mapa propio;
   así una nave gravitatoria que despega (y crea mapas nuevos) no confunde lo que ven los demás. Las naves y colonias
   extra en otros mapas (órbita, otros tiles) **no se espejan**, y el vacío tampoco.
-- **Anomaly:** las entidades contenidas en plataformas de contención se ven en el mapa espejo.
+- **Anomaly:** las entidades contenidas en plataformas de contención se ven en el mapa espejo, con su nivel de actividad,
+  su progreso de estudio y su modo de contención (los textos del panel salen solos de los componentes del propio
+  títere), y los colonos que se vuelven mutantes (ghoul) se actualizan. El estudio de estructuras también se copia.
+  Los ghouls/shamblers ajenos no aparecen en tu barra de colonos. El **monolito real no se espeja** como edificio
+  (registraría su propia instancia como el monolito de tu partida y rompería el tuyo): su nivel se ve como texto
+  en el panel de la base del jugador. Los incidentes de Anomaly llegan como cartas, igual que el resto.
 - **Royalty:** se copian y se mantienen al día los psicasts (habilidades), el enfoque psíquico, el calor neural, los títulos
   con su favor, los herederos y los permisos. Los psicasts y los permisos que uses con un colono tuyo en el mapa espejo
   los ejecuta el dueño en su base real. Las naves de transporte posadas y los árboles de anima se ven como cualquier

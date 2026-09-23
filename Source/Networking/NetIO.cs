@@ -240,6 +240,7 @@ namespace RimCoopMod.Networking
                         bw.Write(p.MapHeight);
                         bw.Write(p.WeatherDefName ?? "");
                         bw.Write(p.SkyGlow);
+                        bw.Write(p.AnomalyInfo ?? "");
                         bw.Write(p.Pawns.Count);
                         foreach (var pawn in p.Pawns)
                         {
@@ -307,6 +308,7 @@ namespace RimCoopMod.Networking
                                 bw.Write(pawn.XenotypeName ?? "");
                                 bw.Write(pawn.GeneResourcesCsv ?? "");
                                 bw.Write(pawn.BiotechInfo ?? "");
+                                bw.Write(pawn.AnomalyCsv ?? "");
                             }
                         }
                         bw.Write(p.Interactions.Count);
@@ -715,7 +717,8 @@ namespace RimCoopMod.Networking
                             MapWidth = br.ReadInt32(),
                             MapHeight = br.ReadInt32(),
                             WeatherDefName = br.ReadString(),
-                            SkyGlow = br.ReadSingle()
+                            SkyGlow = br.ReadSingle(),
+                            AnomalyInfo = br.ReadString()
                         };
                         int count = br.ReadInt32();
                         for (int i = 0; i < count; i++)
@@ -787,6 +790,7 @@ namespace RimCoopMod.Networking
                                 ps.XenotypeName = br.ReadString();
                                 ps.GeneResourcesCsv = br.ReadString();
                                 ps.BiotechInfo = br.ReadString();
+                                ps.AnomalyCsv = br.ReadString();
                             }
                             p.Pawns.Add(ps);
                         }

@@ -205,6 +205,9 @@ namespace RimCoopMod.GameComponents
 
                 var fuel = t.TryGetComp<CompRefuelable>();
                 if (fuel != null) parts.Add("fuel=" + Inv(fuel.Fuel));
+
+                var study = t.TryGetComp<CompStudiable>(); // Anomaly: estudio de estructuras
+                if (study != null) parts.Add("stdy=" + Inv(study.studyPoints) + "," + (study.studyEnabled ? 1 : 0));
             }
             catch { }
             return string.Join("|", parts);
@@ -268,6 +271,15 @@ namespace RimCoopMod.GameComponents
                             { var r = t.TryGetComp<CompRefuelable>(); if (r != null) r.TargetFuelLevel = ParseF(val); break; }
                         case "fauto":
                             { var r = t.TryGetComp<CompRefuelable>(); if (r != null) Traverse.Create(r).Field("allowAutoRefuel").SetValue(val == "1"); break; }
+                        case "stdy":
+                            {
+                                var c = t.TryGetComp<CompStudiable>();
+                                if (c == null) break;
+                                var sv = val.Split(',');
+                                c.studyPoints = ParseF(sv[0]);
+                                if (sv.Length > 1) c.studyEnabled = sv[1] == "1";
+                                break;
+                            }
                         case "bills":
                             ApplyBills(t, val);
                             break;

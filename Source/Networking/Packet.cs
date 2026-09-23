@@ -111,7 +111,7 @@ namespace RimCoopMod.Networking
     public static class ProtocolInfo
     {
         /// <summary>Subir cada vez que cambia el formato de un paquete. Mod y servidor tienen que coincidir.</summary>
-        public const int Version = 19;
+        public const int Version = 20;
     }
 
     public class ServerInfoPayload
@@ -289,6 +289,9 @@ namespace RimCoopMod.Networking
         public string XenotypeName;      // nombre propio si es un xenotipo personalizado
         public string GeneResourcesCsv;  // "geneDef=valor;..." (hemógeno y otros recursos de genes)
         public string BiotechInfo;       // texto para el panel: ancho de banda del mecanitor / supervisor y modo de trabajo del mech
+
+        // Anomaly: "clave=valor;..." con la actividad y el estudio de la entidad, el modo de contención y si es mutante (ghoul/shambler).
+        public string AnomalyCsv;
     }
 
     public class MapSnapshotPayload
@@ -299,6 +302,7 @@ namespace RimCoopMod.Networking
         public int MapHeight;
         public string WeatherDefName; // clima actual de la base real
         public float SkyGlow;         // brillo del cielo real (0=noche, 1=mediodía), para que se vea la misma hora
+        public string AnomalyInfo;    // Anomaly: nivel del monolito y su estudio (texto; el monolito real NO se espeja, ver CollectThingSnapshots)
         public List<PawnSnapshot> Pawns = new List<PawnSnapshot>();
         public List<InteractionEvent> Interactions = new List<InteractionEvent>(); // charlas/insultos recientes, para mostrar la burbuja
     }

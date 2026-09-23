@@ -505,7 +505,8 @@ namespace RimCoopMod.GameComponents
                 MapWidth = map.Size.x,
                 MapHeight = map.Size.z,
                 WeatherDefName = map.weatherManager.CurWeatherLerped?.defName ?? "",
-                SkyGlow = map.skyManager.CurSkyGlow
+                SkyGlow = map.skyManager.CurSkyGlow,
+                AnomalyInfo = BuildAnomalyInfo()
             };
 
             _slowCounter++;
@@ -651,6 +652,11 @@ namespace RimCoopMod.GameComponents
                 // de muerte, etc.). Recrearlo con ThingMaker da un cadáver "vacío" que el juego
                 // rechaza al spawnear. Sincronizar cadáveres de verdad queda para otra pasada.
                 if (thing is Corpse) continue;
+
+                // El monolito real registra su propia instancia como EL monolito de la partida (Find.Anomaly.monolith), usa el
+                // nivel de la partida local para sus gráficos y dispara eventos en su Tick: espejarlo le rompería el monolito
+                // propio a quien mira. Su nivel viaja como texto (AnomalyInfo).
+                if (thing is Building_VoidMonolith) continue;
 
                 result.Add(new ThingSnapshot
                 {
