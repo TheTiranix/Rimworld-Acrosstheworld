@@ -441,6 +441,7 @@ namespace RimCoopMod.Networking
             public int ProtocolVersion;
             public int ConnectedPlayers;
             public string WorldSeed;
+            public string SaveName;
             public long LatencyMs;
             public string Error;
         }
@@ -485,6 +486,7 @@ namespace RimCoopMod.Networking
                                 result.ProtocolVersion = p.ProtocolVersion;
                                 result.ConnectedPlayers = p.ConnectedPlayers;
                                 result.WorldSeed = p.WorldSeed;
+                                result.SaveName = p.SaveName;
                                 result.LatencyMs = sw.ElapsedMilliseconds;
                             }
                             else

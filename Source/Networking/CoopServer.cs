@@ -30,6 +30,15 @@ namespace RimCoopMod.Networking
         private readonly Dictionary<string, int> _nameToId = new Dictionary<string, int>();
         private string _playerIdsPath;
 
+        // Jugadores baneados por nombre (los ids también son por nombre, así que es lo estable). Se persiste
+        // junto a player_ids.txt, en la carpeta de la partida.
+        private readonly HashSet<string> _bannedNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        private string _bansPath;
+
+        private LanDiscovery.Responder _lanResponder;
+        private int _port;
+        public string SaveName { get; private set; } = "default";
+
         // Datos del mundo que el servidor decide y reparte a todos.
         public string WorldSeed;
         public float PlanetCoverage;
@@ -66,8 +75,12 @@ namespace RimCoopMod.Networking
 
             string folder = dataFolder ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ServerData");
             _playerIdsPath = Path.Combine(folder, "player_ids.txt");
+            _bansPath = Path.Combine(folder, "banned_players.txt");
+            _port = port;
+            if (dataFolder != null) SaveName = new DirectoryInfo(dataFolder).Name;
 
             LoadPlayerIds();
+            LoadBans();
 
             _listener = new TcpListener(IPAddress.Any, port);
             _listener.Start();
@@ -76,12 +89,24 @@ namespace RimCoopMod.Networking
             _acceptThread = new Thread(AcceptLoop) { IsBackground = true };
             _acceptThread.Start();
 
+            // Responde a "¿hay servidores en la red local?" (lista LAN del mod, ver LanDiscovery).
+            _lanResponder = new LanDiscovery.Responder(() => new LanServerInfo
+            {
+                ProtocolVersion = ProtocolInfo.Version,
+                Port = _port,
+                Players = _clients.Count,
+                SaveName = SaveName,
+                Seed = WorldSeed
+            });
+            _lanResponder.Start();
+
             CoopLog.Message($"[RimCoop] Servidor iniciado en puerto {port}. Seed del mundo: {seed}");
         }
 
         public void Stop()
         {
             IsRunning = false;
+            try { _lanResponder?.Stop(); } catch { }
             try { _listener?.Stop(); } catch { }
             foreach (var c in _clients.Values)
             {
@@ -118,6 +143,7 @@ namespace RimCoopMod.Networking
 
         private void ClientLoop(ClientHandle handle)
         {
+            bool registered = false; // solo un jugador que llegó a entrar de verdad se anota y se avisa cuando se va
             try
             {
                 // 1. Esperar handshake
@@ -136,7 +162,8 @@ namespace RimCoopMod.Networking
                     {
                         ProtocolVersion = ProtocolInfo.Version,
                         ConnectedPlayers = _clients.Count,
-                        WorldSeed = WorldSeed
+                        WorldSeed = WorldSeed,
+                        SaveName = SaveName
                     }));
                     handle.TcpClient.Close();
                     return;
@@ -166,6 +193,18 @@ namespace RimCoopMod.Networking
                 }
                 string playerName = string.IsNullOrEmpty(hs.PlayerName) ? $"Jugador{_nextPlayerId}" : hs.PlayerName;
 
+                if (IsBanned(playerName))
+                {
+                    CoopLog.Warning($"[RimCoop] {playerName} está baneado: se rechaza su conexión.");
+                    NetIO.SendPacket(handle.Stream, Packet.Create(PacketType.Chat, new ChatPayload
+                    {
+                        PlayerId = 0, PlayerName = "Servidor",
+                        Message = "Estás baneado de este servidor."
+                    }));
+                    handle.TcpClient.Close();
+                    return;
+                }
+
                 lock (_nameToId)
                 {
                     if (!_nameToId.TryGetValue(playerName, out int playerId))
@@ -179,6 +218,7 @@ namespace RimCoopMod.Networking
                 handle.PlayerName = playerName;
 
                 _clients[handle.PlayerId] = handle;
+                registered = true;
 
                 lock (_players)
                 {
@@ -238,11 +278,18 @@ namespace RimCoopMod.Networking
             }
             finally
             {
-                _clients.TryRemove(handle.PlayerId, out _);
-                lock (_players) { _players.Remove(handle.PlayerId); }
-                Broadcast(Packet.Create(PacketType.PlayerLeft, new PlayerBaseInfo { PlayerId = handle.PlayerId, PlayerName = handle.PlayerName }));
                 try { handle.TcpClient.Close(); } catch { }
-                CoopLog.Message($"[RimCoop] {handle.PlayerName} se desconectó.");
+
+                // Antes esto corría también para pings y conexiones rechazadas (id 0, nombre nulo) y le mandaba a todos un
+                // "PlayerLeft" fantasma. Y si el mismo jugador reconectaba con la conexión vieja todavía viva, la vieja
+                // borraba a la NUEVA al cerrarse: solo se limpia si este handle sigue siendo el vigente.
+                if (registered && _clients.TryGetValue(handle.PlayerId, out var current) && ReferenceEquals(current, handle))
+                {
+                    _clients.TryRemove(handle.PlayerId, out _);
+                    lock (_players) { _players.Remove(handle.PlayerId); }
+                    Broadcast(Packet.Create(PacketType.PlayerLeft, new PlayerBaseInfo { PlayerId = handle.PlayerId, PlayerName = handle.PlayerName }));
+                    CoopLog.Message($"[RimCoop] {handle.PlayerName} se desconectó.");
+                }
             }
         }
 
@@ -391,6 +438,123 @@ namespace RimCoopMod.Networking
                 case PacketType.PawnSettingRequest:
                     RouteTo(p.GetPayload<PawnSettingPayload>().ToPlayerId, p);
                     break;
+            }
+        }
+
+        // ---- Administración desde la consola del servidor ----
+
+        public class PlayerListEntry
+        {
+            public int Id;
+            public string Name;
+            public int Tile;
+            public int Colonists;
+        }
+
+        public List<PlayerListEntry> GetConnectedPlayers()
+        {
+            var list = new List<PlayerListEntry>();
+            foreach (var c in _clients.Values)
+            {
+                int tile = -1, colonists = 0;
+                lock (_players)
+                {
+                    if (_players.TryGetValue(c.PlayerId, out var info)) { tile = info.Tile; colonists = info.ColonistCount; }
+                }
+                list.Add(new PlayerListEntry { Id = c.PlayerId, Name = c.PlayerName, Tile = tile, Colonists = colonists });
+            }
+            return list.OrderBy(e => e.Id).ToList();
+        }
+
+        private ClientHandle FindClient(string nameOrId)
+        {
+            if (string.IsNullOrWhiteSpace(nameOrId)) return null;
+            if (int.TryParse(nameOrId, out int id) && _clients.TryGetValue(id, out var byId)) return byId;
+            return _clients.Values.FirstOrDefault(c => string.Equals(c.PlayerName, nameOrId, StringComparison.OrdinalIgnoreCase));
+        }
+
+        /// <summary>Saca a un jugador conectado (por nombre o id). Puede volver a entrar cuando quiera.</summary>
+        public bool Kick(string nameOrId, string reason, out string kickedName)
+        {
+            kickedName = null;
+            var target = FindClient(nameOrId);
+            if (target == null) return false;
+
+            kickedName = target.PlayerName;
+            DisconnectWithMessage(target, string.IsNullOrWhiteSpace(reason) ? "Te sacaron del servidor." : "Te sacaron del servidor: " + reason);
+            return true;
+        }
+
+        /// <summary>Banea por nombre: no puede volver a entrar hasta que se lo desbanee. Si está conectado, se lo saca.</summary>
+        public bool Ban(string nameOrId, string reason, out string bannedName)
+        {
+            var target = FindClient(nameOrId);
+            bannedName = target?.PlayerName ?? nameOrId?.Trim();
+            if (string.IsNullOrEmpty(bannedName)) return false;
+
+            lock (_bannedNames) { _bannedNames.Add(bannedName); SaveBans(); }
+            if (target != null)
+                DisconnectWithMessage(target, string.IsNullOrWhiteSpace(reason) ? "Te banearon del servidor." : "Te banearon del servidor: " + reason);
+            return true;
+        }
+
+        public bool Unban(string name)
+        {
+            lock (_bannedNames)
+            {
+                bool removed = _bannedNames.Remove(name?.Trim() ?? "");
+                if (removed) SaveBans();
+                return removed;
+            }
+        }
+
+        public bool IsBanned(string name)
+        {
+            lock (_bannedNames) { return _bannedNames.Contains(name ?? ""); }
+        }
+
+        public List<string> GetBans()
+        {
+            lock (_bannedNames) { return _bannedNames.OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList(); }
+        }
+
+        private void DisconnectWithMessage(ClientHandle target, string message)
+        {
+            try
+            {
+                NetIO.SendPacket(target.Stream, Packet.Create(PacketType.Chat, new ChatPayload { PlayerId = 0, PlayerName = "Servidor", Message = message }));
+            }
+            catch { }
+            // Cerrar el socket hace fallar su ReadPacket: el finally de ClientLoop lo saca de la lista y avisa a los demás.
+            try { target.TcpClient.Close(); } catch { }
+        }
+
+        private void LoadBans()
+        {
+            try
+            {
+                if (!File.Exists(_bansPath)) return;
+                foreach (var line in File.ReadAllLines(_bansPath))
+                    if (!string.IsNullOrWhiteSpace(line)) _bannedNames.Add(line.Trim());
+                if (_bannedNames.Count > 0) CoopLog.Message($"[RimCoop] Se cargaron {_bannedNames.Count} jugador(es) baneado(s) desde {_bansPath}");
+            }
+            catch (Exception e)
+            {
+                CoopLog.Warning("[RimCoop] No se pudo cargar la lista de baneados: " + e.Message);
+            }
+        }
+
+        // Llamar siempre adentro de un lock(_bannedNames).
+        private void SaveBans()
+        {
+            try
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(_bansPath));
+                File.WriteAllLines(_bansPath, _bannedNames.OrderBy(n => n, StringComparer.OrdinalIgnoreCase));
+            }
+            catch (Exception e)
+            {
+                CoopLog.Warning("[RimCoop] No se pudo guardar la lista de baneados: " + e.Message);
             }
         }
 

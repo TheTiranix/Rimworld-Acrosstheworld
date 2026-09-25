@@ -61,6 +61,7 @@ namespace RimCoopMod.Networking
         public int ProtocolVersion;
         public int ConnectedPlayers;
         public string WorldSeed;
+        public string SaveName;
     }
 
     public class ShipMessagePayload
@@ -111,7 +112,7 @@ namespace RimCoopMod.Networking
     public static class ProtocolInfo
     {
         /// <summary>Subir cada vez que cambia el formato de un paquete. Mod y servidor tienen que coincidir.</summary>
-        public const int Version = 20;
+        public const int Version = 21;
     }
 
     public class ServerInfoPayload

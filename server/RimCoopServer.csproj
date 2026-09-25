@@ -12,6 +12,7 @@
     <Compile Include="..\Source\Networking\CoopLog.cs" Link="Networking\CoopLog.cs" />
     <Compile Include="..\Source\Networking\Packet.cs" Link="Networking\Packet.cs" />
     <Compile Include="..\Source\Networking\NetIO.cs" Link="Networking\NetIO.cs" />
+    <Compile Include="..\Source\Networking\LanDiscovery.cs" Link="Networking\LanDiscovery.cs" />
     <Compile Include="..\Source\Networking\CoopServer.cs" Link="Networking\CoopServer.cs" />
   </ItemGroup>
 

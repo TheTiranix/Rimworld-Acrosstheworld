@@ -562,6 +562,7 @@ namespace RimCoopMod.Networking
                         bw.Write(p.ProtocolVersion);
                         bw.Write(p.ConnectedPlayers);
                         bw.Write(p.WorldSeed ?? "");
+                        bw.Write(p.SaveName ?? "");
                         break;
                     }
             }
@@ -1043,7 +1044,8 @@ namespace RimCoopMod.Networking
                     {
                         ProtocolVersion = br.ReadInt32(),
                         ConnectedPlayers = br.ReadInt32(),
-                        WorldSeed = br.ReadString()
+                        WorldSeed = br.ReadString(),
+                        SaveName = br.ReadString()
                     };
 
                 default:
