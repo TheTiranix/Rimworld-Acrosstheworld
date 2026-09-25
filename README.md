@@ -14,7 +14,10 @@ y puede ver, visitar, ayudar, comerciar o atacar a los demás.
 - **Entrar a otra base:** botón *Entrar a la base* — mapa real con colonos animados, construcciones, ítems,
   zonas, áreas, techos, plantas, clima y luz.
 - **Colaborar:** mandás colonos tuyos a otra base. Solo vos podés darles órdenes ("Ese no es tu colono" al resto).
-- **Construir y editar en la base ajena:** planos, zonas, áreas, recetas, interruptores... el dueño lo aplica.
+- **Construir y editar en la base ajena:** planos, zonas, áreas, recetas, interruptores... el dueño lo aplica. Los colonos que
+  mandaste con *Colaborar* son pawns reales en la base del dueño y **ayudan a construir** solos según su prioridad de
+  Construcción (la podés cambiar desde el espejo); el avance de cada obra se ve en el espejo. El espejo nunca construye por su
+  cuenta: las obras las hace el juego del dueño.
 - **Comercio** entre jugadores (ofertas con aceptar/rechazar) y **ataques** con incursiones reales.
 - **Chat global** (tecla `\`), **pausa por votación** y **velocidad compartida**.
 

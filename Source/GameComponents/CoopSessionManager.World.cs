@@ -136,7 +136,13 @@ namespace RimCoopMod.GameComponents
             foreach (var t in map.listerThings.AllThings.ToList())
             {
                 if (!t.Spawned || tracked.Contains(t)) continue;
-                if (t.def.category == ThingCategory.Item || t is Filth)
+
+                // Planos y marcos de obra NO rastreados: los crea el espejo por su cuenta (un títere que construye, ver
+                // MirrorConstructionPatch) y nadie los borra, así que quedaban un plano "arriba" de un muro ya construido. En un mapa
+                // espejo todos los planos/marcos válidos vienen de la foto del dueño. Igual con un edificio local de facción jugador.
+                bool localConstruction = t is Blueprint || t is Frame || (t is Building && t.Faction == Faction.OfPlayer);
+
+                if (t.def.category == ThingCategory.Item || t is Filth || localConstruction)
                 {
                     try { t.Destroy(DestroyMode.Vanish); } catch { }
                 }
@@ -206,6 +212,10 @@ namespace RimCoopMod.GameComponents
                 var fuel = t.TryGetComp<CompRefuelable>();
                 if (fuel != null) parts.Add("fuel=" + Inv(fuel.Fuel));
 
+                // Obra en curso: cuánto trabajo lleva hecho el marco. El espejo no construye por su cuenta (ver MirrorConstructionPatch),
+                // así que sin esto el que mira no vería avanzar la obra cuando sus colonos ayudan a construir.
+                if (t is Frame frame) parts.Add("wd=" + Inv(frame.workDone));
+
                 var study = t.TryGetComp<CompStudiable>(); // Anomaly: estudio de estructuras
                 if (study != null) parts.Add("stdy=" + Inv(study.studyPoints) + "," + (study.studyEnabled ? 1 : 0));
             }
@@ -271,6 +281,8 @@ namespace RimCoopMod.GameComponents
                             { var r = t.TryGetComp<CompRefuelable>(); if (r != null) r.TargetFuelLevel = ParseF(val); break; }
                         case "fauto":
                             { var r = t.TryGetComp<CompRefuelable>(); if (r != null) Traverse.Create(r).Field("allowAutoRefuel").SetValue(val == "1"); break; }
+                        case "wd":
+                            { if (t is Frame fr) fr.workDone = ParseF(val); break; }
                         case "stdy":
                             {
                                 var c = t.TryGetComp<CompStudiable>();

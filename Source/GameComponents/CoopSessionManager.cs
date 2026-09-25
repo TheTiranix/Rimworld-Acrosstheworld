@@ -108,9 +108,11 @@ namespace RimCoopMod.GameComponents
             return instance._puppetIdeoNames.TryGetValue(puppet, out var name) ? name : null;
         }
 
-        // (soy host) watcherId -> ids de pawn cuya apariencia ya le mandé, para no repetir el
-        // envío pesado si me la vuelve a pedir por las dudas.
-        private readonly Dictionary<int, HashSet<int>> _sentAppearances = new Dictionary<int, HashSet<int>>();
+        // (soy host) watcherId -> (id de pawn -> cuándo le mandé su apariencia), para no repetir el envío pesado si me lo pide
+        // dos veces seguidas por una carrera. Antes era "una sola vez y nunca más": si el que mira guardaba y cargaba (sus títeres
+        // desaparecen), sus pedidos nuevos se ignoraban para siempre y los colonos quedaban como puntitos de colores.
+        private readonly Dictionary<int, Dictionary<int, float>> _sentAppearances = new Dictionary<int, Dictionary<int, float>>();
+        private const float AppearanceResendCooldownSeconds = 3f;
 
         public CoopSessionManager(Game game) { }
 
@@ -670,14 +672,14 @@ namespace RimCoopMod.GameComponents
                 {
                     ThingId = thing.thingIDNumber,
                     DefName = thing.def.defName,
-                    StuffDefName = thing.Stuff?.defName,
+                    StuffDefName = (thing as Blueprint_Build)?.stuffToUse?.defName ?? thing.Stuff?.defName,
                     X = thing.Position.x,
                     Z = thing.Position.z,
                     Rotation = thing.Rotation.AsInt,
                     StackCount = thing is Filth filth ? filth.thickness : thing is Fire fire ? (int)(fire.fireSize * 100f) : thing is Blight blight ? (int)(blight.Severity * 100f) : thing.stackCount,
                     HitPoints = thing.HitPoints,
                     StyleDefName = thing.StyleDef?.defName,
-                    StateStr = thing is Building ? BuildStateString(thing) : ""
+                    StateStr = (thing is Building || thing is Frame) ? BuildStateString(thing) : ""
                 });
             }
             return result;
@@ -774,7 +776,9 @@ namespace RimCoopMod.GameComponents
 
                 try
                 {
-                    Thing thing = ThingMaker.MakeThing(def, stuff);
+                    // Un plano no es "madeFromStuff": el material se le pone aparte (MakeThing se queja si se lo pasan).
+                    Thing thing = ThingMaker.MakeThing(def, def.MadeFromStuff ? stuff : null);
+                    if (thing is Blueprint_Build blueprint && stuff != null) blueprint.stuffToUse = stuff;
                     if (!ApplySpecialCount(thing, ts.StackCount)) thing.stackCount = Math.Max(1, ts.StackCount);
                     ApplyThingStyle(thing, ts.StyleDefName);
                     if (ts.HitPoints > 0) thing.HitPoints = Math.Min(ts.HitPoints, thing.MaxHitPoints);
@@ -934,7 +938,9 @@ namespace RimCoopMod.GameComponents
         {
             "Goto", "GotoWander", "Wait_Wander", "GotoSafeTemperature", "Follow", "FollowClose", "Flee", "FleeAndCower", "Wait_MaintainPosture",
             // Habilidades/psicasts: en el títere fallan (no tiene el mismo estado interno) y llenan el log de excepciones.
-            "CastAbilityOnThing", "CastAbilityOnWorldTile"
+            "CastAbilityOnThing", "CastAbilityOnWorldTile",
+            // Disparar/usar un verbo sobre algo: el Verb del trabajo no viaja, así que en el títere tira NullReferenceException cada vez.
+            "UseVerbOnThing", "UseVerbOnThingStatic"
         };
 
         [ThreadStatic] public static bool MirrorPathing;
@@ -1102,10 +1108,13 @@ namespace RimCoopMod.GameComponents
             if (cur != null && !cur.Destroyed) cur.Destroy(DestroyMode.Vanish);
             var def = DefDatabase<ThingDef>.GetNamedSilentFail(f[1]);
             if (def == null) return;
+            // Un cadáver creado con ThingMaker no tiene al pawn muerto adentro: dibujarlo en las manos del títere tira una excepción
+            // por frame ("Exception drawing ..." en Corpse.DynamicDrawPhaseAt). Se ve al títere sin cargar nada.
+            if (typeof(Corpse).IsAssignableFrom(def.thingClass)) return;
             try
             {
                 var stuff = string.IsNullOrEmpty(f[2]) ? null : DefDatabase<ThingDef>.GetNamedSilentFail(f[2]);
-                Thing item = ThingMaker.MakeThing(def, stuff);
+                Thing item = ThingMaker.MakeThing(def, def.MadeFromStuff ? stuff : null);
                 item.stackCount = count;
                 ApplyQualityAndHp(item, int.TryParse(f[4], out int q) ? q : -1, int.TryParse(f[5], out int hp) ? hp : 0);
                 if (puppet.carryTracker.innerContainer.TryAdd(item, false))
@@ -1685,6 +1694,7 @@ namespace RimCoopMod.GameComponents
                     {
                         var w = p.GetPayload<WatchRequestPayload>();
                         _watchers.Add(w.FromPlayerId);
+                        _sentAppearances.Remove(w.FromPlayerId); // su mapa espejo es nuevo: necesita el aspecto de todos de nuevo
                         // Siempre arranca de cero: si ya lo teníamos anotado (por ej. guardó y cargó
                         // sin avisar que dejaba de mirar, o se reconectó), su mapa espejo es nuevo y no
                         // tiene nada — si asumíamos que ya tenía la foto vieja, de acá en más solo le
@@ -1700,6 +1710,7 @@ namespace RimCoopMod.GameComponents
                         var w = p.GetPayload<WatchRequestPayload>();
                         _watchers.Remove(w.FromPlayerId);
                         _sentThingSigs.Remove(w.FromPlayerId);
+                        _sentAppearances.Remove(w.FromPlayerId);
                         break;
                     }
 
@@ -2002,10 +2013,12 @@ namespace RimCoopMod.GameComponents
         {
             if (!_sentAppearances.TryGetValue(req.FromPlayerId, out var sent))
             {
-                sent = new HashSet<int>();
+                sent = new Dictionary<int, float>();
                 _sentAppearances[req.FromPlayerId] = sent;
             }
-            if (!sent.Add(req.PawnId)) return;
+            float now = Time.realtimeSinceStartup;
+            if (sent.TryGetValue(req.PawnId, out float lastSent) && now - lastSent < AppearanceResendCooldownSeconds) return;
+            sent[req.PawnId] = now;
 
             var map = LocalBaseMap;
             Pawn pawn = map?.mapPawns.AllPawnsSpawned.Concat(HeldEntities(map)).FirstOrDefault(x => x.thingIDNumber == req.PawnId);
