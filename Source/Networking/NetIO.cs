@@ -349,6 +349,8 @@ namespace RimCoopMod.Networking
                         foreach (var xml in p.SerializedPawns) bw.Write(xml ?? "");
                         for (int i = 0; i < p.SerializedPawns.Count; i++)
                             bw.Write((p.OwnerNames != null && i < p.OwnerNames.Count) ? (p.OwnerNames[i] ?? "") : "");
+                        for (int i = 0; i < p.SerializedPawns.Count; i++)
+                            bw.Write((p.Uids != null && i < p.Uids.Count) ? (p.Uids[i] ?? "") : "");
                         break;
                     }
 
@@ -555,6 +557,29 @@ namespace RimCoopMod.Networking
 
                 case PacketType.PingRequest:
                     break; // sin campos: solo importa que llegó
+
+                case PacketType.ColonistGone:
+                    {
+                        var p = (ColonistGonePayload)packet.Payload;
+                        bw.Write(p.Uids.Count);
+                        foreach (var uid in p.Uids) bw.Write(uid ?? "");
+                        break;
+                    }
+
+                case PacketType.ColonistManifest:
+                    {
+                        var p = (ColonistManifestPayload)packet.Payload;
+                        bw.Write(p.Hold.Count);
+                        foreach (var e in p.Hold)
+                        {
+                            bw.Write(e.Uid ?? "");
+                            bw.Write(e.OwnerName ?? "");
+                            bw.Write(e.Blob ?? "");
+                        }
+                        bw.Write(p.Elsewhere.Count);
+                        foreach (var uid in p.Elsewhere) bw.Write(uid ?? "");
+                        break;
+                    }
 
                 case PacketType.PingResponse:
                     {
@@ -836,6 +861,7 @@ namespace RimCoopMod.Networking
                         int count = br.ReadInt32();
                         for (int i = 0; i < count; i++) p.SerializedPawns.Add(br.ReadString());
                         for (int i = 0; i < count; i++) p.OwnerNames.Add(br.ReadString());
+                        for (int i = 0; i < count; i++) p.Uids.Add(br.ReadString());
                         return p;
                     }
 
@@ -1038,6 +1064,25 @@ namespace RimCoopMod.Networking
 
                 case PacketType.PingRequest:
                     return new PingRequestPayload();
+
+                case PacketType.ColonistGone:
+                    {
+                        var p = new ColonistGonePayload();
+                        int n = br.ReadInt32();
+                        for (int i = 0; i < n; i++) p.Uids.Add(br.ReadString());
+                        return p;
+                    }
+
+                case PacketType.ColonistManifest:
+                    {
+                        var p = new ColonistManifestPayload();
+                        int n = br.ReadInt32();
+                        for (int i = 0; i < n; i++)
+                            p.Hold.Add(new ColonistManifestEntry { Uid = br.ReadString(), OwnerName = br.ReadString(), Blob = br.ReadString() });
+                        int m = br.ReadInt32();
+                        for (int i = 0; i < m; i++) p.Elsewhere.Add(br.ReadString());
+                        return p;
+                    }
 
                 case PacketType.PingResponse:
                     return new PingResponsePayload

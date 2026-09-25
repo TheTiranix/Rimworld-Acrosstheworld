@@ -92,6 +92,7 @@ namespace RimCoopMod.GameComponents
             if (Scribe.mode == LoadSaveMode.LoadingVars) _collaboratorNames = new HashSet<string>(names ?? new List<string>());
 
             ExposeQuestData();
+            ExposePendingInteractions();
 
             var owners = _pawnOwnerNames.Select(kv => kv.Key + "=" + kv.Value).ToList();
             Scribe_Collections.Look(ref owners, "rimcoopPawnOwners", LookMode.Value);

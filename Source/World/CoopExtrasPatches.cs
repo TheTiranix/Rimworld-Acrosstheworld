@@ -46,6 +46,18 @@ namespace RimCoopMod.World
         }
     }
 
+    /// <summary>Un colono que viajó entre jugadores murió: se da de baja del registro del servidor para que no se lo reconstruya después.</summary>
+    [HarmonyPatch(typeof(Pawn), nameof(Pawn.Kill))]
+    public static class Pawn_Kill_ColonistLedger_Patch
+    {
+        [HarmonyPostfix]
+        public static void Postfix(Pawn __instance)
+        {
+            if (PuppetPawnRegistry.IsPuppet(__instance)) return;
+            CoopSessionManager.OnColonistKilled(__instance);
+        }
+    }
+
     /// <summary>
     /// El títere nunca tiene su propio Ideo real resuelto (es un objeto de la partida del dueño, no
     /// cruza — ver PawnSnapshot.IdeoName), así que se le agrega el nombre a mano en el panel de

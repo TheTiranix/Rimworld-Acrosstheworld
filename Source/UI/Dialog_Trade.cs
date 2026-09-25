@@ -111,6 +111,8 @@ namespace RimCoopMod.UI
         private readonly string _giveCsv;
         private readonly string _wantCsv;
 
+        public int OfferId => _offerId;
+
         public override Vector2 InitialSize => new Vector2(460f, 400f);
 
         public Dialog_TradeIncoming(int fromId, string fromName, int offerId, string giveCsv, string wantCsv)
@@ -122,6 +124,7 @@ namespace RimCoopMod.UI
             _wantCsv = wantCsv;
             doCloseX = false;
             closeOnClickedOutside = false;
+            closeOnCancel = false; // Esc no la descarta en silencio: queda pendiente hasta que se responda
             absorbInputAroundWindow = false;
         }
 
@@ -138,17 +141,26 @@ namespace RimCoopMod.UI
             Widgets.Label(new Rect(0f, 0f, inRect.width, 34f), $"{_fromName} te ofrece un trato");
             Text.Font = GameFont.Small;
 
-            Widgets.Label(new Rect(0f, 44f, inRect.width, inRect.height - 110f),
+            Widgets.Label(new Rect(0f, 44f, inRect.width, inRect.height - 150f),
                 "Te da:\n" + Describe(_giveCsv) + "\n\nA cambio te pide:\n" + Describe(_wantCsv));
 
-            if (Widgets.ButtonText(new Rect(0f, inRect.height - 40f, inRect.width / 2f - 6f, 36f), "Aceptar"))
+            float third = inRect.width / 3f;
+            if (Widgets.ButtonText(new Rect(0f, inRect.height - 40f, third - 6f, 36f), "Aceptar"))
             {
-                CoopSessionManager.AcceptOffer(_fromId, _fromName, _offerId, _wantCsv);
-                Close();
+                if (CoopSessionManager.AcceptOffer(_fromId, _fromName, _offerId, _wantCsv))
+                {
+                    CoopSessionManager.ResolveIncomingOffer(_offerId, _fromName);
+                    Close();
+                }
             }
-            if (Widgets.ButtonText(new Rect(inRect.width / 2f + 6f, inRect.height - 40f, inRect.width / 2f - 6f, 36f), "Rechazar"))
+            if (Widgets.ButtonText(new Rect(third + 3f, inRect.height - 40f, third - 6f, 36f), "Decidir después"))
+            {
+                Close(); // sigue pendiente: se vuelve a mostrar (también después de guardar y cargar) cuando el otro esté conectado
+            }
+            if (Widgets.ButtonText(new Rect(third * 2f + 6f, inRect.height - 40f, third - 6f, 36f), "Rechazar"))
             {
                 CoopClient.Instance.SendTradeMessage(_fromId, "reject", "", _offerId);
+                CoopSessionManager.ResolveIncomingOffer(_offerId, _fromName);
                 Close();
             }
         }

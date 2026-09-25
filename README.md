@@ -107,15 +107,23 @@ en cada caso y se adapta a los DLC que tengas:
 
 ## Guardar y cargar
 
-Cada jugador tiene su propia partida. Lo que se guarda con ella: los colaboradores, las misiones compartidas y quién es
-dueño de cada colono que te mandaron. Al cargar, las bases de los demás y sus mapas espejo se limpian y se vuelven a
-pedir al servidor, y los ids de jugador son estables por nombre (también entre reinicios del servidor).
+Cada jugador tiene su propia partida. Lo que se guarda con ella: los colaboradores, las misiones compartidas, quién es
+dueño de cada colono que te mandaron, las **ofertas de comercio** (las que mandaste y las que te mandaron y no respondiste),
+las **invitaciones a misiones** pendientes y el vínculo de las **naves comerciales compartidas**. Al cargar, las bases de los
+demás y sus mapas espejo se limpian y se vuelven a pedir al servidor, y los ids de jugador son estables por nombre (también
+entre reinicios del servidor). Lo pendiente se vuelve a mostrar (o se retoma) apenas el otro jugador está conectado; una oferta
+o invitación se puede dejar para más tarde con *Decidir después* (Esc no la descarta), y no se puede aceptar si quien la mandó
+está desconectado (su respuesta se perdería).
 
-- **Ojo con los colonos que se mandaron entre jugadores:** un colono enviado con *Colaborar* existe en UNA sola partida. Si
-  un jugador carga una partida vieja (de antes de mandarlo o de recibirlo), ese colono puede quedar **duplicado o perdido**.
-  Para evitarlo, usá **Guardar todos** (botón en el chat): todos los jugadores guardan a la vez.
-- Las ofertas de comercio y las invitaciones a misiones que estaban pendientes se pierden al cargar.
-- El vínculo de una nave comercial compartida no se guarda: al cargar, la nave sigue en cada partida pero ya no se sincroniza.
+- **Colonos enviados entre jugadores (sin duplicados ni pérdidas):** un colono enviado con *Colaborar* existe en UNA sola
+  partida a la vez, pero cada jugador guarda la suya. El **servidor recuerda quién tiene cada colono** (con una copia de cuando
+  se mandó, en `ServerData/<partida>/colonists.bin`) y al conectarse cada jugador la reconcilia: si cargaste una partida de
+  antes de mandarlo, la copia duplicada que tenías en casa se saca; si cargaste una de antes de recibirlo, se reconstruye desde
+  la copia del servidor. Un colono que murió (o se fue del mapa) se da de baja y no se "revive". Para que esto proteja una
+  partida hay que **guardarla una vez con esta versión** antes de mandar colonos; los colonos prestados antes de esta versión
+  siguen sin seguimiento. *Guardar todos* (botón en el chat) sigue siendo buena idea. Desde la consola del servidor, `colonos`
+  muestra el registro y `colono borrar <id>` destraba algo a mano.
+- Las ofertas de comercio expiran a los 30 días de juego.
 
 ## Comercio con naves comerciales (Imperio y otros)
 

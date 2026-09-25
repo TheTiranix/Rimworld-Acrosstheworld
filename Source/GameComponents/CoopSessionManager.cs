@@ -258,6 +258,7 @@ namespace RimCoopMod.GameComponents
             }
 
             FlushAreaEdits();
+            UpdateColonistLedger();
 
             if (_pendingProposePause.HasValue && Time.realtimeSinceStartup >= _voteDeadlineTick)
             {
@@ -283,6 +284,7 @@ namespace RimCoopMod.GameComponents
             }
 
             if (Find.TickManager.TicksGame % 30 == 0) WatchMirrorSettingsEdits();
+            if (Find.TickManager.TicksGame % 250 == 0) TickPendingInteractions();
             TickShared();
 
             if (_watchers.Count > 0 && Find.TickManager.TicksGame % SnapshotIntervalTicks == 0)
@@ -1469,13 +1471,15 @@ namespace RimCoopMod.GameComponents
             return owner == CoopClient.Instance.LocalPlayerId;
         }
 
-        private void HandleJoinRequest(JoinRequestPayload req)
+        // restoring: no llegó de otro jugador sino del registro del servidor (colono que faltaba, ver ColonistManifest): no se
+        // contesta ningún JoinResult ni se vuelve a "colaborar" con nadie.
+        private void HandleJoinRequest(JoinRequestPayload req, bool restoring = false)
         {
             var map = LocalBaseMap;
             if (map == null)
             {
                 CoopLog.Warning("[RimCoop] Llegaron colonos pero no tengo LocalBaseMap (¿no tenés colonia activa?).");
-                CoopClient.Instance.SendJoinResult(req.FromPlayerId, false, "No tengo una colonia activa para recibir colonos.");
+                if (!restoring) CoopClient.Instance.SendJoinResult(req.FromPlayerId, false, "No tengo una colonia activa para recibir colonos.");
                 return;
             }
 
@@ -1508,6 +1512,15 @@ namespace RimCoopMod.GameComponents
 
                     IntVec3 cell = CellFinder.RandomClosewalkCellNear(map.Center, map, 10);
                     GenSpawn.Spawn(pawn, cell, map);
+
+                    // Id estable del registro del servidor (el pawn recibió números nuevos al deserializarse, ver PawnTransfer).
+                    string uid = (req.Uids != null && i < req.Uids.Count) ? req.Uids[i] : null;
+                    if (!string.IsNullOrEmpty(uid))
+                    {
+                        _pawnUids[pawn.thingIDNumber] = uid;
+                        _pendingGoneUids.Remove(uid); // volvió a existir: ya no hay que darlo de baja
+                    }
+                    if (restoring) Messages.Message($"{pawn.LabelShortCap} volvió a tu base: el servidor tenía su copia (tu partida era anterior a su llegada).", MessageTypeDefOf.PositiveEvent, false);
 
                     // Dueño real: normalmente quien lo manda (req.FromPlayerId). Pero si quien lo manda
                     // ya lo tenía prestado de un tercero (OwnerNames[i] no vacío), respetamos a ese dueño
@@ -1542,6 +1555,12 @@ namespace RimCoopMod.GameComponents
                 {
                     CoopLog.Error("[RimCoop] Excepción al recibir un colono: " + e);
                 }
+            }
+
+            if (restoring)
+            {
+                RestorePawnOwners(); // resuelve por nombre quién es el dueño remoto, si está conectado
+                return;
             }
 
             CoopClient.Instance.SendJoinResult(req.FromPlayerId, added > 0,
@@ -1581,6 +1600,7 @@ namespace RimCoopMod.GameComponents
                         _connectedPlayerIds.Add(info.PlayerId);
                         _playerNames[info.PlayerId] = info.PlayerName;
                         RestorePawnOwners();
+                        ForceQuestResendFor(info.PlayerName); // si estaba sumado a una misión mía, se pone al día apenas vuelve
                         EnsureRemoteBase(info);
                         SendModListTo(info.PlayerId); // el que entra recibe mi lista de mods/DLC
                         if (_pendingLeaveNames.Remove(info.PlayerName)) CoopClient.Instance.SendResearchSync(info.PlayerId, "leave", ""); // corté con él mientras estaba desconectado
@@ -1723,6 +1743,10 @@ namespace RimCoopMod.GameComponents
 
                 case PacketType.BaseSnapshot:
                     ApplyBaseSnapshot(p.GetPayload<BaseSnapshotPayload>());
+                    break;
+
+                case PacketType.ColonistManifest:
+                    HandleColonistManifest(p.GetPayload<ColonistManifestPayload>());
                     break;
 
                 case PacketType.PawnAppearanceRequest:

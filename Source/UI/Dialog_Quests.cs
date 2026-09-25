@@ -58,6 +58,9 @@ namespace RimCoopMod.UI
         private readonly global::RimCoopMod.Networking.QuestMessagePayload _invite;
         private Vector2 _scroll;
 
+        public int QuestId => _invite.QuestId;
+        public string FromName => _invite.FromPlayerName;
+
         public override Vector2 InitialSize => new Vector2(560f, 480f);
 
         public Dialog_QuestInvite(global::RimCoopMod.Networking.QuestMessagePayload invite)
@@ -65,6 +68,7 @@ namespace RimCoopMod.UI
             _invite = invite;
             doCloseX = false;
             closeOnClickedOutside = false;
+            closeOnCancel = false; // Esc no la descarta en silencio: queda pendiente hasta que se responda
             absorbInputAroundWindow = false;
         }
 
@@ -87,14 +91,23 @@ namespace RimCoopMod.UI
             Widgets.Label(new Rect(0f, 0f, viewRect.width, h), _invite.Description);
             Widgets.EndScrollView();
 
-            if (Widgets.ButtonText(new Rect(0f, inRect.height - 40f, inRect.width / 2f - 6f, 36f), "Sumarme"))
+            float third = inRect.width / 3f;
+            if (Widgets.ButtonText(new Rect(0f, inRect.height - 40f, third - 6f, 36f), "Sumarme"))
             {
-                CoopSessionManager.AcceptQuestInvite(_invite);
-                Close();
+                if (CoopSessionManager.AcceptQuestInvite(_invite))
+                {
+                    CoopSessionManager.ResolveQuestInvite(_invite);
+                    Close();
+                }
             }
-            if (Widgets.ButtonText(new Rect(inRect.width / 2f + 6f, inRect.height - 40f, inRect.width / 2f - 6f, 36f), "Rechazar"))
+            if (Widgets.ButtonText(new Rect(third + 3f, inRect.height - 40f, third - 6f, 36f), "Decidir después"))
+            {
+                Close(); // sigue pendiente: se vuelve a mostrar (también después de guardar y cargar) cuando el otro esté conectado
+            }
+            if (Widgets.ButtonText(new Rect(third * 2f + 6f, inRect.height - 40f, third - 6f, 36f), "Rechazar"))
             {
                 global::RimCoopMod.Networking.CoopClient.Instance.SendQuestMessage(_invite.FromPlayerId, "decline", _invite.QuestId, _invite.Name, "", 0, 0, 0);
+                CoopSessionManager.ResolveQuestInvite(_invite);
                 Close();
             }
         }

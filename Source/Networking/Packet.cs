@@ -49,7 +49,29 @@ namespace RimCoopMod.Networking
 
         // ---- Lista de servidores guardados (estilo Half-Life/CS) ----
         PingRequest = 34,  // conexión corta y aparte, sin handshake: "¿estás vivo?"
-        PingResponse = 35  // el server contesta con su versión y cuántos jugadores tiene conectados AHORA
+        PingResponse = 35, // el server contesta con su versión y cuántos jugadores tiene conectados AHORA
+
+        // ---- Registro de colonos enviados (para no duplicarlos ni perderlos si alguien carga una partida vieja) ----
+        ColonistGone = 36,     // un colono que yo tenía murió o ya no está: el server lo saca del registro
+        ColonistManifest = 37  // al entrar, el server me dice qué colonos tengo que tener (con copia) y cuáles están en otro lado
+    }
+
+    public class ColonistGonePayload
+    {
+        public List<string> Uids = new List<string>();
+    }
+
+    public class ColonistManifestEntry
+    {
+        public string Uid;
+        public string OwnerName;
+        public string Blob; // el colono serializado, tal como se mandó la última vez
+    }
+
+    public class ColonistManifestPayload
+    {
+        public List<ColonistManifestEntry> Hold = new List<ColonistManifestEntry>(); // los que me tocan a mí
+        public List<string> Elsewhere = new List<string>();                          // ids de los que están en otro jugador
     }
 
     public class PingRequestPayload
@@ -112,7 +134,7 @@ namespace RimCoopMod.Networking
     public static class ProtocolInfo
     {
         /// <summary>Subir cada vez que cambia el formato de un paquete. Mod y servidor tienen que coincidir.</summary>
-        public const int Version = 21;
+        public const int Version = 22;
     }
 
     public class ServerInfoPayload
@@ -343,6 +365,8 @@ namespace RimCoopMod.Networking
         public int FromPlayerId;
         public int ToPlayerId;
         public List<string> SerializedPawns = new List<string>();
+        // Identificador estable de cada colono (mismo índice que SerializedPawns) para el registro del servidor. Vacío = sin registro.
+        public List<string> Uids = new List<string>();
         // Dueño real de cada colono (mismo índice que SerializedPawns), por NOMBRE (el id cambia entre sesiones).
         // Vacío = "el dueño soy yo, quien lo manda" (caso normal). Si no es vacío es porque yo mismo lo tenía
         // prestado de otro jugador y se lo estoy reenviando/devolviendo: el destino tiene que respetar a ese

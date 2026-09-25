@@ -206,7 +206,13 @@ namespace RimCoopMod.Networking
             NetIO.SendPacket(_stream, Packet.Create(PacketType.PawnOrder, payload));
         }
 
-        public void SendJoinRequest(int hostPlayerId, System.Collections.Generic.List<string> serializedPawns, System.Collections.Generic.List<string> ownerNames = null)
+        public void SendColonistGone(System.Collections.Generic.List<string> uids)
+        {
+            if (!IsConnected || uids == null || uids.Count == 0) return;
+            NetIO.SendPacket(_stream, Packet.Create(PacketType.ColonistGone, new ColonistGonePayload { Uids = uids }));
+        }
+
+        public void SendJoinRequest(int hostPlayerId, System.Collections.Generic.List<string> serializedPawns, System.Collections.Generic.List<string> ownerNames = null, System.Collections.Generic.List<string> uids = null)
         {
             if (!IsConnected)
             {
@@ -219,7 +225,8 @@ namespace RimCoopMod.Networking
                 FromPlayerId = LocalPlayerId,
                 ToPlayerId = hostPlayerId,
                 SerializedPawns = serializedPawns,
-                OwnerNames = ownerNames ?? new System.Collections.Generic.List<string>()
+                OwnerNames = ownerNames ?? new System.Collections.Generic.List<string>(),
+                Uids = uids ?? new System.Collections.Generic.List<string>()
             }));
             CoopLog.Message($"[RimCoop] JoinRequest enviado a jugador {hostPlayerId} con {serializedPawns.Count} colono(s) (yo soy el jugador {LocalPlayerId}).");
         }

@@ -88,6 +88,8 @@ namespace RimCoopServer
                     Console.WriteLine("  ban <nombre|id> [motivo]   lo saca y no lo deja volver a entrar (por nombre)");
                     Console.WriteLine("  unban <nombre>             le permite volver a entrar");
                     Console.WriteLine("  bans                       lista los baneados");
+                    Console.WriteLine("  colonos                    registro de colonos enviados entre jugadores (quién los tiene)");
+                    Console.WriteLine("  colono borrar <id>         saca un colono del registro (para destrabar algo a mano)");
                     Console.WriteLine("  salir                      apaga el servidor");
                     Console.WriteLine("  Los nombres con espacios van entre comillas: kick \"Juan Perez\" spam");
                     return true;
@@ -135,6 +137,23 @@ namespace RimCoopServer
                         if (tokens.Count < 2) { Console.WriteLine("Uso: unban <nombre>"); return true; }
                         string name = RestOfLine(line, 1);
                         Console.WriteLine(server.Unban(tokens[1]) || server.Unban(name) ? $"Se desbaneó a {name}." : $"'{name}' no estaba baneado.");
+                        return true;
+                    }
+
+                case "colonos":
+                    {
+                        var list = server.GetRegisteredColonists();
+                        if (list.Count == 0) { Console.WriteLine("El registro de colonos está vacío."); return true; }
+                        Console.WriteLine($"{list.Count} colono(s) registrado(s):");
+                        foreach (var c in list)
+                            Console.WriteLine($"  {c.Uid}  dueño: {c.Owner}  lo tiene: {c.Holder}  (copia de {c.BlobBytes / 1024} KB)");
+                        return true;
+                    }
+
+                case "colono":
+                    {
+                        if (tokens.Count < 3 || !string.Equals(tokens[1], "borrar", StringComparison.OrdinalIgnoreCase)) { Console.WriteLine("Uso: colono borrar <id>"); return true; }
+                        Console.WriteLine(server.ForgetColonist(tokens[2]) ? "Se sacó del registro." : "No hay un colono con ese id en el registro (mirá 'colonos').");
                         return true;
                     }
 

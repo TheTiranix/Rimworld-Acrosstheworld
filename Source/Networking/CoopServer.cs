@@ -35,6 +35,20 @@ namespace RimCoopMod.Networking
         private readonly HashSet<string> _bannedNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         private string _bansPath;
 
+        // Registro de colonos enviados entre jugadores: quién tiene cada uno ahora y una copia de cuando se mandó. Es lo único que
+        // sobrevive a que un jugador cargue una partida vieja (ver ColonistManifest): con esto se detecta el colono que quedó
+        // duplicado (lo tiene en casa y ya estaba en otro lado) o perdido (el otro cargó antes de recibirlo) y se corrige solo.
+        private class ColonistRecord
+        {
+            public string Uid;
+            public string OwnerName;
+            public string HolderName;
+            public string Blob;
+        }
+
+        private readonly Dictionary<string, ColonistRecord> _colonists = new Dictionary<string, ColonistRecord>();
+        private string _colonistsPath;
+
         private LanDiscovery.Responder _lanResponder;
         private int _port;
         public string SaveName { get; private set; } = "default";
@@ -76,11 +90,13 @@ namespace RimCoopMod.Networking
             string folder = dataFolder ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ServerData");
             _playerIdsPath = Path.Combine(folder, "player_ids.txt");
             _bansPath = Path.Combine(folder, "banned_players.txt");
+            _colonistsPath = Path.Combine(folder, "colonists.bin");
             _port = port;
             if (dataFolder != null) SaveName = new DirectoryInfo(dataFolder).Name;
 
             LoadPlayerIds();
             LoadBans();
+            LoadColonists();
 
             _listener = new TcpListener(IPAddress.Any, port);
             _listener.Start();
@@ -261,6 +277,9 @@ namespace RimCoopMod.Networking
                 // 3. Avisar a los demás que se unió
                 Broadcast(Packet.Create(PacketType.PlayerJoined, _players[handle.PlayerId]), excludePlayerId: handle.PlayerId);
 
+                // Qué colonos le tocan y cuáles están en otro lado: con esto corrige duplicados o pérdidas de partidas viejas.
+                SendColonistManifest(handle);
+
                 CoopLog.Message($"[RimCoop] {handle.PlayerName} (id {handle.PlayerId}) se conectó.");
 
                 // 4. Loop de recepción normal
@@ -340,7 +359,12 @@ namespace RimCoopMod.Networking
                     RouteTo(p.GetPayload<PawnOrderPayload>().ToPlayerId, p);
                     break;
 
+                case PacketType.ColonistGone:
+                    RemoveColonists(from, p.GetPayload<ColonistGonePayload>());
+                    break;
+
                 case PacketType.JoinRequest:
+                    RecordTransfers(from, p.GetPayload<JoinRequestPayload>());
                     RouteTo(p.GetPayload<JoinRequestPayload>().ToPlayerId, p);
                     break;
 
@@ -438,6 +462,152 @@ namespace RimCoopMod.Networking
                 case PacketType.PawnSettingRequest:
                     RouteTo(p.GetPayload<PawnSettingPayload>().ToPlayerId, p);
                     break;
+            }
+        }
+
+        // ---- Registro de colonos ----
+
+        private string NameOfPlayer(int playerId)
+        {
+            if (_clients.TryGetValue(playerId, out var c)) return c.PlayerName;
+            lock (_nameToId)
+            {
+                foreach (var kv in _nameToId) if (kv.Value == playerId) return kv.Key;
+            }
+            return null;
+        }
+
+        // Un colono viajó: queda anotado quién lo tiene ahora (aunque el destino esté desconectado, lo recibe al entrar) y su copia.
+        private void RecordTransfers(ClientHandle from, JoinRequestPayload req)
+        {
+            if (req?.Uids == null || req.Uids.Count == 0) return;
+            string holder = NameOfPlayer(req.ToPlayerId);
+            if (string.IsNullOrEmpty(holder)) return;
+
+            lock (_colonists)
+            {
+                for (int i = 0; i < req.Uids.Count && i < req.SerializedPawns.Count; i++)
+                {
+                    string uid = req.Uids[i];
+                    if (string.IsNullOrEmpty(uid)) continue;
+                    string owner = (req.OwnerNames != null && i < req.OwnerNames.Count && !string.IsNullOrEmpty(req.OwnerNames[i])) ? req.OwnerNames[i] : from.PlayerName;
+                    _colonists[uid] = new ColonistRecord { Uid = uid, OwnerName = owner, HolderName = holder, Blob = req.SerializedPawns[i] };
+                }
+                SaveColonists();
+            }
+        }
+
+        // Solo lo da de baja quien lo tiene: si un jugador con una copia vieja avisara que "murió", no puede borrar el registro del que sigue vivo en otro lado.
+        private void RemoveColonists(ClientHandle from, ColonistGonePayload gone)
+        {
+            if (gone?.Uids == null || gone.Uids.Count == 0) return;
+            lock (_colonists)
+            {
+                bool changed = false;
+                foreach (var uid in gone.Uids)
+                {
+                    if (_colonists.TryGetValue(uid, out var rec) && string.Equals(rec.HolderName, from.PlayerName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        _colonists.Remove(uid);
+                        changed = true;
+                    }
+                }
+                if (changed) SaveColonists();
+            }
+        }
+
+        private void SendColonistManifest(ClientHandle handle)
+        {
+            var manifest = new ColonistManifestPayload();
+            lock (_colonists)
+            {
+                foreach (var rec in _colonists.Values)
+                {
+                    if (string.Equals(rec.HolderName, handle.PlayerName, StringComparison.OrdinalIgnoreCase))
+                        manifest.Hold.Add(new ColonistManifestEntry { Uid = rec.Uid, OwnerName = rec.OwnerName, Blob = rec.Blob });
+                    else
+                        manifest.Elsewhere.Add(rec.Uid);
+                }
+            }
+            if (manifest.Hold.Count == 0 && manifest.Elsewhere.Count == 0) return;
+            try { NetIO.SendPacket(handle.Stream, Packet.Create(PacketType.ColonistManifest, manifest)); }
+            catch (Exception e) { CoopLog.Warning("[RimCoop] No se pudo mandar el registro de colonos a " + handle.PlayerName + ": " + e.Message); }
+        }
+
+        public class ColonistListEntry
+        {
+            public string Uid;
+            public string Owner;
+            public string Holder;
+            public int BlobBytes;
+        }
+
+        public List<ColonistListEntry> GetRegisteredColonists()
+        {
+            lock (_colonists)
+            {
+                return _colonists.Values.OrderBy(r => r.OwnerName).ThenBy(r => r.Uid)
+                    .Select(r => new ColonistListEntry { Uid = r.Uid, Owner = r.OwnerName, Holder = r.HolderName, BlobBytes = (r.Blob ?? "").Length }).ToList();
+            }
+        }
+
+        /// <summary>Borra un colono del registro (por si hace falta destrabar algo a mano desde la consola).</summary>
+        public bool ForgetColonist(string uid)
+        {
+            lock (_colonists)
+            {
+                bool removed = _colonists.Remove(uid);
+                if (removed) SaveColonists();
+                return removed;
+            }
+        }
+
+        private void LoadColonists()
+        {
+            try
+            {
+                if (!File.Exists(_colonistsPath)) return;
+                using (var br = new BinaryReader(File.OpenRead(_colonistsPath)))
+                {
+                    int n = br.ReadInt32();
+                    for (int i = 0; i < n; i++)
+                    {
+                        var rec = new ColonistRecord { Uid = br.ReadString(), OwnerName = br.ReadString(), HolderName = br.ReadString(), Blob = br.ReadString() };
+                        _colonists[rec.Uid] = rec;
+                    }
+                }
+                if (_colonists.Count > 0) CoopLog.Message($"[RimCoop] Se cargaron {_colonists.Count} colono(s) del registro de traspasos desde {_colonistsPath}");
+            }
+            catch (Exception e)
+            {
+                CoopLog.Warning("[RimCoop] No se pudo cargar el registro de colonos: " + e.Message);
+            }
+        }
+
+        // Llamar siempre adentro de un lock(_colonists). Se escribe a un archivo temporal y se reemplaza: un corte a mitad no lo deja roto.
+        private void SaveColonists()
+        {
+            try
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(_colonistsPath));
+                string tmp = _colonistsPath + ".tmp";
+                using (var bw = new BinaryWriter(File.Create(tmp)))
+                {
+                    bw.Write(_colonists.Count);
+                    foreach (var rec in _colonists.Values)
+                    {
+                        bw.Write(rec.Uid ?? "");
+                        bw.Write(rec.OwnerName ?? "");
+                        bw.Write(rec.HolderName ?? "");
+                        bw.Write(rec.Blob ?? "");
+                    }
+                }
+                if (File.Exists(_colonistsPath)) File.Delete(_colonistsPath);
+                File.Move(tmp, _colonistsPath);
+            }
+            catch (Exception e)
+            {
+                CoopLog.Warning("[RimCoop] No se pudo guardar el registro de colonos: " + e.Message);
             }
         }
 

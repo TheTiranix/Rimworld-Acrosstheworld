@@ -132,7 +132,7 @@ namespace RimCoopMod.GameComponents
             {
                 case "invite":
                     if (!IsCollaborator(m.FromPlayerId)) return; // solo de quienes colaboran conmigo
-                    Find.WindowStack.Add(new Dialog_QuestInvite(m));
+                    AddIncomingQuestInvite(m);
                     break;
 
                 case "accept":
@@ -170,10 +170,18 @@ namespace RimCoopMod.GameComponents
         }
 
         /// <summary>Participante: acepta la invitación. La misión entera llega enseguida desde el dueño.</summary>
-        public static void AcceptQuestInvite(QuestMessagePayload invite)
+        public static bool AcceptQuestInvite(QuestMessagePayload invite)
         {
+            // Si el dueño está desconectado el aviso se pierde y él nunca se entera de que me sumé.
+            if (!IsPlayerOnline(invite.FromPlayerId))
+            {
+                Messages.Message($"{invite.FromPlayerName} no está conectado: esperá a que vuelva para sumarte a la misión.", MessageTypeDefOf.RejectInput, false);
+                return false;
+            }
+
             CoopClient.Instance.SendQuestMessage(invite.FromPlayerId, "accept", invite.QuestId, invite.Name, "", (int)QuestState.Ongoing, invite.Rating, 0);
             Messages.Message($"Te sumaste a la misión. Su dificultad ahora es ×{QuestMultiplier(invite.Participants + 1):0.##}.", MessageTypeDefOf.NeutralEvent, false);
+            return true;
         }
 
         // Copias de misiones de otros jugadores: no corren su propia lógica (la corre el dueño), solo se muestran.

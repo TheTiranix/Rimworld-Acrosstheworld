@@ -132,7 +132,7 @@ namespace RimCoopMod.GameComponents
             if (instance == null) return;
             int offerId = UnityEngine.Random.Range(1, int.MaxValue);
             var msg = new TradeMessagePayload { ToPlayerId = toPlayerId, Kind = "offer", OfferId = offerId, Data = giveCsv + "#" + wantCsv };
-            instance._pendingOffersSent[offerId] = msg;
+            instance.RegisterSentOffer(offerId, msg);
             CoopClient.Instance.SendTradeMessage(toPlayerId, "offer", msg.Data, offerId);
         }
 
@@ -151,13 +151,13 @@ namespace RimCoopMod.GameComponents
                 case "offer":
                     {
                         var parts = (m.Data ?? "").Split('#');
-                        Find.WindowStack.Add(new Dialog_TradeIncoming(m.FromPlayerId, m.FromPlayerName, m.OfferId,
-                            parts.Length > 0 ? parts[0] : "", parts.Length > 1 ? parts[1] : ""));
+                        AddIncomingOffer(m.FromPlayerId, m.FromPlayerName, m.OfferId,
+                            parts.Length > 0 ? parts[0] : "", parts.Length > 1 ? parts[1] : "");
                         break;
                     }
 
                 case "reject":
-                    _pendingOffersSent.Remove(m.OfferId);
+                    ForgetSentOffer(m.OfferId);
                     Messages.Message($"{m.FromPlayerName} rechazó tu oferta de comercio.", MessageTypeDefOf.RejectInput, false);
                     break;
 
@@ -165,7 +165,7 @@ namespace RimCoopMod.GameComponents
                     {
                         // El otro aceptó y ya me mandó lo que yo pedía: ahora cumplo mi parte.
                         if (!_pendingOffersSent.TryGetValue(m.OfferId, out var sent)) break;
-                        _pendingOffersSent.Remove(m.OfferId);
+                        ForgetSentOffer(m.OfferId);
                         var give = ParseSimpleItems(sent.Data.Split('#')[0]);
                         string removed = RemoveItems(LocalBaseMap, give);
                         CoopClient.Instance.SendTradeMessage(m.FromPlayerId, "transfer", removed);
@@ -180,8 +180,15 @@ namespace RimCoopMod.GameComponents
         }
 
         /// <summary>El receptor aceptó la oferta: saca lo que le piden (si lo tiene), se lo manda al oferente y le avisa.</summary>
-        public static void AcceptOffer(int fromPlayerId, string fromName, int offerId, string wantCsv)
+        public static bool AcceptOffer(int fromPlayerId, string fromName, int offerId, string wantCsv)
         {
+            // Los mensajes a un jugador desconectado se pierden: si acepto ahora, mis ítems saldrían y nunca llegarían.
+            if (!IsPlayerOnline(fromPlayerId))
+            {
+                Messages.Message($"{fromName} no está conectado: esperá a que vuelva para aceptar el trato.", MessageTypeDefOf.RejectInput, false);
+                return false;
+            }
+
             var map = LocalBaseMap;
             var want = ParseSimpleItems(wantCsv);
             var stock = AggregateStock(map);
@@ -193,13 +200,14 @@ namespace RimCoopMod.GameComponents
                 {
                     Messages.Message($"No tenés suficiente {def?.label ?? kv.Key} para aceptar el trato.", MessageTypeDefOf.RejectInput, false);
                     CoopClient.Instance.SendTradeMessage(fromPlayerId, "reject", "", offerId);
-                    return;
+                    return true; // la oferta quedó resuelta (rechazada)
                 }
             }
 
             string removed = RemoveItems(map, want);
             CoopClient.Instance.SendTradeMessage(fromPlayerId, "transfer", removed);
             CoopClient.Instance.SendTradeMessage(fromPlayerId, "accept", "", offerId);
+            return true;
         }
 
         // =====================================================================

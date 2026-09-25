@@ -87,6 +87,7 @@ namespace RimCoopMod.GameComponents
         private void HandleShipMessage(ShipMessagePayload m)
         {
             if (!IsCollaborator(m.FromPlayerId)) return;
+            TryRestoreShipLinks(); // un "update"/"depart" puede llegar antes del primer tick después de cargar
 
             switch (m.Kind)
             {
@@ -137,7 +138,9 @@ namespace RimCoopMod.GameComponents
         /// <summary>Cada ~5 s: si el stock de una nave compartida cambió (alguien compró o vendió) se avisa; si se fue, también.</summary>
         private void TickShips()
         {
-            if (_shipLinks.Count == 0 || !CoopClient.Instance.IsConnected) return;
+            if (!CoopClient.Instance.IsConnected) return;
+            TryRestoreShipLinks();
+            if (_shipLinks.Count == 0) return;
 
             foreach (var link in _shipLinks.ToList())
             {
