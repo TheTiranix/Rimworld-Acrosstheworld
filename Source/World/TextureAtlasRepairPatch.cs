@@ -42,12 +42,12 @@ namespace RimCoopMod.World
                 }
                 trav.Field("frameAssignments").SetValue(rebuilt);
 
-                if (_repairs++ < 3) CoopLog.Warning("[RimCoop] Se reparó el atlas de texturas de pawns (un pawn cambió de número mientras estaba en el atlas): " + __exception.GetType().Name);
+                if (_repairs++ < 3) CoopLog.Warning(Loc.T("TextureAtlasRepairPatch.01", __exception.GetType().Name));
                 return null; // error absorbido: no se repite en cada frame
             }
             catch (Exception e)
             {
-                CoopLog.Warning("[RimCoop] No se pudo reparar el atlas de texturas de pawns: " + e.Message);
+                CoopLog.Warning(Loc.T("TextureAtlasRepairPatch.02", e.Message));
                 return __exception;
             }
         }

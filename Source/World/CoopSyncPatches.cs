@@ -159,13 +159,13 @@ namespace RimCoopMod.World
 
             if (!CoopSessionManager.CanLocalPlayerCommand(caller))
             {
-                Messages.Message("Ese no es tu colono.", MessageTypeDefOf.RejectInput, false);
+                Messages.Message(Loc.T("SyncPatches.01"), MessageTypeDefOf.RejectInput, false);
                 return false;
             }
 
             var def = Traverse.Create(__instance).Field("def").GetValue<RoyalTitlePermitDef>();
             CoopClient.Instance.SendPawnSetting(info.HostPlayerId, info.HostPawnId, "permit", def?.defName ?? "", target.Cell.x + "," + target.Cell.z);
-            Messages.Message("Se pidió usar el permiso en la base del dueño.", MessageTypeDefOf.NeutralEvent, false);
+            Messages.Message(Loc.T("SyncPatches.02"), MessageTypeDefOf.NeutralEvent, false);
             return false;
         }
     }

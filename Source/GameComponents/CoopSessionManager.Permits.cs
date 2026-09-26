@@ -18,8 +18,8 @@ namespace RimCoopMod.GameComponents
             {
                 var permitDef = DefDatabase<RoyalTitlePermitDef>.GetNamedSilentFail(permitDefName);
                 var permit = pawn.royalty?.AllFactionPermits.FirstOrDefault(fp => fp.Permit == permitDef);
-                if (permit == null) { CoopLog.Warning($"[RimCoop] {pawn.LabelShortCap} no tiene el permiso {permitDefName}."); return; }
-                if (permit.OnCooldown) { CoopClient.Instance.SendJoinResult(_pawnOwners.TryGetValue(pawn.thingIDNumber, out var o) ? o : 0, false, "Ese permiso está en enfriamiento."); return; }
+                if (permit == null) { CoopLog.Warning(Loc.T("SessionManager_Permits.01", pawn.LabelShortCap, permitDefName)); return; }
+                if (permit.OnCooldown) { CoopClient.Instance.SendJoinResult(_pawnOwners.TryGetValue(pawn.thingIDNumber, out var o) ? o : 0, false, Loc.Wire("SessionManager_Permits.02")); return; }
 
                 var worker = permit.Permit.Worker as RoyalTitlePermitWorker_Targeted;
                 if (worker == null) return;
@@ -35,11 +35,11 @@ namespace RimCoopMod.GameComponents
                 if (t.Field("faction").FieldExists()) t.Field("faction").SetValue(permit.Faction);
 
                 worker.OrderForceTarget(new LocalTargetInfo(new IntVec3(x, 0, z)));
-                CoopLog.Message($"[RimCoop] Permiso {permitDefName} usado por {pawn.LabelShortCap} en ({x},{z}).");
+                CoopLog.Message(Loc.T("SessionManager_Permits.03", permitDefName, pawn.LabelShortCap, x, z));
             }
             catch (Exception e)
             {
-                CoopLog.Warning($"[RimCoop] Error usando el permiso {permitDefName}: {e.Message}");
+                CoopLog.Warning(Loc.T("SessionManager_Permits.04", permitDefName, e.Message));
             }
         }
     }

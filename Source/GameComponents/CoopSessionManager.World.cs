@@ -84,7 +84,7 @@ namespace RimCoopMod.GameComponents
             }
             catch (Exception e)
             {
-                CoopLog.Warning($"[RimCoop] No se pudo convertir el títere {puppet.LabelShortCap} en cadáver: {e.Message}");
+                CoopLog.Warning(Loc.T("SessionManager_World.01", puppet.LabelShortCap, e.Message));
             }
         }
 
@@ -300,7 +300,7 @@ namespace RimCoopMod.GameComponents
             }
             catch (Exception e)
             {
-                CoopLog.Warning($"[RimCoop] No se pudo copiar el estado de {t.def.defName}: {e.Message}");
+                CoopLog.Warning(Loc.T("SessionManager_World.02", t.def.defName, e.Message));
             }
         }
 
@@ -372,7 +372,7 @@ namespace RimCoopMod.GameComponents
                 }
                 catch (Exception e)
                 {
-                    CoopLog.Warning($"[RimCoop] No se pudo copiar la receta {recipe.defName}: {e.Message}");
+                    CoopLog.Warning(Loc.T("SessionManager_World.03", recipe.defName, e.Message));
                 }
             }
 
@@ -410,7 +410,7 @@ namespace RimCoopMod.GameComponents
             Thing t = FindThingById(map, id);
             if (t == null) return true;
             if (EditableState(t) != req.StuffDefName) ApplyStateParts(t, req.StuffDefName);
-            CoopLog.Message($"[RimCoop] Jugador {req.FromPlayerId} cambió el estado de {t.def.defName}.");
+            CoopLog.Message(Loc.T("SessionManager_World.04", req.FromPlayerId, t.def.defName));
             return true;
         }
 
@@ -530,7 +530,7 @@ namespace RimCoopMod.GameComponents
                     }
                 }
             }
-            catch (Exception e) { CoopLog.Warning($"[RimCoop] No se pudieron copiar los pisos: {e.Message}"); }
+            catch (Exception e) { CoopLog.Warning(Loc.T("SessionManager_World.05", e.Message)); }
 
             // ---- nieve ----
             try
@@ -552,7 +552,7 @@ namespace RimCoopMod.GameComponents
                     }
                 }
             }
-            catch (Exception e) { CoopLog.Warning($"[RimCoop] No se pudo copiar la nieve: {e.Message}"); }
+            catch (Exception e) { CoopLog.Warning(Loc.T("SessionManager_World.06", e.Message)); }
 
             // ---- Biotech: contaminación del terreno ----
             if (ModsConfig.BiotechActive && map.pollutionGrid != null)
@@ -576,7 +576,7 @@ namespace RimCoopMod.GameComponents
                         }
                     }
                 }
-                catch (Exception e) { CoopLog.Warning($"[RimCoop] No se pudo copiar la contaminación: {e.Message}"); }
+                catch (Exception e) { CoopLog.Warning(Loc.T("SessionManager_World.07", e.Message)); }
             }
 
             // ---- clima: condiciones del mapa real ----
@@ -649,13 +649,13 @@ namespace RimCoopMod.GameComponents
                     }
                     catch (Exception e)
                     {
-                        CoopLog.Warning($"[RimCoop] No se pudo crear la planta {def.defName}: {e.Message}");
+                        CoopLog.Warning(Loc.T("SessionManager_World.08", def.defName, e.Message));
                     }
                 }
             }
             catch (Exception e)
             {
-                CoopLog.Warning($"[RimCoop] No se pudieron copiar las plantas: {e.Message}");
+                CoopLog.Warning(Loc.T("SessionManager_World.09", e.Message));
             }
         }
     }

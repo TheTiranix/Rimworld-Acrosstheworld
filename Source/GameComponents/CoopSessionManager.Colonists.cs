@@ -97,7 +97,7 @@ namespace RimCoopMod.GameComponents
             var manifest = _pendingManifest;
             _pendingManifest = null;
             try { ReconcileColonists(manifest); }
-            catch (Exception e) { CoopLog.Error("[RimCoop] Error reconciliando los colonos con el servidor: " + e); }
+            catch (Exception e) { CoopLog.Error(Loc.T("SessionManager_Colonists.01", e)); }
         }
 
         private void ReconcileColonists(ColonistManifestPayload manifest)
@@ -143,19 +143,19 @@ namespace RimCoopMod.GameComponents
                 try { pawn.Destroy(DestroyMode.Vanish); }
                 finally { PawnTransfer.SuppressRelationLossOnDestroy = false; }
 
-                CoopLog.Message($"[RimCoop] Colono duplicado {name} ({uid}): ya estaba en otra base, se sacó la copia de acá.");
-                Messages.Message($"{name} ya estaba en la base de otro jugador (esta partida es anterior a cuando lo mandaste): se sacó la copia duplicada.", MessageTypeDefOf.NeutralEvent, false);
+                CoopLog.Message(Loc.T("SessionManager_Colonists.02", name, uid));
+                Messages.Message(Loc.T("SessionManager_Colonists.03", name), MessageTypeDefOf.NeutralEvent, false);
             }
             catch (Exception e)
             {
-                CoopLog.Warning($"[RimCoop] No se pudo sacar el colono duplicado {uid}: {e.Message}");
+                CoopLog.Warning(Loc.T("SessionManager_Colonists.04", uid, e.Message));
             }
         }
 
         private void RestoreColonist(ColonistManifestEntry entry)
         {
             if (string.IsNullOrEmpty(entry.Blob)) return;
-            CoopLog.Message($"[RimCoop] Falta el colono {entry.Uid} (esta partida es anterior a su llegada): se lo reconstruye desde la copia del servidor.");
+            CoopLog.Message(Loc.T("SessionManager_Colonists.05", entry.Uid));
             var req = new JoinRequestPayload { FromPlayerId = -1, ToPlayerId = CoopClient.Instance.LocalPlayerId };
             req.SerializedPawns.Add(entry.Blob);
             req.OwnerNames.Add(entry.OwnerName ?? "");

@@ -26,7 +26,7 @@ namespace RimCoopMod.World
             }
             catch (Exception e)
             {
-                CoopLog.Warning("[RimCoop] Error al serializar una misión compartida: " + e.Message);
+                CoopLog.Warning(Loc.T("QuestTransfer.01", e.Message));
                 return null;
             }
             finally
@@ -53,7 +53,7 @@ namespace RimCoopMod.World
             }
             catch (Exception e)
             {
-                CoopLog.Warning("[RimCoop] Error al reconstruir una misión compartida: " + e.Message);
+                CoopLog.Warning(Loc.T("QuestTransfer.02", e.Message));
                 return null;
             }
             finally

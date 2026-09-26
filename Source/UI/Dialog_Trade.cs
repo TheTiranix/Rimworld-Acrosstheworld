@@ -54,24 +54,24 @@ namespace RimCoopMod.UI
         public override void DoWindowContents(Rect inRect)
         {
             Text.Font = GameFont.Medium;
-            Widgets.Label(new Rect(0f, 0f, inRect.width, 34f), $"Comerciar con {_partnerName}");
+            Widgets.Label(new Rect(0f, 0f, inRect.width, 34f), Loc.T("Dialog_Trade.01", _partnerName));
             Text.Font = GameFont.Small;
 
             float colW = (inRect.width - 20f) / 2f;
             float top = 44f;
             float listH = inRect.height - top - 60f;
 
-            DrawColumn(new Rect(0f, top, colW, listH), "Vos das", _myStock, _give, ref _scrollMine, "g");
+            DrawColumn(new Rect(0f, top, colW, listH), Loc.T("Dialog_Trade.02"), _myStock, _give, ref _scrollMine, "g");
             if (_partnerStock == null)
-                Widgets.Label(new Rect(colW + 20f, top, colW, 30f), "Pidiendo el stock de " + _partnerName + "…");
+                Widgets.Label(new Rect(colW + 20f, top, colW, 30f), Loc.T("Dialog_Trade.15", _partnerName));
             else
-                DrawColumn(new Rect(colW + 20f, top, colW, listH), "Vos pedís", _partnerStock, _want, ref _scrollTheirs, "w");
+                DrawColumn(new Rect(colW + 20f, top, colW, listH), Loc.T("Dialog_Trade.03"), _partnerStock, _want, ref _scrollTheirs, "w");
 
             bool anything = _give.Values.Any(v => v > 0) || _want.Values.Any(v => v > 0);
-            if (Widgets.ButtonText(new Rect(inRect.width / 2f - 100f, inRect.height - 44f, 200f, 36f), "Enviar oferta") && anything)
+            if (Widgets.ButtonText(new Rect(inRect.width / 2f - 100f, inRect.height - 44f, 200f, 36f), Loc.T("Dialog_Trade.04")) && anything)
             {
                 CoopSessionManager.SendOffer(_partnerId, CoopSessionManager.SimpleItemsToCsv(_give), CoopSessionManager.SimpleItemsToCsv(_want));
-                Messages.Message("Oferta enviada a " + _partnerName + ".", RimWorld.MessageTypeDefOf.NeutralEvent, false);
+                Messages.Message(Loc.T("Dialog_Trade.16", _partnerName), RimWorld.MessageTypeDefOf.NeutralEvent, false);
                 Close();
             }
         }
@@ -131,21 +131,21 @@ namespace RimCoopMod.UI
         private static string Describe(string csv)
         {
             var items = CoopSessionManager.ParseSimpleItems(csv);
-            if (items.Count == 0) return "  (nada)";
+            if (items.Count == 0) return Loc.T("Dialog_Trade.05");
             return string.Join("\n", items.Select(kv => "  • " + (DefDatabase<ThingDef>.GetNamedSilentFail(kv.Key)?.LabelCap.ToString() ?? kv.Key) + " x" + kv.Value));
         }
 
         public override void DoWindowContents(Rect inRect)
         {
             Text.Font = GameFont.Medium;
-            Widgets.Label(new Rect(0f, 0f, inRect.width, 34f), $"{_fromName} te ofrece un trato");
+            Widgets.Label(new Rect(0f, 0f, inRect.width, 34f), Loc.T("Dialog_Trade.06", _fromName));
             Text.Font = GameFont.Small;
 
             Widgets.Label(new Rect(0f, 44f, inRect.width, inRect.height - 150f),
-                "Te da:\n" + Describe(_giveCsv) + "\n\nA cambio te pide:\n" + Describe(_wantCsv));
+                Loc.T("Dialog_Trade.17", Describe(_giveCsv), Describe(_wantCsv)));
 
             float third = inRect.width / 3f;
-            if (Widgets.ButtonText(new Rect(0f, inRect.height - 40f, third - 6f, 36f), "Aceptar"))
+            if (Widgets.ButtonText(new Rect(0f, inRect.height - 40f, third - 6f, 36f), Loc.T("Dialog_Trade.07")))
             {
                 if (CoopSessionManager.AcceptOffer(_fromId, _fromName, _offerId, _wantCsv))
                 {
@@ -153,11 +153,11 @@ namespace RimCoopMod.UI
                     Close();
                 }
             }
-            if (Widgets.ButtonText(new Rect(third + 3f, inRect.height - 40f, third - 6f, 36f), "Decidir después"))
+            if (Widgets.ButtonText(new Rect(third + 3f, inRect.height - 40f, third - 6f, 36f), Loc.T("Dialog_Trade.08")))
             {
                 Close(); // sigue pendiente: se vuelve a mostrar (también después de guardar y cargar) cuando el otro esté conectado
             }
-            if (Widgets.ButtonText(new Rect(third * 2f + 6f, inRect.height - 40f, third - 6f, 36f), "Rechazar"))
+            if (Widgets.ButtonText(new Rect(third * 2f + 6f, inRect.height - 40f, third - 6f, 36f), Loc.T("Dialog_Trade.09")))
             {
                 CoopClient.Instance.SendTradeMessage(_fromId, "reject", "", _offerId);
                 CoopSessionManager.ResolveIncomingOffer(_offerId, _fromName);
@@ -189,17 +189,17 @@ namespace RimCoopMod.UI
         public override void DoWindowContents(Rect inRect)
         {
             Text.Font = GameFont.Medium;
-            Widgets.Label(new Rect(0f, 0f, inRect.width, 34f), $"Atacar a {_targetName}");
+            Widgets.Label(new Rect(0f, 0f, inRect.width, 34f), Loc.T("Dialog_Trade.10", _targetName));
             Text.Font = GameFont.Small;
             Widgets.Label(new Rect(0f, 44f, inRect.width, 70f),
-                $"Se le manda una incursión enemiga real de {(int)_points} puntos de fuerza.\n" +
-                (_wealth > 0 ? $"Riqueza de su base: {_wealth:N0}. Ya te puse una fuerza parecida a la que el juego mandaría (aprox.)." : "No se conoce la riqueza de su base todavía."));
+                Loc.T("Dialog_Trade.18", (int)_points) +
+                (_wealth > 0 ? Loc.T("Dialog_Trade.11", _wealth) : Loc.T("Dialog_Trade.12")));
             _points = Widgets.HorizontalSlider(new Rect(0f, 130f, inRect.width, 24f), _points, 100f, 3000f, false, null, "100", "3000");
 
-            if (Widgets.ButtonText(new Rect(inRect.width / 2f - 90f, inRect.height - 44f, 180f, 36f), "Atacar"))
+            if (Widgets.ButtonText(new Rect(inRect.width / 2f - 90f, inRect.height - 44f, 180f, 36f), Loc.T("Dialog_Trade.13")))
             {
                 CoopClient.Instance.SendAttackRequest(_targetId, (int)_points);
-                Messages.Message($"Incursión enviada contra {_targetName}.", RimWorld.MessageTypeDefOf.NeutralEvent, false);
+                Messages.Message(Loc.T("Dialog_Trade.14", _targetName), RimWorld.MessageTypeDefOf.NeutralEvent, false);
                 Close();
             }
         }

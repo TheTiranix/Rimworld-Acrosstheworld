@@ -19,7 +19,7 @@ namespace RimCoopMod.UI
             float height = 40f;
             var rect = new Rect(Verse.UI.screenWidth - width - 15f, 15f, width, height);
 
-            if (Widgets.ButtonText(rect, "RimCoop: Conectar"))
+            if (Widgets.ButtonText(rect, Loc.T("MainMenuPatch.01")))
             {
                 Find.WindowStack.Add(new Dialog_ConnectToServer());
             }

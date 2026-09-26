@@ -172,7 +172,7 @@ namespace RimCoopMod.GameComponents
 
                 if (Mouse.IsOver(dotRect))
                 {
-                    TooltipHandler.TipRegion(dotRect, $"{pawn.Label} (cargando apariencia...)");
+                    TooltipHandler.TipRegion(dotRect, Loc.T("SessionManager.01", pawn.Label));
                 }
             }
         }
@@ -189,7 +189,7 @@ namespace RimCoopMod.GameComponents
 
             if (!target.HasMap)
             {
-                CoopLog.Message($"[RimCoop] Generando mapa local para la base de {target.RemotePlayerName}...");
+                CoopLog.Message(Loc.T("SessionManager.02", target.RemotePlayerName));
             }
 
             Map map = GetOrGenerateMapUtility.GetOrGenerateMap(target.Tile,
@@ -340,7 +340,7 @@ namespace RimCoopMod.GameComponents
 
             if (instance._pendingProposePause.HasValue)
             {
-                Messages.Message("Ya hay una votación de pausa en curso.", MessageTypeDefOf.RejectInput, false);
+                Messages.Message(Loc.T("SessionManager.03"), MessageTypeDefOf.RejectInput, false);
                 return;
             }
 
@@ -359,9 +359,7 @@ namespace RimCoopMod.GameComponents
             instance._voteDeadlineTick = Time.realtimeSinceStartup + VoteTimeoutSeconds;
 
             CoopClient.Instance.SendPauseVoteRequest(proposePause);
-            Messages.Message(
-                $"Se propuso {(proposePause ? "pausar" : "despausar")} el juego. Esperando que los demás respondan...",
-                MessageTypeDefOf.NeutralEvent, false);
+            Messages.Message(Loc.T(proposePause ? "SessionManager.59" : "SessionManager.60"), MessageTypeDefOf.NeutralEvent, false);
         }
 
         private void HandlePauseVoteResponse(PauseVoteResponsePayload resp)
@@ -393,11 +391,11 @@ namespace RimCoopMod.GameComponents
             if (approved)
             {
                 ApplyPauseChange(proposePause);
-                Messages.Message($"Votación aprobada: el juego {(proposePause ? "se pausó" : "se reanudó")}.", MessageTypeDefOf.NeutralEvent, false);
+                Messages.Message(Loc.T(proposePause ? "SessionManager.61" : "SessionManager.62"), MessageTypeDefOf.NeutralEvent, false);
             }
             else
             {
-                Messages.Message("La votación de pausa fue rechazada (o nadie respondió a tiempo).", MessageTypeDefOf.RejectInput, false);
+                Messages.Message(Loc.T("SessionManager.04"), MessageTypeDefOf.RejectInput, false);
             }
         }
 
@@ -425,8 +423,8 @@ namespace RimCoopMod.GameComponents
                     // sincronizó, o no es un Thing que sigamos). Si igual mandáramos la orden con
                     // solo la celda, un trabajo como "Equipar" no haría nada en silencio — mejor
                     // avisar y no mandar nada.
-                    CoopLog.Warning($"[RimCoop] No pude traducir el target ({targetA.Thing.LabelShortCap}) de la orden {job.def.defName} al id real: se descarta.");
-                    Messages.Message($"No se pudo mandar la orden sobre {targetA.Thing.LabelShortCap} todavía (no está sincronizado).", MessageTypeDefOf.RejectInput, false);
+                    CoopLog.Warning(Loc.T("SessionManager.05", targetA.Thing.LabelShortCap, job.def.defName));
+                    Messages.Message(Loc.T("SessionManager.06", targetA.Thing.LabelShortCap), MessageTypeDefOf.RejectInput, false);
                     return;
                 }
             }
@@ -450,7 +448,7 @@ namespace RimCoopMod.GameComponents
                     int targetBId = ResolveHostThingId(targetB.Thing);
                     if (targetBId < 0)
                     {
-                        CoopLog.Warning($"[RimCoop] No pude traducir el target B ({targetB.Thing.LabelShortCap}) de la orden {job.def.defName}: se descarta.");
+                        CoopLog.Warning(Loc.T("SessionManager.07", targetB.Thing.LabelShortCap, job.def.defName));
                         return;
                     }
                     payload.TargetBThingId = targetBId;
@@ -459,7 +457,7 @@ namespace RimCoopMod.GameComponents
                 payload.TargetBZ = targetB.Cell.z;
             }
 
-            CoopLog.Message($"[RimCoop] SendOrder: {job.def.defName} targetA={(targetA.HasThing ? $"Thing#{targetAId}" : targetA.Cell.ToString())} -> jugador {hostPlayerId}.");
+            CoopLog.Message(Loc.T("SessionManager.63", job.def.defName, targetA.HasThing ? "Thing#" + targetAId : targetA.Cell.ToString(), hostPlayerId));
             CoopClient.Instance.SendPawnOrder(hostPlayerId, pawnId, payload);
         }
 
@@ -790,7 +788,7 @@ namespace RimCoopMod.GameComponents
                 }
                 catch (Exception e)
                 {
-                    CoopLog.Warning($"[RimCoop] No se pudo reconstruir {ts.DefName} en la base espejo: {e.Message}");
+                    CoopLog.Warning(Loc.T("SessionManager.08", ts.DefName, e.Message));
                 }
             }
 
@@ -1030,7 +1028,7 @@ namespace RimCoopMod.GameComponents
             try { puppet.jobs.StartJob(job, JobCondition.InterruptForced, resumeCurJobAfterwards: false); }
             catch (Exception e)
             {
-                CoopLog.Warning($"[RimCoop] No se pudo replicar el trabajo {ps.CurJobDefName} en el títere {puppet.LabelShortCap}: {e.Message}");
+                CoopLog.Warning(Loc.T("SessionManager.09", ps.CurJobDefName, puppet.LabelShortCap, e.Message));
             }
         }
 
@@ -1126,7 +1124,7 @@ namespace RimCoopMod.GameComponents
             }
             catch (Exception e)
             {
-                CoopLog.Warning($"[RimCoop] No se pudo poner {f[1]} en las manos del títere: {e.Message}");
+                CoopLog.Warning(Loc.T("SessionManager.10", f[1], e.Message));
             }
         }
 
@@ -1204,7 +1202,7 @@ namespace RimCoopMod.GameComponents
             }
             catch (Exception e)
             {
-                CoopLog.Warning($"[RimCoop] No se pudo copiar la ropa al títere {puppet.LabelShortCap}: {e.Message}");
+                CoopLog.Warning(Loc.T("SessionManager.11", puppet.LabelShortCap, e.Message));
             }
         }
 
@@ -1278,7 +1276,7 @@ namespace RimCoopMod.GameComponents
                 }
                 catch (Exception e)
                 {
-                    CoopLog.Warning($"[RimCoop] No se pudo copiar {kv.Value[1]} al inventario del títere: {e.Message}");
+                    CoopLog.Warning(Loc.T("SessionManager.12", kv.Value[1], e.Message));
                 }
             }
         }
@@ -1318,7 +1316,7 @@ namespace RimCoopMod.GameComponents
             }
             catch (Exception e)
             {
-                CoopLog.Warning($"[RimCoop] No se pudo equipar {ps.EquippedWeaponDefName} en el títere {puppet.LabelShortCap}: {e.Message}");
+                CoopLog.Warning(Loc.T("SessionManager.13", ps.EquippedWeaponDefName, puppet.LabelShortCap, e.Message));
             }
         }
 
@@ -1339,7 +1337,7 @@ namespace RimCoopMod.GameComponents
             Pawn puppet = PawnTransfer.DeserializePawn(payload.SerializedPawn);
             if (puppet == null)
             {
-                CoopLog.Warning($"[RimCoop] No se pudo reconstruir la apariencia del pawn {payload.PawnId}.");
+                CoopLog.Warning(Loc.T("SessionManager.14", payload.PawnId));
                 return;
             }
 
@@ -1367,7 +1365,7 @@ namespace RimCoopMod.GameComponents
             }
             catch (Exception e)
             {
-                CoopLog.Warning($"[RimCoop] No se pudo spawnear el títere del pawn {payload.PawnId}: {e.Message}");
+                CoopLog.Warning(Loc.T("SessionManager.15", payload.PawnId, e.Message));
             }
         }
 
@@ -1394,7 +1392,7 @@ namespace RimCoopMod.GameComponents
 
             if (!targetA.IsValid)
             {
-                CoopLog.Warning($"[RimCoop] Orden {order.JobDefName} descartada: no encontré el Thing id {order.TargetAThingId} en mi mapa (¿ya no existe?).");
+                CoopLog.Warning(Loc.T("SessionManager.16", order.JobDefName, order.TargetAThingId));
                 return;
             }
 
@@ -1419,7 +1417,7 @@ namespace RimCoopMod.GameComponents
                 var ability = abilityDef == null ? null : pawn.abilities?.GetAbility(abilityDef);
                 if (ability == null)
                 {
-                    CoopLog.Warning($"[RimCoop] {pawn.LabelShortCap} no tiene la habilidad {order.AbilityDefName}: se descarta el lanzamiento.");
+                    CoopLog.Warning(Loc.T("SessionManager.17", pawn.LabelShortCap, order.AbilityDefName));
                     return;
                 }
                 LocalTargetInfo abilityTargetB = order.HasTargetB
@@ -1435,9 +1433,9 @@ namespace RimCoopMod.GameComponents
             try
             {
                 bool started = pawn.jobs.TryTakeOrderedJob(job);
-                CoopLog.Message($"[RimCoop] Orden remota {order.JobDefName} sobre {pawn.LabelShortCap}: TryTakeOrderedJob devolvió {started}.");
+                CoopLog.Message(Loc.T("SessionManager.18", order.JobDefName, pawn.LabelShortCap, started));
             }
-            catch (Exception e) { CoopLog.Warning($"[RimCoop] No se pudo ejecutar la orden remota ({order.JobDefName}): {e.Message}"); }
+            catch (Exception e) { CoopLog.Warning(Loc.T("SessionManager.19", order.JobDefName, e.Message)); }
             finally { _processingRemoteOrder = false; }
         }
 
@@ -1487,8 +1485,8 @@ namespace RimCoopMod.GameComponents
             var map = LocalBaseMap;
             if (map == null)
             {
-                CoopLog.Warning("[RimCoop] Llegaron colonos pero no tengo LocalBaseMap (¿no tenés colonia activa?).");
-                if (!restoring) CoopClient.Instance.SendJoinResult(req.FromPlayerId, false, "No tengo una colonia activa para recibir colonos.");
+                CoopLog.Warning(Loc.T("SessionManager.20"));
+                if (!restoring) CoopClient.Instance.SendJoinResult(req.FromPlayerId, false, Loc.Wire("SessionManager.21"));
                 return;
             }
 
@@ -1504,7 +1502,7 @@ namespace RimCoopMod.GameComponents
                     Pawn pawn = PawnTransfer.DeserializePawn(xml);
                     if (pawn == null)
                     {
-                        CoopLog.Warning("[RimCoop] DeserializePawn devolvió null (ver log anterior para el error real).");
+                        CoopLog.Warning(Loc.T("SessionManager.22"));
                         continue;
                     }
 
@@ -1529,7 +1527,7 @@ namespace RimCoopMod.GameComponents
                         _pawnUids[pawn.thingIDNumber] = uid;
                         _pendingGoneUids.Remove(uid); // volvió a existir: ya no hay que darlo de baja
                     }
-                    if (restoring) Messages.Message($"{pawn.LabelShortCap} volvió a tu base: el servidor tenía su copia (tu partida era anterior a su llegada).", MessageTypeDefOf.PositiveEvent, false);
+                    if (restoring) Messages.Message(Loc.T("SessionManager.23", pawn.LabelShortCap), MessageTypeDefOf.PositiveEvent, false);
 
                     // Dueño real: normalmente quien lo manda (req.FromPlayerId). Pero si quien lo manda
                     // ya lo tenía prestado de un tercero (OwnerNames[i] no vacío), respetamos a ese dueño
@@ -1541,7 +1539,7 @@ namespace RimCoopMod.GameComponents
 
                     if (!string.IsNullOrEmpty(ownerName) && ownerName == localName)
                     {
-                        CoopLog.Message($"[RimCoop] Colono {pawn.LabelShortCap} volvió a mi colonia en {cell}: queda libre, sin dueño remoto.");
+                        CoopLog.Message(Loc.T("SessionManager.24", pawn.LabelShortCap, cell));
                     }
                     else
                     {
@@ -1556,13 +1554,13 @@ namespace RimCoopMod.GameComponents
                         }
                         _pawnOwners[pawn.thingIDNumber] = ownerId;
                         if (!string.IsNullOrEmpty(ownerName)) _pawnOwnerNames[pawn.thingIDNumber] = ownerName; // por nombre: el id cambia entre sesiones, el nombre no
-                        CoopLog.Message($"[RimCoop] Colono {pawn.LabelShortCap} apareció en {cell} y quedó asignado a {(ownerName ?? req.FromPlayerId.ToString())}.");
+                        CoopLog.Message(Loc.T("SessionManager.25", pawn.LabelShortCap, cell, (ownerName ?? req.FromPlayerId.ToString())));
                     }
                     added++;
                 }
                 catch (System.Exception e)
                 {
-                    CoopLog.Error("[RimCoop] Excepción al recibir un colono: " + e);
+                    CoopLog.Error(Loc.T("SessionManager.26", e));
                 }
             }
 
@@ -1573,7 +1571,7 @@ namespace RimCoopMod.GameComponents
             }
 
             CoopClient.Instance.SendJoinResult(req.FromPlayerId, added > 0,
-                added > 0 ? $"{added} colono(s) se unieron a la base." : "No se pudo recibir a los colonos.");
+                added > 0 ? Loc.Wire("SessionManager.27", added) : Loc.Wire("SessionManager.28"));
             if (added > 0) AddCollaborator(req.FromPlayerId); // me mandaron colonos: colaboramos
         }
 
@@ -1614,7 +1612,7 @@ namespace RimCoopMod.GameComponents
                         SendModListTo(info.PlayerId); // el que entra recibe mi lista de mods/DLC
                         if (_pendingLeaveNames.Remove(info.PlayerName)) CoopClient.Instance.SendResearchSync(info.PlayerId, "leave", ""); // corté con él mientras estaba desconectado
                         else if (IsCollaborator(info.PlayerId)) SendResearchFullTo(info.PlayerId); // un colaborador que vuelve recibe mi investigación
-                        Messages.Message($"{info.PlayerName} se unió a la partida.", MessageTypeDefOf.NeutralEvent, false);
+                        Messages.Message(Loc.T("SessionManager.29", info.PlayerName), MessageTypeDefOf.NeutralEvent, false);
                         break;
                     }
 
@@ -1634,7 +1632,7 @@ namespace RimCoopMod.GameComponents
                                     Current.Game.DeinitAndRemoveMap(mirrorMap, false);
                                 }
                             }
-                            catch (Exception ex) { CoopLog.Warning($"[RimCoop] No se pudo cerrar el mapa espejo de {info.PlayerName}: {ex.Message}"); }
+                            catch (Exception ex) { CoopLog.Warning(Loc.T("SessionManager.30", info.PlayerName, ex.Message)); }
 
                             _coopMaps.Remove(info.PlayerId);
                             _syncedThings.Remove(info.PlayerId);
@@ -1645,7 +1643,7 @@ namespace RimCoopMod.GameComponents
                             Find.WorldObjects.Remove(wobj);
                             _remoteBases.Remove(info.PlayerName);
                         }
-                        Messages.Message($"{info.PlayerName} se desconectó.", MessageTypeDefOf.NeutralEvent, false);
+                        Messages.Message(Loc.T("SessionManager.31", info.PlayerName), MessageTypeDefOf.NeutralEvent, false);
                         break;
                     }
 
@@ -1667,7 +1665,7 @@ namespace RimCoopMod.GameComponents
                 case PacketType.TradeRequest:
                     {
                         var t = p.GetPayload<TradeOrAttackPayload>();
-                        Messages.Message($"{t.FromPlayerName} quiere comerciar con vos.", MessageTypeDefOf.PositiveEvent, false);
+                        Messages.Message(Loc.T("SessionManager.32", t.FromPlayerName), MessageTypeDefOf.PositiveEvent, false);
                         break;
                     }
 
@@ -1682,10 +1680,11 @@ namespace RimCoopMod.GameComponents
                 case PacketType.Chat:
                     {
                         var c = p.GetPayload<ChatPayload>();
+                        if (c.PlayerId == 0) { c.PlayerName = Loc.T("Chat.Server"); c.Message = Loc.Unwire(c.Message); }
                         AppendChatLog($"{c.PlayerName}: {c.Message}");
                         if (!Dialog_GlobalChat.IsChatOpen)
                         {
-                            Messages.Message($"[Chat] {c.PlayerName}: {c.Message} (F7 para abrir el chat)", MessageTypeDefOf.SilentInput, false);
+                            Messages.Message(Loc.T("SessionManager.33", c.PlayerName, c.Message), MessageTypeDefOf.SilentInput, false);
                         }
                         break;
                     }
@@ -1700,8 +1699,8 @@ namespace RimCoopMod.GameComponents
                         // tiene nada — si asumíamos que ya tenía la foto vieja, de acá en más solo le
                         // mandábamos lo que cambiaba y su base le quedaba a medias, con pedazos sueltos.
                         _sentThingSigs.Remove(w.FromPlayerId);
-                        CoopLog.Message($"[RimCoop] Jugador {w.FromPlayerId} empezó a mirar tu base en vivo.");
-                        Messages.Message("Otro jugador está mirando tu base en vivo.", MessageTypeDefOf.NeutralEvent, false);
+                        CoopLog.Message(Loc.T("SessionManager.34", w.FromPlayerId));
+                        Messages.Message(Loc.T("SessionManager.35"), MessageTypeDefOf.NeutralEvent, false);
                         break;
                     }
 
@@ -1729,7 +1728,7 @@ namespace RimCoopMod.GameComponents
                 case PacketType.JoinRequest:
                     {
                         var req = p.GetPayload<JoinRequestPayload>();
-                        CoopLog.Message($"[RimCoop] Llegó JoinRequest de jugador {req.FromPlayerId} con {req.SerializedPawns.Count} colono(s).");
+                        CoopLog.Message(Loc.T("SessionManager.36", req.FromPlayerId, req.SerializedPawns.Count));
                         HandleJoinRequest(req);
                         break;
                     }
@@ -1737,8 +1736,8 @@ namespace RimCoopMod.GameComponents
                 case PacketType.JoinResult:
                     {
                         var r = p.GetPayload<JoinResultPayload>();
-                        CoopLog.Message($"[RimCoop] JoinResult recibido: éxito={r.Success} - {r.Message}");
-                        Messages.Message(r.Message, r.Success ? MessageTypeDefOf.PositiveEvent : MessageTypeDefOf.RejectInput, false);
+                        CoopLog.Message(Loc.T("SessionManager.37", r.Success, r.Message));
+                        Messages.Message(Loc.Unwire(r.Message), r.Success ? MessageTypeDefOf.PositiveEvent : MessageTypeDefOf.RejectInput, false);
                         if (r.Success) AddCollaborator(r.FromPlayerId); // mandaste colonos y los aceptaron: ahora colaboran
                         break;
                     }
@@ -1785,11 +1784,11 @@ namespace RimCoopMod.GameComponents
                         if (result.Approved)
                         {
                             ApplyPauseChange(result.ProposePause);
-                            Messages.Message($"Votación aprobada: el juego {(result.ProposePause ? "se pausó" : "se reanudó")}.", MessageTypeDefOf.NeutralEvent, false);
+                            Messages.Message(Loc.T(result.ProposePause ? "SessionManager.61" : "SessionManager.62"), MessageTypeDefOf.NeutralEvent, false);
                         }
                         else
                         {
-                            Messages.Message("La votación de pausa fue rechazada.", MessageTypeDefOf.RejectInput, false);
+                            Messages.Message(Loc.T("SessionManager.38"), MessageTypeDefOf.RejectInput, false);
                         }
                         break;
                     }
@@ -1867,8 +1866,8 @@ namespace RimCoopMod.GameComponents
                 ?? DefDatabase<TerrainDef>.GetNamedSilentFail(req.DefName);
             if (def == null)
             {
-                CoopLog.Warning($"[RimCoop] BuildRequest con def desconocida: {req.DefName}");
-                CoopClient.Instance.SendJoinResult(req.FromPlayerId, false, $"El dueño de la base no conoce '{req.DefName}' (¿mods distintos?).");
+                CoopLog.Warning(Loc.T("SessionManager.39", req.DefName));
+                CoopClient.Instance.SendJoinResult(req.FromPlayerId, false, Loc.Wire("SessionManager.40", req.DefName));
                 return;
             }
 
@@ -1882,15 +1881,15 @@ namespace RimCoopMod.GameComponents
             var report = GenConstruct.CanPlaceBlueprintAt(def, cell, rot, map, false, null, null, stuff);
             if (!report.Accepted)
             {
-                CoopLog.Warning($"[RimCoop] No se pudo colocar {req.DefName} en {cell}: {report.Reason}");
-                CoopClient.Instance.SendJoinResult(req.FromPlayerId, false, $"No se pudo construir {def.label} ahí: {report.Reason}");
+                CoopLog.Warning(Loc.T("SessionManager.41", req.DefName, cell, report.Reason));
+                CoopClient.Instance.SendJoinResult(req.FromPlayerId, false, Loc.Wire("SessionManager.42", def.label, report.Reason));
                 return;
             }
 
             try
             {
                 GenConstruct.PlaceBlueprintForBuild(def, cell, map, rot, Faction.OfPlayer, stuff, null, null, true);
-                CoopLog.Message($"[RimCoop] Jugador {req.FromPlayerId} colocó un plano de {req.DefName} en {cell}.");
+                CoopLog.Message(Loc.T("SessionManager.43", req.FromPlayerId, req.DefName, cell));
 
                 // El plano se coloca igual (como en el juego normal), pero se avisa a B si falta material.
                 var missing = new List<string>();
@@ -1901,12 +1900,12 @@ namespace RimCoopMod.GameComponents
                 }
                 if (missing.Count > 0)
                     CoopClient.Instance.SendJoinResult(req.FromPlayerId, false,
-                        $"Plano de {def.label} colocado, pero a la base le falta material: {string.Join(", ", missing)}.");
+                        Loc.Wire("SessionManager.64", def.label, string.Join(", ", missing)));
             }
             catch (Exception e)
             {
-                CoopLog.Warning($"[RimCoop] Error al colocar el plano de {req.DefName}: {e.Message}");
-                CoopClient.Instance.SendJoinResult(req.FromPlayerId, false, "Error al colocar el plano en la base del dueño.");
+                CoopLog.Warning(Loc.T("SessionManager.44", req.DefName, e.Message));
+                CoopClient.Instance.SendJoinResult(req.FromPlayerId, false, Loc.Wire("SessionManager.45"));
             }
         }
 
@@ -1929,20 +1928,20 @@ namespace RimCoopMod.GameComponents
                         if (t is Blueprint || t is Frame)
                         {
                             t.Destroy(DestroyMode.Cancel);
-                            CoopLog.Message($"[RimCoop] Jugador {req.FromPlayerId} canceló {t.def.defName} en {cell}.");
+                            CoopLog.Message(Loc.T("SessionManager.46", req.FromPlayerId, t.def.defName, cell));
                         }
                     }
                     else if (t is Building b && b.Faction == Faction.OfPlayer && b.def.building != null && b.def.building.IsDeconstructible)
                     {
                         if (map.designationManager.DesignationOn(b, DesignationDefOf.Deconstruct) == null)
                             map.designationManager.AddDesignation(new Designation(b, DesignationDefOf.Deconstruct));
-                        CoopLog.Message($"[RimCoop] Jugador {req.FromPlayerId} marcó {b.def.defName} para desmontar en {cell}.");
+                        CoopLog.Message(Loc.T("SessionManager.47", req.FromPlayerId, b.def.defName, cell));
                     }
                 }
             }
             catch (Exception e)
             {
-                CoopLog.Warning($"[RimCoop] Error en {req.DefName} en {cell}: {e.Message}");
+                CoopLog.Warning(Loc.T("SessionManager.48", req.DefName, cell, e.Message));
             }
         }
 
@@ -1971,12 +1970,12 @@ namespace RimCoopMod.GameComponents
                     var add = (Designator_ZoneAdd)Activator.CreateInstance(type);
                     add.DesignateMultiCell(cells);
                 }
-                CoopLog.Message($"[RimCoop] Jugador {req.FromPlayerId} pidió {req.DefName} sobre {cells.Count} celda(s).");
+                CoopLog.Message(Loc.T("SessionManager.49", req.FromPlayerId, req.DefName, cells.Count));
             }
             catch (Exception e)
             {
-                CoopLog.Warning($"[RimCoop] Error aplicando {req.DefName}: {e.Message}");
-                CoopClient.Instance.SendJoinResult(req.FromPlayerId, false, "No se pudo aplicar la zona en la base del dueño.");
+                CoopLog.Warning(Loc.T("SessionManager.50", req.DefName, e.Message));
+                CoopClient.Instance.SendJoinResult(req.FromPlayerId, false, Loc.Wire("SessionManager.51"));
             }
             finally
             {
@@ -2045,14 +2044,14 @@ namespace RimCoopMod.GameComponents
                     if (wo.HasMap)
                     {
                         try { Current.Game.DeinitAndRemoveMap(wo.Map, false); }
-                        catch (Exception e) { CoopLog.Warning($"[RimCoop] No se pudo quitar el mapa espejo guardado: {e.Message}"); }
+                        catch (Exception e) { CoopLog.Warning(Loc.T("SessionManager.52", e.Message)); }
                     }
                     Find.WorldObjects.Remove(wo);
                 }
             }
             catch (Exception e)
             {
-                CoopLog.Warning($"[RimCoop] Error limpiando bases espejo guardadas: {e.Message}");
+                CoopLog.Warning(Loc.T("SessionManager.53", e.Message));
             }
         }
 
@@ -2070,7 +2069,7 @@ namespace RimCoopMod.GameComponents
                 if (!safe || !CoopClient.Instance.IncomingPackets.TryDequeue(out var p)) break;
 
                 try { instance.HandlePacket(p); }
-                catch (Exception e) { CoopLog.Warning($"[RimCoop] Error procesando {p.Type} fuera de partida: {e.Message}"); }
+                catch (Exception e) { CoopLog.Warning(Loc.T("SessionManager.54", p.Type, e.Message)); }
             }
         }
 
@@ -2115,7 +2114,7 @@ namespace RimCoopMod.GameComponents
                 // desde la última vez que se guardó/generó este WorldObject. Nos autocorregimos.
                 if (wobj.RemotePlayerId != info.PlayerId)
                 {
-                    CoopLog.Message($"[RimCoop] Corrigiendo id de {info.PlayerName}: {wobj.RemotePlayerId} -> {info.PlayerId}");
+                    CoopLog.Message(Loc.T("SessionManager.55", info.PlayerName, wobj.RemotePlayerId, info.PlayerId));
                     wobj.RemotePlayerId = info.PlayerId;
                 }
 
@@ -2123,13 +2122,13 @@ namespace RimCoopMod.GameComponents
                 {
                     if (wasWatching)
                     {
-                        Messages.Message($"{info.PlayerName} movió su base: te llevo a su lugar nuevo.", MessageTypeDefOf.NeutralEvent, false);
+                        Messages.Message(Loc.T("SessionManager.56", info.PlayerName), MessageTypeDefOf.NeutralEvent, false);
                         try { EnterCoopMap(wobj, jumpCamera: wasViewing); }
-                        catch (Exception ex) { CoopLog.Warning($"[RimCoop] No se pudo volver a entrar a la base de {info.PlayerName} tras su mudanza: {ex.Message}"); }
+                        catch (Exception ex) { CoopLog.Warning(Loc.T("SessionManager.57", info.PlayerName, ex.Message)); }
                     }
                     else
                     {
-                        Messages.Message($"{info.PlayerName} movió su base.", MessageTypeDefOf.NeutralEvent, false);
+                        Messages.Message(Loc.T("SessionManager.58", info.PlayerName), MessageTypeDefOf.NeutralEvent, false);
                     }
                 }
             }

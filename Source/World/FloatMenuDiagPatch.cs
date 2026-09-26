@@ -21,7 +21,7 @@ namespace RimCoopMod.World
             var puppet = selectedPawns.FirstOrDefault(PuppetPawnRegistry.IsPuppet);
             if (puppet == null) return;
             string opts = string.Join(" | ", __result.Select(o => (o.autoTakeable && !o.Disabled ? "[auto] " : "") + o.Label));
-            CoopLog.Message($"[RimCoop] Menú clic derecho de {puppet.LabelShortCap} (drafteado={puppet.Drafted}): {opts}");
+            CoopLog.Message(Loc.T("FloatMenuDiagPatch.01", puppet.LabelShortCap, puppet.Drafted, opts));
         }
     }
 }

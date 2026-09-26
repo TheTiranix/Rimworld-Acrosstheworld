@@ -88,7 +88,7 @@ namespace RimCoopMod.GameComponents
             if (instance == null) return;
             CoopClient.Instance.SendQuestMessage(playerId, "invite", quest.id, quest.name, quest.description.ToString(), (int)quest.State,
                 quest.challengeRating, instance.ParticipantCount(quest.id));
-            Messages.Message($"Invitación a la misión \"{quest.name}\" enviada.", MessageTypeDefOf.NeutralEvent, false);
+            Messages.Message(Loc.T("SessionManager_Quests.01", quest.name), MessageTypeDefOf.NeutralEvent, false);
         }
 
         private readonly Dictionary<int, string> _sharedQuestLastXml = new Dictionary<int, string>();
@@ -144,13 +144,13 @@ namespace RimCoopMod.GameComponents
                             _sharedQuestParticipants[m.QuestId] = set;
                         }
                         if (set.Add(joiner))
-                            Messages.Message($"{joiner} se sumó a la misión: su dificultad ahora es ×{QuestMultiplier(set.Count):0.##}.", MessageTypeDefOf.NeutralEvent, false);
+                            Messages.Message(Loc.T("SessionManager_Quests.02", joiner, QuestMultiplier(set.Count)), MessageTypeDefOf.NeutralEvent, false);
                         _sharedQuestLastXml.Remove(m.QuestId); // fuerza el próximo envío: el que se suma recibe la misión entera
                         break;
                     }
 
                 case "decline":
-                    Messages.Message($"{m.FromPlayerName} rechazó la misión compartida.", MessageTypeDefOf.RejectInput, false);
+                    Messages.Message(Loc.T("SessionManager_Quests.03", m.FromPlayerName), MessageTypeDefOf.RejectInput, false);
                     break;
 
                 case "update":
@@ -160,7 +160,7 @@ namespace RimCoopMod.GameComponents
 
                 // Recompensas: lo que el dueño recibe al cumplir la misión, los que se sumaron lo reciben también.
                 case "reward":
-                    ReceiveItems(m.Description, m.FromPlayerName ?? "la misión compartida");
+                    ReceiveItems(m.Description, m.FromPlayerName ?? Loc.T("SessionManager_Quests.04"));
                     break;
 
                 case "favor":
@@ -175,12 +175,12 @@ namespace RimCoopMod.GameComponents
             // Si el dueño está desconectado el aviso se pierde y él nunca se entera de que me sumé.
             if (!IsPlayerOnline(invite.FromPlayerId))
             {
-                Messages.Message($"{invite.FromPlayerName} no está conectado: esperá a que vuelva para sumarte a la misión.", MessageTypeDefOf.RejectInput, false);
+                Messages.Message(Loc.T("SessionManager_Quests.05", invite.FromPlayerName), MessageTypeDefOf.RejectInput, false);
                 return false;
             }
 
             CoopClient.Instance.SendQuestMessage(invite.FromPlayerId, "accept", invite.QuestId, invite.Name, "", (int)QuestState.Ongoing, invite.Rating, 0);
-            Messages.Message($"Te sumaste a la misión. Su dificultad ahora es ×{QuestMultiplier(invite.Participants + 1):0.##}.", MessageTypeDefOf.NeutralEvent, false);
+            Messages.Message(Loc.T("SessionManager_Quests.06", QuestMultiplier(invite.Participants + 1)), MessageTypeDefOf.NeutralEvent, false);
             return true;
         }
 
@@ -201,7 +201,7 @@ namespace RimCoopMod.GameComponents
             {
                 string key = m.FromPlayerId + ":" + m.QuestId;
                 Quest fresh = QuestTransfer.Deserialize(m.Description);
-                if (fresh == null) { CoopLog.Warning($"[RimCoop] No se pudo reconstruir la misión compartida {m.Name}."); return; }
+                if (fresh == null) { CoopLog.Warning(Loc.T("SessionManager_Quests.07", m.Name)); return; }
 
                 _transientInert.Add(fresh); // desde ya no reacciona a nada: el dueño es el único que la "juega"
                 QuestTransfer.ShiftAbsoluteTicks(fresh, Find.TickManager.TicksGame - m.OwnerTicks); // los relojes de cada juego son independientes
@@ -225,7 +225,7 @@ namespace RimCoopMod.GameComponents
             }
             catch (Exception e)
             {
-                CoopLog.Warning($"[RimCoop] No se pudo actualizar la misión compartida {m.Name}: {e.Message}");
+                CoopLog.Warning(Loc.T("SessionManager_Quests.08", m.Name, e.Message));
             }
         }
 
@@ -254,9 +254,9 @@ namespace RimCoopMod.GameComponents
 
                 foreach (int id in instance.OnlineParticipantIds(part.quest))
                     CoopClient.Instance.SendQuestMessage(id, "reward", part.quest.id, "", string.Join(";", lines), 0, 0, 0);
-                CoopLog.Message($"[RimCoop] Recompensa de la misión compartida \"{part.quest.name}\" enviada a los jugadores sumados.");
+                CoopLog.Message(Loc.T("SessionManager_Quests.09", part.quest.name));
             }
-            catch (Exception e) { CoopLog.Warning($"[RimCoop] No se pudo compartir la recompensa: {e.Message}"); }
+            catch (Exception e) { CoopLog.Warning(Loc.T("SessionManager_Quests.10", e.Message)); }
         }
 
         public static void ShareQuestRoyalFavor(QuestPart_GiveRoyalFavor part, Signal signal)
@@ -270,7 +270,7 @@ namespace RimCoopMod.GameComponents
                 foreach (int id in instance.OnlineParticipantIds(part.quest))
                     CoopClient.Instance.SendQuestMessage(id, "favor", part.quest.id, faction.def.defName, "", amount, 0, 0);
             }
-            catch (Exception e) { CoopLog.Warning($"[RimCoop] No se pudo compartir el favor real: {e.Message}"); }
+            catch (Exception e) { CoopLog.Warning(Loc.T("SessionManager_Quests.11", e.Message)); }
         }
 
         private static void GiveSharedQuestFavor(string factionDefName, int amount)
@@ -283,9 +283,9 @@ namespace RimCoopMod.GameComponents
                     .FirstOrDefault(p => p.royalty != null && p.royalty.HasAnyTitleIn(faction));
                 if (pawn == null) return;
                 pawn.royalty.GainFavor(faction, amount);
-                Messages.Message($"{pawn.LabelShortCap} recibió {amount} de favor de {faction.Name} por la misión compartida.", MessageTypeDefOf.PositiveEvent, false);
+                Messages.Message(Loc.T("SessionManager_Quests.12", pawn.LabelShortCap, amount, faction.Name), MessageTypeDefOf.PositiveEvent, false);
             }
-            catch (Exception e) { CoopLog.Warning($"[RimCoop] No se pudo dar el favor real: {e.Message}"); }
+            catch (Exception e) { CoopLog.Warning(Loc.T("SessionManager_Quests.13", e.Message)); }
         }
 
         // =====================================================================
@@ -302,9 +302,9 @@ namespace RimCoopMod.GameComponents
                 if (parms == null || !IsQuestShared(part.quest, out float mult)) return;
                 if (!_questBaseThreat.TryGetValue(part, out float basePoints)) { basePoints = parms.points; _questBaseThreat[part] = basePoints; }
                 parms.points = basePoints * mult;
-                CoopLog.Message($"[RimCoop] Misión compartida \"{part.quest.name}\": amenaza ×{mult:0.##} ({basePoints:F0} → {parms.points:F0} puntos).");
+                CoopLog.Message(Loc.T("SessionManager_Quests.14", part.quest.name, mult, basePoints, parms.points));
             }
-            catch (Exception e) { CoopLog.Warning($"[RimCoop] No se pudo escalar la amenaza de la misión: {e.Message}"); }
+            catch (Exception e) { CoopLog.Warning(Loc.T("SessionManager_Quests.15", e.Message)); }
         }
 
         public static void ScaleQuestThreats(QuestPart_ThreatsGenerator part)
@@ -314,9 +314,9 @@ namespace RimCoopMod.GameComponents
                 if (part == null || !IsQuestShared(part.quest, out float mult)) return;
                 if (!_questBaseThreat.TryGetValue(part, out float baseFactor)) { baseFactor = part.parms.currentThreatPointsFactor; _questBaseThreat[part] = baseFactor; }
                 part.parms.currentThreatPointsFactor = baseFactor * mult;
-                CoopLog.Message($"[RimCoop] Misión compartida \"{part.quest.name}\": generador de amenazas ×{mult:0.##}.");
+                CoopLog.Message(Loc.T("SessionManager_Quests.16", part.quest.name, mult));
             }
-            catch (Exception e) { CoopLog.Warning($"[RimCoop] No se pudo escalar el generador de amenazas: {e.Message}"); }
+            catch (Exception e) { CoopLog.Warning(Loc.T("SessionManager_Quests.17", e.Message)); }
         }
     }
 }

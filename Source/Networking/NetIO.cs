@@ -63,7 +63,7 @@ namespace RimCoopMod.Networking
             int frameLen = BitConverter.ToInt32(lenBuf, 0);
 
             if (frameLen <= 0 || frameLen > MaxFrameSize)
-                throw new IOException("Tamaño de paquete inválido: " + frameLen);
+                throw new IOException(Loc.T("NetIO.01", frameLen));
 
             byte[] frame = ReadExact(stream, frameLen);
             if (frame == null) return null;

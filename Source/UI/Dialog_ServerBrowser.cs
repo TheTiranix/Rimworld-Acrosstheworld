@@ -56,7 +56,7 @@ namespace RimCoopMod.UI
             absorbInputAroundWindow = true;
 
             var settings = global::RimCoopMod.RimCoopMod.Instance?.Settings;
-            _playerName = settings?.LastPlayerName ?? "Jugador";
+            _playerName = string.IsNullOrEmpty(settings?.LastPlayerName) ? Loc.T("Common.Player") : settings.LastPlayerName;
 
             LoadEntriesFromSettings();
             PingAll();
@@ -139,17 +139,18 @@ namespace RimCoopMod.UI
         public override void DoWindowContents(Rect inRect)
         {
             Text.Font = GameFont.Medium;
-            Widgets.Label(new Rect(inRect.x, inRect.y, inRect.width - 30f, 32f), "RimCoop - Servidores");
+            Widgets.Label(new Rect(inRect.x, inRect.y, inRect.width - 30f, 32f), Loc.T("Dialog_ServerBrowser.01"));
             Text.Font = GameFont.Small;
+            ModLanguage.DrawToggle(new Rect(inRect.xMax - 150f, inRect.y + 38f, 150f, 28f));
 
             float y = inRect.y + 38f;
-            Widgets.Label(new Rect(inRect.x, y + 4f, 150f, 24f), "Tu nombre de jugador:");
+            Widgets.Label(new Rect(inRect.x, y + 4f, 150f, 24f), Loc.T("Dialog_ServerBrowser.02"));
             _playerName = Widgets.TextField(new Rect(inRect.x + 155f, y, 220f, 28f), _playerName);
             y += 36f;
 
             // Pestañas
             float tabW = 130f;
-            if (DrawTabButton(new Rect(inRect.x, y, tabW, 30f), "Guardados", _tab == Tab.Saved)) _tab = Tab.Saved;
+            if (DrawTabButton(new Rect(inRect.x, y, tabW, 30f), Loc.T("Dialog_ServerBrowser.03"), _tab == Tab.Saved)) _tab = Tab.Saved;
             if (DrawTabButton(new Rect(inRect.x + tabW + 6f, y, tabW, 30f), "LAN", _tab == Tab.Lan))
             {
                 if (_tab != Tab.Lan) _lastLanScan = -999f; // al entrar a la pestaña se busca de inmediato
@@ -159,11 +160,11 @@ namespace RimCoopMod.UI
             var refreshRect = new Rect(inRect.xMax - 150f, y, 150f, 30f);
             if (_tab == Tab.Saved)
             {
-                if (Widgets.ButtonText(refreshRect, "Actualizar todos")) { PingAll(); _lastAutoRefresh = Time.realtimeSinceStartup; }
+                if (Widgets.ButtonText(refreshRect, Loc.T("Dialog_ServerBrowser.04"))) { PingAll(); _lastAutoRefresh = Time.realtimeSinceStartup; }
             }
             else
             {
-                if (Widgets.ButtonText(refreshRect, _scanning ? "Buscando..." : "Buscar de nuevo", true, true, !_scanning)) ScanLan();
+                if (Widgets.ButtonText(refreshRect, _scanning ? Loc.T("Dialog_ServerBrowser.05") : Loc.T("Dialog_ServerBrowser.06"), true, true, !_scanning)) ScanLan();
             }
             y += 38f;
 
@@ -199,7 +200,7 @@ namespace RimCoopMod.UI
             {
                 Text.Anchor = TextAnchor.MiddleCenter;
                 GUI.color = Color.gray;
-                Widgets.Label(outRect, "No hay servidores guardados todavía.\nAgregá uno abajo, o probá la pestaña LAN.");
+                Widgets.Label(outRect, Loc.T("Dialog_ServerBrowser.07"));
                 GUI.color = Color.white;
                 Text.Anchor = TextAnchor.UpperLeft;
                 return;
@@ -218,7 +219,7 @@ namespace RimCoopMod.UI
                 Widgets.DrawBoxSolid(row, new Color(1f, 1f, 1f, 0.03f));
 
                 bool fav = e.Favorite;
-                Widgets.CheckboxLabeled(new Rect(row.x + 4f, row.y + 4f, 62f, 24f), "Fav", ref fav);
+                Widgets.CheckboxLabeled(new Rect(row.x + 4f, row.y + 4f, 62f, 24f), Loc.T("Dialog_ServerBrowser.08"), ref fav);
                 if (fav != e.Favorite) { e.Favorite = fav; changed = true; }
 
                 var labelRect = new Rect(row.x + 72f, row.y + 2f, 200f, row.height - 4f);
@@ -229,8 +230,8 @@ namespace RimCoopMod.UI
                 DrawStatus(new Rect(labelRect.xMax + 4f, row.y, 240f, row.height), e.Key);
 
                 const float btnW = 76f;
-                if (Widgets.ButtonText(new Rect(row.xMax - btnW * 2 - 8f, row.y + 8f, btnW, row.height - 16f), "Conectar")) TryConnect(e.Ip, e.Port);
-                if (Widgets.ButtonText(new Rect(row.xMax - btnW - 4f, row.y + 8f, btnW, row.height - 16f), "Quitar")) toRemove = e;
+                if (Widgets.ButtonText(new Rect(row.xMax - btnW * 2 - 8f, row.y + 8f, btnW, row.height - 16f), Loc.T("Dialog_ServerBrowser.09"))) TryConnect(e.Ip, e.Port);
+                if (Widgets.ButtonText(new Rect(row.xMax - btnW - 4f, row.y + 8f, btnW, row.height - 16f), Loc.T("Dialog_ServerBrowser.10"))) toRemove = e;
 
                 y += rowHeight;
             }
@@ -254,8 +255,8 @@ namespace RimCoopMod.UI
                 Text.Anchor = TextAnchor.MiddleCenter;
                 GUI.color = Color.gray;
                 Widgets.Label(outRect, _scanning
-                    ? "Buscando servidores en la red local..."
-                    : "No se encontró ningún servidor en la red local.\nTienen que estar en la misma red y con el servidor abierto\n(el firewall tiene que dejar pasar UDP " + LanDiscovery.DiscoveryPort + ").");
+                    ? Loc.T("Dialog_ServerBrowser.11")
+                    : Loc.T("Dialog_ServerBrowser.31", LanDiscovery.DiscoveryPort));
                 GUI.color = Color.white;
                 Text.Anchor = TextAnchor.UpperLeft;
                 return;
@@ -273,19 +274,19 @@ namespace RimCoopMod.UI
 
                 var labelRect = new Rect(row.x + 8f, row.y + 2f, 250f, row.height - 4f);
                 Text.Anchor = TextAnchor.MiddleLeft;
-                Widgets.Label(labelRect, $"Partida: {s.SaveName}\n{s.Ip}:{s.Port}");
+                Widgets.Label(labelRect, Loc.T("Dialog_ServerBrowser.12", s.SaveName, s.Ip, s.Port));
 
                 bool sameVersion = s.ProtocolVersion == ProtocolInfo.Version;
                 GUI.color = sameVersion ? Color.green : Color.yellow;
                 Widgets.Label(new Rect(labelRect.xMax + 4f, row.y, 200f, row.height),
-                    $"{s.Players} jugador(es)\nseed: {s.Seed}" + (sameVersion ? "" : "\nversión distinta"));
+                    Loc.T("Dialog_ServerBrowser.32", s.Players, s.Seed) + (sameVersion ? "" : Loc.T("Dialog_ServerBrowser.13")));
                 GUI.color = Color.white;
                 Text.Anchor = TextAnchor.UpperLeft;
 
                 bool alreadySaved = _entries.Any(e => e.Ip == s.Ip && e.Port == s.Port.ToString());
                 const float btnW = 76f;
-                if (Widgets.ButtonText(new Rect(row.xMax - btnW * 2 - 8f, row.y + 8f, btnW, row.height - 16f), "Conectar")) TryConnect(s.Ip, s.Port.ToString());
-                if (Widgets.ButtonText(new Rect(row.xMax - btnW - 4f, row.y + 8f, btnW, row.height - 16f), alreadySaved ? "Guardado" : "Guardar", true, true, !alreadySaved))
+                if (Widgets.ButtonText(new Rect(row.xMax - btnW * 2 - 8f, row.y + 8f, btnW, row.height - 16f), Loc.T("Dialog_ServerBrowser.14"))) TryConnect(s.Ip, s.Port.ToString());
+                if (Widgets.ButtonText(new Rect(row.xMax - btnW - 4f, row.y + 8f, btnW, row.height - 16f), alreadySaved ? Loc.T("Dialog_ServerBrowser.15") : Loc.T("Dialog_ServerBrowser.16"), true, true, !alreadySaved))
                 {
                     _entries.Add(new ServerEntry { Nickname = s.SaveName, Ip = s.Ip, Port = s.Port.ToString() });
                     SaveEntriesToSettings();
@@ -301,7 +302,7 @@ namespace RimCoopMod.UI
         private void DrawAddForm(Rect rect)
         {
             Widgets.DrawLineHorizontal(rect.x, rect.y, rect.width);
-            Widgets.Label(new Rect(rect.x, rect.y + 4f, rect.width, 24f), "Agregar servidor (apodo, IP y puerto):");
+            Widgets.Label(new Rect(rect.x, rect.y + 4f, rect.width, 24f), Loc.T("Dialog_ServerBrowser.17"));
 
             var addRect = new Rect(rect.x, rect.y + 32f, rect.width, 28f);
             float w = addRect.width;
@@ -313,7 +314,7 @@ namespace RimCoopMod.UI
             _newNickname = Widgets.TextField(nickRect, _newNickname);
             _newIp = Widgets.TextField(ipRect, _newIp);
             _newPort = Widgets.TextField(portRect, _newPort);
-            if (Widgets.ButtonText(addBtnRect, "Agregar")) TryAdd();
+            if (Widgets.ButtonText(addBtnRect, Loc.T("Dialog_ServerBrowser.18"))) TryAdd();
         }
 
         private void DrawStatus(Rect rect, string key)
@@ -328,22 +329,22 @@ namespace RimCoopMod.UI
                 {
                     bool sameVersion = result.ProtocolVersion == ProtocolInfo.Version;
                     GUI.color = sameVersion ? Color.green : Color.yellow;
-                    string text = $"{result.ConnectedPlayers} jugador(es) - {result.LatencyMs} ms";
-                    if (!string.IsNullOrEmpty(result.SaveName)) text += $"\nPartida: {result.SaveName}";
-                    if (!string.IsNullOrEmpty(result.WorldSeed)) text += $" (seed {result.WorldSeed})";
-                    if (!sameVersion) text += "\nversión distinta";
+                    string text = Loc.T("Dialog_ServerBrowser.19", result.ConnectedPlayers, result.LatencyMs);
+                    if (!string.IsNullOrEmpty(result.SaveName)) text += Loc.T("Dialog_ServerBrowser.20", result.SaveName);
+                    if (!string.IsNullOrEmpty(result.WorldSeed)) text += Loc.T("Dialog_ServerBrowser.21", result.WorldSeed);
+                    if (!sameVersion) text += Loc.T("Dialog_ServerBrowser.22");
                     Widgets.Label(rect, text);
                 }
                 else
                 {
                     GUI.color = Color.red;
-                    Widgets.Label(rect, "Sin respuesta");
+                    Widgets.Label(rect, Loc.T("Dialog_ServerBrowser.23"));
                 }
             }
             else
             {
                 GUI.color = Color.gray;
-                Widgets.Label(rect, isPinging ? "Consultando..." : "");
+                Widgets.Label(rect, isPinging ? Loc.T("Dialog_ServerBrowser.24") : "");
             }
 
             GUI.color = Color.white;
@@ -356,12 +357,12 @@ namespace RimCoopMod.UI
         {
             if (string.IsNullOrWhiteSpace(_newIp))
             {
-                _statusMessage = "Ingresá una IP válida.";
+                _statusMessage = Loc.T("Dialog_ServerBrowser.25");
                 return;
             }
             if (!int.TryParse(_newPort, out _))
             {
-                _statusMessage = "El puerto tiene que ser un número.";
+                _statusMessage = Loc.T("Dialog_ServerBrowser.26");
                 return;
             }
 
@@ -385,12 +386,12 @@ namespace RimCoopMod.UI
         {
             if (!int.TryParse(portText, out int port))
             {
-                _statusMessage = "Puerto inválido.";
+                _statusMessage = Loc.T("Dialog_ServerBrowser.27");
                 return;
             }
             if (string.IsNullOrWhiteSpace(_playerName))
             {
-                _statusMessage = "Ingresá tu nombre de jugador.";
+                _statusMessage = Loc.T("Dialog_ServerBrowser.28");
                 return;
             }
 
@@ -407,13 +408,13 @@ namespace RimCoopMod.UI
 
             if (CoopClient.Instance.IsConnected)
             {
-                Messages.Message("Conectado al servidor. Generando mundo...", MessageTypeDefOf.PositiveEvent, false);
+                Messages.Message(Loc.T("Dialog_ServerBrowser.29"), MessageTypeDefOf.PositiveEvent, false);
                 GameComponents.CoopSessionManager.PendingWorldGeneration = true;
                 Close();
             }
             else
             {
-                _statusMessage = "No se pudo conectar: " + CoopClient.Instance.LastError;
+                _statusMessage = Loc.T("Dialog_ServerBrowser.30", CoopClient.Instance.LastError);
             }
         }
     }

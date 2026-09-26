@@ -25,7 +25,7 @@ namespace RimCoopMod.World
 
             if (!CoopSessionManager.CanLocalPlayerCommand(pawn))
             {
-                Messages.Message("Ese no es tu colono.", MessageTypeDefOf.RejectInput, false);
+                Messages.Message(Loc.T("PawnOwnershipPatch.01"), MessageTypeDefOf.RejectInput, false);
                 return false;
             }
 
@@ -36,8 +36,8 @@ namespace RimCoopMod.World
                 // simula ese mapa.
                 if (job != null)
                 {
-                    string targetDesc = job.targetA.HasThing ? $"Thing {job.targetA.Thing.LabelShortCap} (id local {job.targetA.Thing.thingIDNumber})" : $"celda {job.targetA.Cell}";
-                    CoopLog.Message($"[RimCoop] Redirigiendo orden {job.def.defName} sobre {targetDesc} para el pawn títere {pawn.LabelShortCap} al jugador {info.HostPlayerId}.");
+                    string targetDesc = job.targetA.HasThing ? Loc.T("PawnOwnershipPatch.02", job.targetA.Thing.LabelShortCap, job.targetA.Thing.thingIDNumber) : Loc.T("PawnOwnershipPatch.03", job.targetA.Cell);
+                    CoopLog.Message(Loc.T("PawnOwnershipPatch.04", job.def.defName, targetDesc, pawn.LabelShortCap, info.HostPlayerId));
                     CoopSessionManager.SendOrder(info.HostPlayerId, info.HostPawnId, job);
                 }
                 return false;

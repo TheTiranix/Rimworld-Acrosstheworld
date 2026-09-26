@@ -116,7 +116,7 @@ namespace RimCoopMod.Networking
             });
             _lanResponder.Start();
 
-            CoopLog.Message($"[RimCoop] Servidor iniciado en puerto {port}. Seed del mundo: {seed}");
+            CoopLog.Message(Loc.T("Server.01", port, seed));
         }
 
         public void Stop()
@@ -198,24 +198,24 @@ namespace RimCoopMod.Networking
                 NetIO.SendPacket(handle.Stream, Packet.Create(PacketType.ServerInfo, new ServerInfoPayload { ProtocolVersion = ProtocolInfo.Version }));
                 if (hs.ProtocolVersion != ProtocolInfo.Version)
                 {
-                    CoopLog.Warning($"[RimCoop] Un cliente con versión de protocolo {hs.ProtocolVersion} (el servidor usa {ProtocolInfo.Version}) intentó conectarse: se lo rechaza. Tiene que usar la misma versión del mod.");
+                    CoopLog.Warning(Loc.T("Server.02", hs.ProtocolVersion, ProtocolInfo.Version));
                     NetIO.SendPacket(handle.Stream, Packet.Create(PacketType.Chat, new ChatPayload
                     {
                         PlayerId = 0, PlayerName = "Servidor",
-                        Message = $"Versión del mod incompatible (tu protocolo: {hs.ProtocolVersion}, servidor: {ProtocolInfo.Version}). Actualizá el mod y el servidor a la misma versión."
+                        Message = Loc.Both("Server.03", hs.ProtocolVersion, ProtocolInfo.Version)
                     }));
                     handle.TcpClient.Close();
                     return;
                 }
-                string playerName = string.IsNullOrEmpty(hs.PlayerName) ? $"Jugador{_nextPlayerId}" : hs.PlayerName;
+                string playerName = string.IsNullOrEmpty(hs.PlayerName) ? Loc.T("Common.Player") + _nextPlayerId : hs.PlayerName;
 
                 if (IsBanned(playerName))
                 {
-                    CoopLog.Warning($"[RimCoop] {playerName} está baneado: se rechaza su conexión.");
+                    CoopLog.Warning(Loc.T("Server.04", playerName));
                     NetIO.SendPacket(handle.Stream, Packet.Create(PacketType.Chat, new ChatPayload
                     {
                         PlayerId = 0, PlayerName = "Servidor",
-                        Message = "Estás baneado de este servidor."
+                        Message = Loc.Wire("Server.05")
                     }));
                     handle.TcpClient.Close();
                     return;
@@ -280,7 +280,7 @@ namespace RimCoopMod.Networking
                 // Qué colonos le tocan y cuáles están en otro lado: con esto corrige duplicados o pérdidas de partidas viejas.
                 SendColonistManifest(handle);
 
-                CoopLog.Message($"[RimCoop] {handle.PlayerName} (id {handle.PlayerId}) se conectó.");
+                CoopLog.Message(Loc.T("Server.06", handle.PlayerName, handle.PlayerId));
 
                 // 4. Loop de recepción normal
                 while (IsRunning)
@@ -293,7 +293,7 @@ namespace RimCoopMod.Networking
             }
             catch (Exception e)
             {
-                CoopLog.Message($"[RimCoop] Error con cliente {handle.PlayerName}: {e.Message}");
+                CoopLog.Message(Loc.T("Server.07", handle.PlayerName, e.Message));
             }
             finally
             {
@@ -307,7 +307,7 @@ namespace RimCoopMod.Networking
                     _clients.TryRemove(handle.PlayerId, out _);
                     lock (_players) { _players.Remove(handle.PlayerId); }
                     Broadcast(Packet.Create(PacketType.PlayerLeft, new PlayerBaseInfo { PlayerId = handle.PlayerId, PlayerName = handle.PlayerName }));
-                    CoopLog.Message($"[RimCoop] {handle.PlayerName} se desconectó.");
+                    CoopLog.Message(Loc.T("Server.08", handle.PlayerName));
                 }
             }
         }
@@ -531,7 +531,7 @@ namespace RimCoopMod.Networking
             }
             if (manifest.Hold.Count == 0 && manifest.Elsewhere.Count == 0) return;
             try { NetIO.SendPacket(handle.Stream, Packet.Create(PacketType.ColonistManifest, manifest)); }
-            catch (Exception e) { CoopLog.Warning("[RimCoop] No se pudo mandar el registro de colonos a " + handle.PlayerName + ": " + e.Message); }
+            catch (Exception e) { CoopLog.Warning(Loc.T("Server.24", handle.PlayerName, e.Message)); }
         }
 
         public class ColonistListEntry
@@ -576,11 +576,11 @@ namespace RimCoopMod.Networking
                         _colonists[rec.Uid] = rec;
                     }
                 }
-                if (_colonists.Count > 0) CoopLog.Message($"[RimCoop] Se cargaron {_colonists.Count} colono(s) del registro de traspasos desde {_colonistsPath}");
+                if (_colonists.Count > 0) CoopLog.Message(Loc.T("Server.09", _colonists.Count, _colonistsPath));
             }
             catch (Exception e)
             {
-                CoopLog.Warning("[RimCoop] No se pudo cargar el registro de colonos: " + e.Message);
+                CoopLog.Warning(Loc.T("Server.10", e.Message));
             }
         }
 
@@ -607,7 +607,7 @@ namespace RimCoopMod.Networking
             }
             catch (Exception e)
             {
-                CoopLog.Warning("[RimCoop] No se pudo guardar el registro de colonos: " + e.Message);
+                CoopLog.Warning(Loc.T("Server.11", e.Message));
             }
         }
 
@@ -651,7 +651,7 @@ namespace RimCoopMod.Networking
             if (target == null) return false;
 
             kickedName = target.PlayerName;
-            DisconnectWithMessage(target, string.IsNullOrWhiteSpace(reason) ? "Te sacaron del servidor." : "Te sacaron del servidor: " + reason);
+            DisconnectWithMessage(target, string.IsNullOrWhiteSpace(reason) ? Loc.Wire("Server.12") : Loc.Wire("Server.13", reason));
             return true;
         }
 
@@ -664,7 +664,7 @@ namespace RimCoopMod.Networking
 
             lock (_bannedNames) { _bannedNames.Add(bannedName); SaveBans(); }
             if (target != null)
-                DisconnectWithMessage(target, string.IsNullOrWhiteSpace(reason) ? "Te banearon del servidor." : "Te banearon del servidor: " + reason);
+                DisconnectWithMessage(target, string.IsNullOrWhiteSpace(reason) ? Loc.Wire("Server.14") : Loc.Wire("Server.15", reason));
             return true;
         }
 
@@ -706,11 +706,11 @@ namespace RimCoopMod.Networking
                 if (!File.Exists(_bansPath)) return;
                 foreach (var line in File.ReadAllLines(_bansPath))
                     if (!string.IsNullOrWhiteSpace(line)) _bannedNames.Add(line.Trim());
-                if (_bannedNames.Count > 0) CoopLog.Message($"[RimCoop] Se cargaron {_bannedNames.Count} jugador(es) baneado(s) desde {_bansPath}");
+                if (_bannedNames.Count > 0) CoopLog.Message(Loc.T("Server.16", _bannedNames.Count, _bansPath));
             }
             catch (Exception e)
             {
-                CoopLog.Warning("[RimCoop] No se pudo cargar la lista de baneados: " + e.Message);
+                CoopLog.Warning(Loc.T("Server.17", e.Message));
             }
         }
 
@@ -724,7 +724,7 @@ namespace RimCoopMod.Networking
             }
             catch (Exception e)
             {
-                CoopLog.Warning("[RimCoop] No se pudo guardar la lista de baneados: " + e.Message);
+                CoopLog.Warning(Loc.T("Server.18", e.Message));
             }
         }
 
@@ -743,11 +743,11 @@ namespace RimCoopMod.Networking
                     if (id >= _nextPlayerId) _nextPlayerId = id + 1;
                 }
 
-                CoopLog.Message($"[RimCoop] Se cargaron {_nameToId.Count} id(s) de jugador persistidos desde {_playerIdsPath}");
+                CoopLog.Message(Loc.T("Server.19", _nameToId.Count, _playerIdsPath));
             }
             catch (Exception e)
             {
-                CoopLog.Warning("[RimCoop] No se pudieron cargar los ids persistidos de jugador: " + e.Message);
+                CoopLog.Warning(Loc.T("Server.20", e.Message));
             }
         }
 
@@ -761,7 +761,7 @@ namespace RimCoopMod.Networking
             }
             catch (Exception e)
             {
-                CoopLog.Warning("[RimCoop] No se pudo guardar el id de jugador: " + e.Message);
+                CoopLog.Warning(Loc.T("Server.21", e.Message));
             }
         }
 
@@ -770,11 +770,11 @@ namespace RimCoopMod.Networking
             if (_clients.TryGetValue(toPlayerId, out var target))
             {
                 try { NetIO.SendPacket(target.Stream, packet); }
-                catch (Exception e) { CoopLog.Warning($"[RimCoop] Error reenviando {packet.Type} a jugador {toPlayerId}: {e.Message}"); }
+                catch (Exception e) { CoopLog.Warning(Loc.T("Server.22", packet.Type, toPlayerId, e.Message)); }
             }
             else
             {
-                CoopLog.Warning($"[RimCoop] No pude rutear {packet.Type}: no hay ningún jugador conectado con id {toPlayerId}.");
+                CoopLog.Warning(Loc.T("Server.23", packet.Type, toPlayerId));
             }
         }
 

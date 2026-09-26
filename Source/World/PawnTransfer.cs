@@ -64,7 +64,7 @@ namespace RimCoopMod.World
             }
             catch (Exception e)
             {
-                CoopLog.Error("[RimCoop] Error al serializar un colono para enviarlo: " + e);
+                CoopLog.Error(Loc.T("PawnTransfer.01", e));
                 return null;
             }
             finally
@@ -93,7 +93,7 @@ namespace RimCoopMod.World
             }
             catch (Exception e)
             {
-                CoopLog.Error("[RimCoop] Error al recibir un colono: " + e);
+                CoopLog.Error(Loc.T("PawnTransfer.02", e));
                 return null;
             }
             finally
@@ -144,7 +144,7 @@ namespace RimCoopMod.World
             }
             catch (Exception e)
             {
-                CoopLog.Warning($"[RimCoop] No se pudieron renumerar los ids internos del colono transferido: {e.Message}");
+                CoopLog.Warning(Loc.T("PawnTransfer.03", e.Message));
             }
         }
     }

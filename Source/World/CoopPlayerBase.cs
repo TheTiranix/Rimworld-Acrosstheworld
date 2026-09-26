@@ -23,7 +23,7 @@ namespace RimCoopMod.World
         public int ColonistCount;
         public int Wealth;
 
-        public override string Label => RemotePlayerName ?? "Jugador";
+        public override string Label => RemotePlayerName ?? Loc.T("Common.Player");
 
         // Generador propio: solo terreno, sin base de facción falsa ni fauna al azar
         // (eso se sincroniza por red, ver CoopSessionManager). Ver Defs/MapGeneratorDefs.
@@ -35,15 +35,15 @@ namespace RimCoopMod.World
 
             yield return new Command_Action
             {
-                defaultLabel = "Comerciar",
-                defaultDesc = $"Enviar una solicitud de comercio a {RemotePlayerName}.",
+                defaultLabel = Loc.T("PlayerBase.01"),
+                defaultDesc = Loc.T("PlayerBase.02", RemotePlayerName),
                 action = () => Find.WindowStack.Add(new Dialog_TradeOffer(RemotePlayerId, RemotePlayerName))
             };
 
             yield return new Command_Action
             {
-                defaultLabel = "Colaborar",
-                defaultDesc = $"Enviar colonos tuyos a vivir y trabajar en la base de {RemotePlayerName}.",
+                defaultLabel = Loc.T("PlayerBase.03"),
+                defaultDesc = Loc.T("PlayerBase.04", RemotePlayerName),
                 action = () => Find.WindowStack.Add(new Dialog_ChooseColonistsToSend(this))
             };
 
@@ -51,39 +51,39 @@ namespace RimCoopMod.World
             {
                 yield return new Command_Action
                 {
-                    defaultLabel = "Compartir misión",
-                    defaultDesc = $"Invitar a {RemotePlayerName} a una de tus misiones en curso. Cada jugador que se suma sube su dificultad un 35 %.",
+                    defaultLabel = Loc.T("PlayerBase.05"),
+                    defaultDesc = Loc.T("PlayerBase.06", RemotePlayerName),
                     action = () => Find.WindowStack.Add(new Dialog_ShareQuest(RemotePlayerId, RemotePlayerName))
                 };
 
                 yield return new Command_Action
                 {
-                    defaultLabel = "Dejar de compartir",
-                    defaultDesc = $"Dejar de compartir la investigación con {RemotePlayerName}. Los colonos que ya enviaron se quedan donde están; se puede volver a colaborar cuando quieran.",
+                    defaultLabel = Loc.T("PlayerBase.07"),
+                    defaultDesc = Loc.T("PlayerBase.08", RemotePlayerName),
                     action = () => Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(
-                        $"¿Dejar de compartir la investigación con {RemotePlayerName}?",
+                        Loc.T("PlayerBase.09", RemotePlayerName),
                         () => CoopSessionManager.StopCollaborating(RemotePlayerId)))
                 };
             }
 
             yield return new Command_Action
             {
-                defaultLabel = "Entrar a la base",
-                defaultDesc = $"Entrar al mapa real de la base de {RemotePlayerName}, como cuando visitás el campamento de una caravana.",
+                defaultLabel = Loc.T("PlayerBase.10"),
+                defaultDesc = Loc.T("PlayerBase.11", RemotePlayerName),
                 action = () => CoopSessionManager.EnterCoopMap(this)
             };
 
             yield return new Command_Action
             {
-                defaultLabel = "Atacar",
-                defaultDesc = $"Mandar una incursión contra la base de {RemotePlayerName}.",
+                defaultLabel = Loc.T("PlayerBase.12"),
+                defaultDesc = Loc.T("PlayerBase.13", RemotePlayerName),
                 action = () => Find.WindowStack.Add(new Dialog_AttackStrength(RemotePlayerId, RemotePlayerName, Wealth))
             };
         }
 
         public override string GetInspectString()
         {
-            string text = $"Jugador: {RemotePlayerName}\nColonos: {ColonistCount}\nRiqueza: {Wealth:N0}";
+            string text = Loc.T("PlayerBase.14", RemotePlayerName, ColonistCount, Wealth);
             string anomaly = CoopSessionManager.GetRemoteSnapshot(RemotePlayerId)?.DlcInfo;
             if (!string.IsNullOrEmpty(anomaly)) text += "\n" + anomaly;
             return text;

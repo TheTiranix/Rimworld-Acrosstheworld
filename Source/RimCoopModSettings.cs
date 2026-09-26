@@ -10,7 +10,10 @@ namespace RimCoopMod
     {
         public string LastServerIp = "127.0.0.1";
         public string LastServerPort = "34500";
-        public string LastPlayerName = "Jugador";
+        public string LastPlayerName = "";
+
+        /// <summary>Idioma del mod: "auto" (el del juego), "en" o "es".</summary>
+        public string Language = "auto";
 
         // Cada entrada es "Apodo|IP|Puerto". Un List<string> plano es más simple de persistir con
         // Scribe que una clase propia, y alcanza para esto.
@@ -21,7 +24,8 @@ namespace RimCoopMod
             base.ExposeData();
             Scribe_Values.Look(ref LastServerIp, "rimcoopLastServerIp", "127.0.0.1");
             Scribe_Values.Look(ref LastServerPort, "rimcoopLastServerPort", "34500");
-            Scribe_Values.Look(ref LastPlayerName, "rimcoopLastPlayerName", "Jugador");
+            Scribe_Values.Look(ref LastPlayerName, "rimcoopLastPlayerName", "");
+            Scribe_Values.Look(ref Language, "rimcoopLanguage", "auto");
             Scribe_Collections.Look(ref SavedServers, "rimcoopSavedServers", LookMode.Value);
             if (SavedServers == null) SavedServers = new List<string>();
         }

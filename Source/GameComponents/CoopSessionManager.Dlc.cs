@@ -75,7 +75,7 @@ namespace RimCoopMod.GameComponents
             }
             catch (Exception e)
             {
-                CoopLog.Warning($"[RimCoop] No se pudo meter a la entidad {puppet.LabelShortCap} en la plataforma espejo: {e.Message}");
+                CoopLog.Warning(Loc.T("SessionManager_Dlc.01", puppet.LabelShortCap, e.Message));
             }
             return false;
         }
@@ -93,7 +93,7 @@ namespace RimCoopMod.GameComponents
             }
             catch (Exception e)
             {
-                CoopLog.Warning($"[RimCoop] No se pudo sacar a la entidad {puppet.LabelShortCap} de la plataforma espejo: {e.Message}");
+                CoopLog.Warning(Loc.T("SessionManager_Dlc.02", puppet.LabelShortCap, e.Message));
             }
         }
 
@@ -124,7 +124,7 @@ namespace RimCoopMod.GameComponents
             }
             catch (Exception e)
             {
-                CoopLog.Warning($"[RimCoop] Error juntando datos de Anomaly de {pawn.LabelShortCap}: {e.Message}");
+                CoopLog.Warning(Loc.T("SessionManager_Dlc.03", pawn.LabelShortCap, e.Message));
             }
         }
 
@@ -187,7 +187,7 @@ namespace RimCoopMod.GameComponents
             }
             catch (Exception e)
             {
-                CoopLog.Warning($"[RimCoop] Error aplicando datos de Anomaly al títere {puppet.LabelShortCap}: {e.Message}");
+                CoopLog.Warning(Loc.T("SessionManager_Dlc.04", puppet.LabelShortCap, e.Message));
             }
         }
 
@@ -211,7 +211,7 @@ namespace RimCoopMod.GameComponents
                 var anomaly = Find.Anomaly;
                 if (anomaly == null || (!anomaly.MonolithSpawned && anomaly.Level <= 0)) return "";
                 string label = anomaly.LevelDef?.label;
-                return "Monolito: nivel " + anomaly.Level + (string.IsNullOrEmpty(label) ? "" : " (" + label + ")");
+                return Loc.T("SessionManager_Dlc.12", anomaly.Level) + (string.IsNullOrEmpty(label) ? "" : " (" + label + ")");
             }
             catch { return ""; }
         }
@@ -239,9 +239,9 @@ namespace RimCoopMod.GameComponents
                 }
 
                 var parts = new List<string>();
-                if (engines > 0) parts.Add(engines + " nave(s) gravitatoria(s)");
-                if (extraHomes > 0) parts.Add(extraHomes + " mapa(s) propio(s) más" + (orbit > 0 ? " (" + orbit + " en órbita)" : ""));
-                return parts.Count == 0 ? "" : "Odyssey: " + string.Join(", ", parts);
+                if (engines > 0) parts.Add(Loc.T("SessionManager_Dlc.13", engines));
+                if (extraHomes > 0) parts.Add(Loc.T("SessionManager_Dlc.14", extraHomes) + (orbit > 0 ? Loc.T("SessionManager_Dlc.15", orbit) : ""));
+                return parts.Count == 0 ? "" : Loc.T("SessionManager_Dlc.16", string.Join(", ", parts));
             }
             catch { return ""; }
         }
@@ -260,7 +260,7 @@ namespace RimCoopMod.GameComponents
             int tile = (int)map.Tile;
             if (tile < 0 || tile == _localTile) return;
 
-            CoopLog.Message($"[RimCoop] Mi base se mudó del tile {_localTile} al {tile} (nave gravitatoria): se avisa la ubicación nueva.");
+            CoopLog.Message(Loc.T("SessionManager_Dlc.05", _localTile, tile));
             _localTile = tile;
             _lastSentColonistCount = CountLocalColonists();
             UpdateLocalWealth(force: true);
@@ -282,7 +282,7 @@ namespace RimCoopMod.GameComponents
                     Current.Game.DeinitAndRemoveMap(mirrorMap, false);
                 }
             }
-            catch (Exception ex) { CoopLog.Warning($"[RimCoop] No se pudo cerrar el mapa espejo de {wobj.RemotePlayerName}: {ex.Message}"); }
+            catch (Exception ex) { CoopLog.Warning(Loc.T("SessionManager_Dlc.06", wobj.RemotePlayerName, ex.Message)); }
 
             if (_syncedPawns.TryGetValue(playerId, out var pawns))
             {
@@ -350,22 +350,22 @@ namespace RimCoopMod.GameComponents
                 if (pawn.mechanitor != null && MechanitorUtility.IsMechanitor(pawn))
                 {
                     var mt = pawn.mechanitor;
-                    info.Add($"Mecanitor: ancho de banda {mt.UsedBandwidth}/{mt.TotalBandwidth}, {mt.OverseenPawns.Count} mech(s) a cargo");
+                    info.Add(Loc.T("SessionManager_Dlc.07", mt.UsedBandwidth, mt.TotalBandwidth, mt.OverseenPawns.Count));
                 }
 
                 if (pawn.RaceProps != null && pawn.RaceProps.IsMechanoid && pawn.Faction == Faction.OfPlayer)
                 {
                     var overseer = pawn.GetOverseer();
-                    info.Add("Supervisor: " + (overseer != null ? overseer.LabelShortCap : "nadie"));
+                    info.Add(Loc.T("SessionManager_Dlc.17", overseer != null ? overseer.LabelShortCap : Loc.T("SessionManager_Dlc.18")));
                     var mode = pawn.GetMechWorkMode();
-                    if (mode != null) info.Add("Modo de trabajo: " + mode.LabelCap);
+                    if (mode != null) info.Add(Loc.T("SessionManager_Dlc.08", mode.LabelCap));
                 }
 
                 s.BiotechInfo = string.Join("\n", info);
             }
             catch (Exception e)
             {
-                CoopLog.Warning($"[RimCoop] Error juntando datos de Biotech de {pawn.LabelShortCap}: {e.Message}");
+                CoopLog.Warning(Loc.T("SessionManager_Dlc.09", pawn.LabelShortCap, e.Message));
             }
         }
 
@@ -421,7 +421,7 @@ namespace RimCoopMod.GameComponents
             }
             catch (Exception e)
             {
-                CoopLog.Warning($"[RimCoop] Error aplicando datos de Biotech al títere {puppet.LabelShortCap}: {e.Message}");
+                CoopLog.Warning(Loc.T("SessionManager_Dlc.10", puppet.LabelShortCap, e.Message));
             }
         }
 
@@ -515,7 +515,7 @@ namespace RimCoopMod.GameComponents
             }
             catch (Exception e)
             {
-                CoopLog.Warning($"[RimCoop] Error copiando psicasts/títulos de {puppet.LabelShortCap}: {e.Message}");
+                CoopLog.Warning(Loc.T("SessionManager_Dlc.11", puppet.LabelShortCap, e.Message));
             }
         }
     }

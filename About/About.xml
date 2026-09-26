@@ -1,12 +1,29 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ModMetaData>
-  <name>RimCoop - Multijugador Cooperativo</name>
+  <name>RimCoop - Cooperative Multiplayer</name>
   <author>thetiranix</author>
   <packageId>thetiranix.rimcoop</packageId>
   <supportedVersions>
     <li>1.6</li>
   </supportedVersions>
   <description>
+    Cooperative mod for RimWorld: every player runs their own colony on the same planet.
+
+    - A server hands out the world seed, and everyone generates the same planet.
+    - You see the other players' colonies on the world map, where they settled.
+    - You can enter another base's real map (like a caravan camp) and see their colonists, buildings and items live.
+    - Collaborate: send your own colonists to live and work at another player's base (only you can give them orders).
+    - Build, mark zones and areas in someone else's base: the owner applies them on their map.
+    - Trade between players (offers back and forth) and attacks with real raids.
+    - Global chat (\ key), pause by vote and shared game speed.
+    - Available in English and Spanish (Options > Mod settings > RimCoop, or the Language button in the connect window).
+
+    Status: experimental. Every game runs its own simulation; what you see of another base is a synchronized copy, not a single shared simulation.
+
+    Requires Harmony.
+
+    ---
+
     Mod cooperativo para RimWorld: cada jugador lleva su propia colonia en el mismo planeta.
 
     - Un servidor reparte la seed del mundo, y todos generan el mismo planeta.
@@ -16,6 +33,7 @@
     - Construi, marca zonas y areas en la base ajena: el dueno las aplica en su mapa.
     - Comercio entre jugadores (ofertas de ida y vuelta) y ataques con incursiones reales.
     - Chat global (tecla \), pausa por votacion y velocidad de juego compartida.
+    - Disponible en espanol e ingles (Opciones > Ajustes de mods > RimCoop, o el boton Idioma de la ventana de conexion).
 
     Estado: experimental. Cada juego corre su propia simulacion; lo que ves de otra base es una copia sincronizada, no una simulacion unica compartida.
 

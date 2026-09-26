@@ -75,9 +75,9 @@ namespace RimCoopMod.UI
             DrawChatLog(logRect);
 
             var saveRect = new Rect(inRect.width - 128f, 2f, 124f, 22f);
-            if (Widgets.ButtonText(saveRect, "Guardar todos"))
+            if (Widgets.ButtonText(saveRect, Loc.T("Dialog_GlobalChat.01")))
                 CoopSessionManager.RequestSaveAll();
-            TooltipHandler.TipRegion(saveRect, "Todos los jugadores guardan su partida ahora mismo (mantiene parejos los colonos que se mandaron entre sí).");
+            TooltipHandler.TipRegion(saveRect, Loc.T("Dialog_GlobalChat.02"));
 
             var inputRect = new Rect(0f, inRect.height - 28f, inRect.width - 65f, 28f);
             var sendRect = new Rect(inRect.width - 60f, inRect.height - 28f, 60f, 28f);
@@ -89,7 +89,7 @@ namespace RimCoopMod.UI
                                  (Event.current.keyCode == KeyCode.Return || Event.current.keyCode == KeyCode.KeypadEnter) &&
                                  GUI.GetNameOfFocusedControl() == ControlName;
 
-            if (Widgets.ButtonText(sendRect, "Enviar") || pressedEnter)
+            if (Widgets.ButtonText(sendRect, Loc.T("Dialog_GlobalChat.03")) || pressedEnter)
             {
                 TrySend();
                 if (pressedEnter) Event.current.Use();

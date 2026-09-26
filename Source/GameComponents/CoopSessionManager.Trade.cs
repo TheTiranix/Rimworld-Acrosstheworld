@@ -110,14 +110,14 @@ namespace RimCoopMod.GameComponents
                         ApplyQualityAndHp(t, int.TryParse(f[3], out int q) ? q : -1, int.TryParse(f[4], out int hp) ? hp : 0);
                         things.Add(t);
                     }
-                    catch (Exception e) { CoopLog.Warning($"[RimCoop] No se pudo crear {def.defName} del comercio: {e.Message}"); break; }
+                    catch (Exception e) { CoopLog.Warning(Loc.T("SessionManager_Trade.01", def.defName, e.Message)); break; }
                     count -= chunk;
                 }
             }
 
             if (things.Count == 0) return;
             DropPodUtility.DropThingsNear(DropCellFinder.TradeDropSpot(map), map, things, 110, false, false, true, true, true, null);
-            Messages.Message($"Llegaron ítems del comercio con {fromName}.", MessageTypeDefOf.PositiveEvent, false);
+            Messages.Message(Loc.T("SessionManager_Trade.02", fromName), MessageTypeDefOf.PositiveEvent, false);
         }
 
         // =====================================================================
@@ -158,7 +158,7 @@ namespace RimCoopMod.GameComponents
 
                 case "reject":
                     ForgetSentOffer(m.OfferId);
-                    Messages.Message($"{m.FromPlayerName} rechazó tu oferta de comercio.", MessageTypeDefOf.RejectInput, false);
+                    Messages.Message(Loc.T("SessionManager_Trade.03", m.FromPlayerName), MessageTypeDefOf.RejectInput, false);
                     break;
 
                 case "accept":
@@ -169,12 +169,12 @@ namespace RimCoopMod.GameComponents
                         var give = ParseSimpleItems(sent.Data.Split('#')[0]);
                         string removed = RemoveItems(LocalBaseMap, give);
                         CoopClient.Instance.SendTradeMessage(m.FromPlayerId, "transfer", removed);
-                        Messages.Message($"{m.FromPlayerName} aceptó tu oferta: se enviaron tus ítems.", MessageTypeDefOf.PositiveEvent, false);
+                        Messages.Message(Loc.T("SessionManager_Trade.04", m.FromPlayerName), MessageTypeDefOf.PositiveEvent, false);
                         break;
                     }
 
                 case "transfer":
-                    ReceiveItems(m.Data, m.FromPlayerName ?? "otro jugador");
+                    ReceiveItems(m.Data, m.FromPlayerName ?? Loc.T("SessionManager_Trade.05"));
                     break;
             }
         }
@@ -185,7 +185,7 @@ namespace RimCoopMod.GameComponents
             // Los mensajes a un jugador desconectado se pierden: si acepto ahora, mis ítems saldrían y nunca llegarían.
             if (!IsPlayerOnline(fromPlayerId))
             {
-                Messages.Message($"{fromName} no está conectado: esperá a que vuelva para aceptar el trato.", MessageTypeDefOf.RejectInput, false);
+                Messages.Message(Loc.T("SessionManager_Trade.06", fromName), MessageTypeDefOf.RejectInput, false);
                 return false;
             }
 
@@ -198,7 +198,7 @@ namespace RimCoopMod.GameComponents
                 stock.TryGetValue(def ?? ThingDefOf.Silver, out int have);
                 if (def == null || have < kv.Value)
                 {
-                    Messages.Message($"No tenés suficiente {def?.label ?? kv.Key} para aceptar el trato.", MessageTypeDefOf.RejectInput, false);
+                    Messages.Message(Loc.T("SessionManager_Trade.07", def?.label ?? kv.Key), MessageTypeDefOf.RejectInput, false);
                     CoopClient.Instance.SendTradeMessage(fromPlayerId, "reject", "", offerId);
                     return true; // la oferta quedó resuelta (rechazada)
                 }
@@ -227,15 +227,15 @@ namespace RimCoopMod.GameComponents
                 parms.points = Mathf.Clamp(a.Points > 0 ? a.Points : 300, 50, 4000);
                 parms.faction = Find.FactionManager.RandomEnemyFaction(false, false, false, TechLevel.Undefined) ?? Faction.OfPirates;
 
-                Messages.Message($"¡{a.FromPlayerName} mandó una incursión contra tu base!", MessageTypeDefOf.ThreatBig, false);
+                Messages.Message(Loc.T("SessionManager_Trade.08", a.FromPlayerName), MessageTypeDefOf.ThreatBig, false);
                 if (!def.Worker.TryExecute(parms))
-                    CoopLog.Warning("[RimCoop] El storyteller no pudo generar la incursión pedida por " + a.FromPlayerName);
+                    CoopLog.Warning(Loc.T("SessionManager_Trade.09", a.FromPlayerName));
                 else
-                    CoopLog.Message($"[RimCoop] Incursión de {a.FromPlayerName} ({parms.points:F0} puntos) generada.");
+                    CoopLog.Message(Loc.T("SessionManager_Trade.10", a.FromPlayerName, parms.points));
             }
             catch (Exception e)
             {
-                CoopLog.Warning($"[RimCoop] Error generando la incursión: {e.Message}");
+                CoopLog.Warning(Loc.T("SessionManager_Trade.11", e.Message));
             }
         }
     }

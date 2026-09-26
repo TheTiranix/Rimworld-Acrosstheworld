@@ -35,7 +35,7 @@ namespace RimCoopMod.GameComponents
         {
             if (!CoopClient.Instance.IsConnected) return;
             try { CoopClient.Instance.SendModList(toPlayerId, MyModIds()); }
-            catch (Exception e) { CoopLog.Warning($"[RimCoop] No se pudo mandar la lista de mods: {e.Message}"); }
+            catch (Exception e) { CoopLog.Warning(Loc.T("SessionManager_Compat.01", e.Message)); }
         }
 
         private void ReceiveModList(ModListPayload m)
@@ -50,13 +50,12 @@ namespace RimCoopMod.GameComponents
 
             string Name(string id) => KnownExpansions.TryGetValue(id, out var n) ? n + " (DLC)" : id;
             var lines = new List<string>();
-            if (missingHere.Count > 0) lines.Add($"{m.FromPlayerName} tiene y vos NO: {string.Join(", ", missingHere.Select(Name))}");
-            if (missingThere.Count > 0) lines.Add($"Vos tenés y {m.FromPlayerName} NO: {string.Join(", ", missingThere.Select(Name))}");
+            if (missingHere.Count > 0) lines.Add(Loc.T("SessionManager_Compat.04", m.FromPlayerName, string.Join(", ", missingHere.Select(Name))));
+            if (missingThere.Count > 0) lines.Add(Loc.T("SessionManager_Compat.05", m.FromPlayerName, string.Join(", ", missingThere.Select(Name))));
 
-            string text = $"Vos y {m.FromPlayerName} no tienen los mismos DLC/mods activos:\n\n" + string.Join("\n", lines) +
-                          "\n\nLo que dependa de eso puede no aparecer del otro lado (colonos, ítems, edificios o efectos). Para jugar sin problemas, activen los mismos DLC y mods.";
+            string text = Loc.T("SessionManager_Compat.06", m.FromPlayerName, string.Join("\n", lines));
             CoopLog.Warning("[RimCoop] " + text.Replace("\n", " "));
-            Find.WindowStack.Add(new Dialog_MessageBox(text, "Entendido", null, null, null, "RimCoop: DLC/mods distintos"));
+            Find.WindowStack.Add(new Dialog_MessageBox(text, Loc.T("SessionManager_Compat.02"), null, null, null, Loc.T("SessionManager_Compat.03")));
         }
     }
 }

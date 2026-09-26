@@ -59,7 +59,7 @@ namespace RimCoopMod.Networking
                 }
                 catch (Exception e)
                 {
-                    CoopLog.Warning("[RimCoop] No se pudo abrir el descubrimiento LAN (UDP " + DiscoveryPort + "): " + e.Message);
+                    CoopLog.Warning(Loc.T("LanDiscovery.01", DiscoveryPort, e.Message));
                     try { _socket?.Close(); } catch { }
                     return false;
                 }

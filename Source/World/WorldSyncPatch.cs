@@ -26,7 +26,7 @@ namespace RimCoopMod.World
             traverse.Field("seedString").SetValue(CoopClient.Instance.LastKnownSeed);
             traverse.Field("planetCoverage").SetValue(CoopClient.Instance.LastKnownCoverage);
 
-            Messages.Message("Usando la seed del servidor: " + CoopClient.Instance.LastKnownSeed, MessageTypeDefOf.NeutralEvent, false);
+            Messages.Message(Loc.T("WorldSyncPatch.01", CoopClient.Instance.LastKnownSeed), MessageTypeDefOf.NeutralEvent, false);
         }
     }
 }

@@ -1,4 +1,5 @@
 using System;
+using RimCoopMod;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -55,7 +56,7 @@ namespace RimCoopServer
             Directory.CreateDirectory(defaultFolder);
             File.Move(legacyConfig, Path.Combine(defaultFolder, "server_config.txt"));
             if (File.Exists(legacyPlayerIds)) File.Move(legacyPlayerIds, Path.Combine(defaultFolder, "player_ids.txt"));
-            Console.WriteLine("[RimCoopServer] Se migró la partida existente a ServerData/default/.");
+            Console.WriteLine(Loc.T("ServerConfig.01"));
         }
 
         public static ServerConfig LoadOrCreateNamed(string saveName, int? portOverride = null, string seedOverride = null)
@@ -75,7 +76,7 @@ namespace RimCoopServer
                     Port = portOverride ?? 34500
                 };
                 config.Save();
-                Console.WriteLine($"[RimCoopServer] Partida nueva '{saveName}' creada en {folder} (seed {config.Seed}, puerto {config.Port}).");
+                Console.WriteLine(Loc.T("ServerConfig.02", saveName, folder, config.Seed, config.Port));
                 return config;
             }
 
@@ -99,7 +100,7 @@ namespace RimCoopServer
                 }
             }
 
-            Console.WriteLine($"[RimCoopServer] Partida '{saveName}' cargada desde {filePath}");
+            Console.WriteLine(Loc.T("ServerConfig.03", saveName, filePath));
             return config;
         }
 

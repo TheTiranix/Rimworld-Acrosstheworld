@@ -51,7 +51,7 @@ namespace RimCoopMod.GameComponents
 
         private void ReceiveEventNotice(EventNoticePayload n)
         {
-            string owner = _remoteBases.Values.FirstOrDefault(b => b.RemotePlayerId == n.FromPlayerId)?.RemotePlayerName ?? "otro jugador";
+            string owner = _remoteBases.Values.FirstOrDefault(b => b.RemotePlayerId == n.FromPlayerId)?.RemotePlayerName ?? Loc.T("SessionManager_Extras.01");
             LetterDef def = DefDatabase<LetterDef>.GetNamedSilentFail(n.LetterDefName) ?? LetterDefOf.NeutralEvent;
             _relayingLetter = true;
             try
@@ -106,7 +106,7 @@ namespace RimCoopMod.GameComponents
                 }
                 catch (Exception e)
                 {
-                    CoopLog.Warning($"[RimCoop] No se pudo mostrar la burbuja social {ie.DefName}: {e.Message}");
+                    CoopLog.Warning(Loc.T("SessionManager_Extras.02", ie.DefName, e.Message));
                 }
             }
         }
@@ -193,7 +193,7 @@ namespace RimCoopMod.GameComponents
             }
             catch (Exception e)
             {
-                CoopLog.Warning($"[RimCoop] Error juntando datos extra de {pawn.LabelShortCap}: {e.Message}");
+                CoopLog.Warning(Loc.T("SessionManager_Extras.03", pawn.LabelShortCap, e.Message));
             }
         }
 
@@ -234,7 +234,7 @@ namespace RimCoopMod.GameComponents
             }
             catch (Exception e)
             {
-                CoopLog.Warning($"[RimCoop] Error aplicando datos extra al títere {puppet.LabelShortCap}: {e.Message}");
+                CoopLog.Warning(Loc.T("SessionManager_Extras.04", puppet.LabelShortCap, e.Message));
             }
         }
 
@@ -282,7 +282,7 @@ namespace RimCoopMod.GameComponents
             }
             catch (Exception e)
             {
-                CoopLog.Warning($"[RimCoop] Error copiando habilidades/rasgos de {puppet.LabelShortCap}: {e.Message}");
+                CoopLog.Warning(Loc.T("SessionManager_Extras.05", puppet.LabelShortCap, e.Message));
             }
 
             ApplyRoyalty(puppet, ps, pawns);
@@ -304,7 +304,7 @@ namespace RimCoopMod.GameComponents
             }
             catch (Exception e)
             {
-                CoopLog.Warning($"[RimCoop] Error copiando genes de {puppet.LabelShortCap}: {e.Message}");
+                CoopLog.Warning(Loc.T("SessionManager_Extras.06", puppet.LabelShortCap, e.Message));
             }
 
             try
@@ -358,7 +358,7 @@ namespace RimCoopMod.GameComponents
             }
             catch (Exception e)
             {
-                CoopLog.Warning($"[RimCoop] Error copiando datos de animal de {puppet.LabelShortCap}: {e.Message}");
+                CoopLog.Warning(Loc.T("SessionManager_Extras.07", puppet.LabelShortCap, e.Message));
             }
 
             try
@@ -396,7 +396,7 @@ namespace RimCoopMod.GameComponents
             }
             catch (Exception e)
             {
-                CoopLog.Warning($"[RimCoop] Error copiando estado de prisionero/esclavo de {puppet.LabelShortCap}: {e.Message}");
+                CoopLog.Warning(Loc.T("SessionManager_Extras.08", puppet.LabelShortCap, e.Message));
             }
         }
 
@@ -475,7 +475,7 @@ namespace RimCoopMod.GameComponents
                 }
                 catch (Exception e)
                 {
-                    CoopLog.Warning($"[RimCoop] No se pudo copiar el hediff {def.defName} al títere: {e.Message}");
+                    CoopLog.Warning(Loc.T("SessionManager_Extras.09", def.defName, e.Message));
                 }
             }
         }
@@ -564,7 +564,7 @@ namespace RimCoopMod.GameComponents
 
             if (!_pawnOwners.TryGetValue(pawn.thingIDNumber, out int owner) || owner != req.FromPlayerId)
             {
-                CoopClient.Instance.SendJoinResult(req.FromPlayerId, false, "Ese no es tu colono: no podés cambiarle la configuración.");
+                CoopClient.Instance.SendJoinResult(req.FromPlayerId, false, Loc.Wire("SessionManager_Extras.10"));
                 return;
             }
 
@@ -604,11 +604,11 @@ namespace RimCoopMod.GameComponents
                             pawn.playerSettings.AreaRestrictionInPawnCurrentMap = string.IsNullOrEmpty(req.Value) ? null : map.areaManager.GetLabeled(req.Value);
                         break;
                 }
-                CoopLog.Message($"[RimCoop] Jugador {req.FromPlayerId} cambió {req.Kind} de {pawn.LabelShortCap}.");
+                CoopLog.Message(Loc.T("SessionManager_Extras.11", req.FromPlayerId, req.Kind, pawn.LabelShortCap));
             }
             catch (Exception e)
             {
-                CoopLog.Warning($"[RimCoop] Error aplicando {req.Kind} a {pawn.LabelShortCap}: {e.Message}");
+                CoopLog.Warning(Loc.T("SessionManager_Extras.12", req.Kind, pawn.LabelShortCap, e.Message));
             }
         }
 
@@ -735,7 +735,7 @@ namespace RimCoopMod.GameComponents
                 }
                 catch (Exception e)
                 {
-                    CoopLog.Warning($"[RimCoop] No se pudo reconstruir la zona {zs.Kind}: {e.Message}");
+                    CoopLog.Warning(Loc.T("SessionManager_Extras.13", zs.Kind, e.Message));
                 }
             }
 
@@ -833,7 +833,7 @@ namespace RimCoopMod.GameComponents
             }
             catch (Exception e)
             {
-                CoopLog.Warning($"[RimCoop] No se pudieron copiar los techos: {e.Message}");
+                CoopLog.Warning(Loc.T("SessionManager_Extras.14", e.Message));
             }
         }
 
@@ -883,7 +883,7 @@ namespace RimCoopMod.GameComponents
                 }
                 catch (Exception e)
                 {
-                    CoopLog.Warning($"[RimCoop] No se pudo copiar el área {a.Kind}/{a.Label}: {e.Message}");
+                    CoopLog.Warning(Loc.T("SessionManager_Extras.15", a.Kind, a.Label, e.Message));
                 }
             }
 
@@ -898,7 +898,7 @@ namespace RimCoopMod.GameComponents
                 }
                 catch (Exception e)
                 {
-                    CoopLog.Warning($"[RimCoop] No se pudo borrar el área espejo {extra.Label}: {e.Message}");
+                    CoopLog.Warning(Loc.T("SessionManager_Extras.16", extra.Label, e.Message));
                 }
             }
 
@@ -1052,13 +1052,13 @@ namespace RimCoopMod.GameComponents
                     if (area == null) return true;
                     bool add = f[2] == "1";
                     foreach (var c in ParseCells(req.StuffDefName)) if (c.InBounds(map)) area[c] = add;
-                    CoopLog.Message($"[RimCoop] Jugador {req.FromPlayerId} editó el área {f[1]} ({(add ? "agregar" : "quitar")}).");
+                    CoopLog.Message(Loc.T("SessionManager_Extras.18", req.FromPlayerId, f[1], Loc.T(add ? "SessionManager_Extras.19" : "SessionManager_Extras.20")));
                     return true;
                 }
             }
             catch (Exception e)
             {
-                CoopLog.Warning($"[RimCoop] Error en el pedido {req.DefName}: {e.Message}");
+                CoopLog.Warning(Loc.T("SessionManager_Extras.17", req.DefName, e.Message));
                 return true;
             }
             return false;

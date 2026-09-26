@@ -34,7 +34,7 @@ namespace RimCoopMod.UI
 
             Text.Font = GameFont.Medium;
             string action = _request.ProposePause ? "pausar" : "despausar";
-            listing.Label($"{_request.FromPlayerName} propone {action} el juego.");
+            listing.Label(Loc.T("Dialog_PauseVotePrompt.01", _request.FromPlayerName, action));
             Text.Font = GameFont.Small;
             listing.Gap(12f);
 
@@ -42,8 +42,8 @@ namespace RimCoopMod.UI
             var yesRect = buttonRect.LeftHalf().ContractedBy(4f);
             var noRect = buttonRect.RightHalf().ContractedBy(4f);
 
-            if (Widgets.ButtonText(yesRect, "Sí")) Answer(true);
-            if (Widgets.ButtonText(noRect, "No")) Answer(false);
+            if (Widgets.ButtonText(yesRect, Loc.T("Common.Yes"))) Answer(true);
+            if (Widgets.ButtonText(noRect, Loc.T("Common.No"))) Answer(false);
 
             listing.End();
         }

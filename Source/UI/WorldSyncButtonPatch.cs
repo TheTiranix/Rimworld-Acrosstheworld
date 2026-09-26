@@ -29,11 +29,11 @@ namespace RimCoopMod.UI
             bool onCooldown = Time.realtimeSinceStartup - _lastRequest < Cooldown;
             var buttonRect = new Rect((float)Verse.UI.screenWidth - 200f, 10f, 190f, 32f);
 
-            if (Widgets.ButtonText(buttonRect, onCooldown ? "Sincronizando..." : "Sincronizar jugadores", true, true, !onCooldown))
+            if (Widgets.ButtonText(buttonRect, onCooldown ? Loc.T("WorldSyncButtonPatch.01") : Loc.T("WorldSyncButtonPatch.02"), true, true, !onCooldown))
             {
                 _lastRequest = Time.realtimeSinceStartup;
                 CoopClient.Instance.SendPlayersRequest();
-                Messages.Message("Pidiendo de nuevo la ubicación de los demás jugadores...", MessageTypeDefOf.NeutralEvent, false);
+                Messages.Message(Loc.T("WorldSyncButtonPatch.03"), MessageTypeDefOf.NeutralEvent, false);
             }
         }
     }

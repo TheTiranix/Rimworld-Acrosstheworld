@@ -14,6 +14,8 @@
     <Compile Include="..\Source\Networking\NetIO.cs" Link="Networking\NetIO.cs" />
     <Compile Include="..\Source\Networking\LanDiscovery.cs" Link="Networking\LanDiscovery.cs" />
     <Compile Include="..\Source\Networking\CoopServer.cs" Link="Networking\CoopServer.cs" />
+    <Compile Include="..\Source\Localization\Loc.cs" Link="Localization\Loc.cs" />
+    <Compile Include="..\Source\Localization\Strings.g.cs" Link="Localization\Strings.g.cs" />
   </ItemGroup>
 
 </Project>

@@ -80,7 +80,7 @@ namespace RimCoopMod.GameComponents
                     Name = ship.name, DefName = ship.def?.defName, FactionDef = Traverse.Create(ship).Field("faction").GetValue<Faction>()?.def.defName ?? "",
                     Ticks = ship.ticksUntilDeparture, Seed = ship.RandomPriceFactorSeed, Goods = GoodsCsv(ship)
                 });
-                CoopLog.Message($"[RimCoop] Nave comercial \"{ship.name}\" compartida con el jugador {partner}.");
+                CoopLog.Message(Loc.T("SessionManager_Ships.01", ship.name, partner));
             }
         }
 
@@ -181,11 +181,11 @@ namespace RimCoopMod.GameComponents
             try
             {
                 GameDataSaveLoader.SaveGame(saveName);
-                Messages.Message($"Partida guardada como \"{saveName}\" (pedido de {requestedBy}).", MessageTypeDefOf.PositiveEvent, false);
+                Messages.Message(Loc.T("SessionManager_Ships.02", saveName, requestedBy), MessageTypeDefOf.PositiveEvent, false);
             }
             catch (Exception e)
             {
-                CoopLog.Warning($"[RimCoop] No se pudo guardar la partida \"{saveName}\": {e.Message}");
+                CoopLog.Warning(Loc.T("SessionManager_Ships.03", saveName, e.Message));
             }
         }
     }

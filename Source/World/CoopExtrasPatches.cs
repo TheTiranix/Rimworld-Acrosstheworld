@@ -71,7 +71,7 @@ namespace RimCoopMod.World
         {
             string ideoName = CoopSessionManager.GetPuppetIdeoName(__instance);
             if (!string.IsNullOrEmpty(ideoName))
-                __result = string.IsNullOrEmpty(__result) ? $"Ideología: {ideoName}" : __result + $"\nIdeología: {ideoName}";
+                __result = string.IsNullOrEmpty(__result) ? Loc.T("ExtrasPatches.01", ideoName) : __result + Loc.T("ExtrasPatches.03", ideoName);
 
             // Biotech: ancho de banda del mecanitor, o supervisor y modo de trabajo del mech.
             string biotech = CoopSessionManager.GetPuppetBiotechInfo(__instance);
@@ -92,7 +92,7 @@ namespace RimCoopMod.World
 
             if (!CoopSessionManager.CanLocalPlayerCommand(pawn))
             {
-                Messages.Message("Ese no es tu colono.", MessageTypeDefOf.RejectInput, false);
+                Messages.Message(Loc.T("ExtrasPatches.02"), MessageTypeDefOf.RejectInput, false);
                 return false;
             }
 

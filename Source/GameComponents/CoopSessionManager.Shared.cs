@@ -70,7 +70,7 @@ namespace RimCoopMod.GameComponents
             }
             catch (Exception e)
             {
-                CoopLog.Warning($"[RimCoop] No se pudo calcular la riqueza: {e.Message}");
+                CoopLog.Warning(Loc.T("SessionManager_Shared.01", e.Message));
             }
         }
 
@@ -146,7 +146,7 @@ namespace RimCoopMod.GameComponents
 
             if (instance._connectedPlayerIds.Contains(playerId)) CoopClient.Instance.SendResearchSync(playerId, "leave", "");
             else instance._pendingLeaveNames.Add(name);
-            Messages.Message($"Dejaste de compartir la investigación con {name}.", MessageTypeDefOf.NeutralEvent, false);
+            Messages.Message(Loc.T("SessionManager_Shared.02", name), MessageTypeDefOf.NeutralEvent, false);
         }
 
         /// <summary>Empieza (o se confirma) una colaboración: desde ahora se comparte la investigación con ese jugador.</summary>
@@ -155,7 +155,7 @@ namespace RimCoopMod.GameComponents
             if (!_playerNames.TryGetValue(playerId, out var name) || string.IsNullOrEmpty(name)) return;
             _pendingLeaveNames.Remove(name); // volvieron a colaborar: ya no hay que avisar que se cortó
             bool isNew = _collaboratorNames.Add(name);
-            if (isNew) Messages.Message($"Ahora colaborás con {name}: comparten la investigación.", MessageTypeDefOf.PositiveEvent, false);
+            if (isNew) Messages.Message(Loc.T("SessionManager_Shared.03", name), MessageTypeDefOf.PositiveEvent, false);
             SendResearchFullTo(playerId);
         }
 
@@ -182,7 +182,7 @@ namespace RimCoopMod.GameComponents
                 _lastSentResearchProgress = now;
                 foreach (int id in targets) CoopClient.Instance.SendResearchSync(id, "progress", now);
             }
-            catch (Exception e) { CoopLog.Warning($"[RimCoop] No se pudo mandar el progreso de investigación: {e.Message}"); }
+            catch (Exception e) { CoopLog.Warning(Loc.T("SessionManager_Shared.04", e.Message)); }
         }
 
         /// <summary>Al conectarme: mi investigación completa a cada colaborador que esté conectado.</summary>
@@ -199,7 +199,7 @@ namespace RimCoopMod.GameComponents
                 string finished = string.Join(",", DefDatabase<ResearchProjectDef>.AllDefsListForReading.Where(p => p.IsFinished).Select(p => p.defName));
                 CoopClient.Instance.SendResearchSync(playerId, "full", "F:" + finished + "#P:" + ResearchProgressString());
             }
-            catch (Exception e) { CoopLog.Warning($"[RimCoop] No se pudo mandar la investigación completa: {e.Message}"); }
+            catch (Exception e) { CoopLog.Warning(Loc.T("SessionManager_Shared.05", e.Message)); }
         }
 
         public static void OnLocalProjectFinished(ResearchProjectDef proj)
@@ -218,7 +218,7 @@ namespace RimCoopMod.GameComponents
             if (m.Kind == "leave")
             {
                 if (_playerNames.TryGetValue(m.FromPlayerId, out var leaver) && _collaboratorNames.Remove(leaver))
-                    Messages.Message($"{leaver} dejó de compartir la investigación con vos.", MessageTypeDefOf.NeutralEvent, false);
+                    Messages.Message(Loc.T("SessionManager_Shared.06", leaver), MessageTypeDefOf.NeutralEvent, false);
                 return;
             }
 
@@ -249,7 +249,7 @@ namespace RimCoopMod.GameComponents
             }
             catch (Exception e)
             {
-                CoopLog.Warning($"[RimCoop] Error aplicando la investigación de {m.FromPlayerName}: {e.Message}");
+                CoopLog.Warning(Loc.T("SessionManager_Shared.07", m.FromPlayerName, e.Message));
             }
             finally
             {
@@ -257,9 +257,9 @@ namespace RimCoopMod.GameComponents
             }
 
             if (completed.Count == 1)
-                Messages.Message($"Investigación compartida: {completed[0].LabelCap} (por {m.FromPlayerName}).", MessageTypeDefOf.PositiveEvent, false);
+                Messages.Message(Loc.T("SessionManager_Shared.08", completed[0].LabelCap, m.FromPlayerName), MessageTypeDefOf.PositiveEvent, false);
             else if (completed.Count > 1)
-                Messages.Message($"Investigación compartida: {completed.Count} proyectos nuevos de {m.FromPlayerName}.", MessageTypeDefOf.PositiveEvent, false);
+                Messages.Message(Loc.T("SessionManager_Shared.09", completed.Count, m.FromPlayerName), MessageTypeDefOf.PositiveEvent, false);
 
             // Si aprendí algo nuevo, se lo paso a MIS otros colaboradores (así un grupo de 3 o más queda parejo).
             // Solo se reenvía lo que cambió acá, así que no da vueltas para siempre.
@@ -281,7 +281,7 @@ namespace RimCoopMod.GameComponents
                     Find.ResearchManager.FinishProject(proj, false, null, false);
                     completed.Add(proj);
                 }
-                catch (Exception e) { CoopLog.Warning($"[RimCoop] No se pudo terminar {name}: {e.Message}"); }
+                catch (Exception e) { CoopLog.Warning(Loc.T("SessionManager_Shared.10", name, e.Message)); }
             }
         }
 
@@ -336,12 +336,12 @@ namespace RimCoopMod.GameComponents
                 if (!mirror.gameConditionManager.ConditionIsActive(def))
                 {
                     mirror.gameConditionManager.RegisterCondition(GameConditionMaker.MakeCondition(def, Math.Max(600, e.Duration)));
-                    Messages.Message($"En la base de {e.FromPlayerName}: {def.LabelCap}.", MessageTypeDefOf.NeutralEvent, false);
+                    Messages.Message(Loc.T("SessionManager_Shared.11", e.FromPlayerName, def.LabelCap), MessageTypeDefOf.NeutralEvent, false);
                 }
             }
             catch (Exception ex)
             {
-                CoopLog.Warning($"[RimCoop] No se pudo mostrar la condición {e.DefName} en el mapa espejo: {ex.Message}");
+                CoopLog.Warning(Loc.T("SessionManager_Shared.12", e.DefName, ex.Message));
             }
             finally
             {
@@ -376,7 +376,7 @@ namespace RimCoopMod.GameComponents
                         mirror.gameConditionManager.RegisterCondition(GameConditionMaker.MakeCondition(def, Math.Max(600, kv.Value)));
                 }
             }
-            catch (Exception e) { CoopLog.Warning($"[RimCoop] No se pudieron igualar las condiciones del mapa espejo: {e.Message}"); }
+            catch (Exception e) { CoopLog.Warning(Loc.T("SessionManager_Shared.13", e.Message)); }
             finally { ApplyingRemoteCondition = false; }
         }
     }

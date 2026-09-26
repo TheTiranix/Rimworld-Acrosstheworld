@@ -40,9 +40,9 @@ namespace RimCoopMod.UI
             listing.Begin(inRect);
 
             Text.Font = GameFont.Medium;
-            listing.Label($"Colaborar con {_target.RemotePlayerName}");
+            listing.Label(Loc.T("Dialog_ChooseColonistsToSend.01", _target.RemotePlayerName));
             Text.Font = GameFont.Small;
-            listing.Label("Estos colonos se van de tu colonia y pasan a vivir y trabajar en la base de destino.");
+            listing.Label(Loc.T("Dialog_ChooseColonistsToSend.02"));
             listing.GapLine();
 
             var outRect = listing.GetRect(inRect.height - 150f);
@@ -67,7 +67,7 @@ namespace RimCoopMod.UI
             Widgets.EndScrollView();
 
             listing.Gap(8f);
-            if (listing.ButtonText("Enviar"))
+            if (listing.ButtonText(Loc.T("Dialog_ChooseColonistsToSend.03")))
             {
                 Send();
             }
@@ -98,7 +98,7 @@ namespace RimCoopMod.UI
         {
             if (_selected.Count == 0)
             {
-                Messages.Message("Elegí al menos un colono.", MessageTypeDefOf.RejectInput, false);
+                Messages.Message(Loc.T("Dialog_ChooseColonistsToSend.04"), MessageTypeDefOf.RejectInput, false);
                 return;
             }
 
@@ -133,12 +133,12 @@ namespace RimCoopMod.UI
 
             if (blobs.Count == 0)
             {
-                Messages.Message("No se pudo preparar a ningún colono para el viaje.", MessageTypeDefOf.RejectInput, false);
+                Messages.Message(Loc.T("Dialog_ChooseColonistsToSend.05"), MessageTypeDefOf.RejectInput, false);
                 return;
             }
 
             CoopClient.Instance.SendJoinRequest(_target.RemotePlayerId, blobs, ownerNames, uids);
-            Messages.Message($"Se mandaron {blobs.Count} colono(s). Esperando confirmación del destino...", MessageTypeDefOf.NeutralEvent, false);
+            Messages.Message(Loc.T("Dialog_ChooseColonistsToSend.06", blobs.Count), MessageTypeDefOf.NeutralEvent, false);
             Close();
         }
     }

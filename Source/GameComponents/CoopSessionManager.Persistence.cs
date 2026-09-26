@@ -268,7 +268,7 @@ namespace RimCoopMod.GameComponents
                 _pendingShipRestores.Remove(rec);
                 if (_shipLinks.Any(l => l.Ship == ship && l.PartnerId == partnerId)) continue;
                 _shipLinks.Add(new ShipLink { Ship = ship, PartnerId = partnerId, OriginPlayerId = originId, ShipId = shipId, LastSig = GoodsCsv(ship) });
-                CoopLog.Message($"[RimCoop] Se retomó la nave comercial compartida \"{ship.name}\" con {rec[1]}.");
+                CoopLog.Message(Loc.T("SessionManager_Persistence.01", ship.name, rec[1]));
             }
         }
 

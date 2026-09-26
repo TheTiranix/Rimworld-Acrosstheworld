@@ -53,7 +53,7 @@ namespace RimCoopMod.Networking
             {
                 LastError = e.Message;
                 IsConnected = false;
-                CoopLog.Error($"[RimCoop] Error al conectar a {ip}:{port} -> {e.Message}");
+                CoopLog.Error(Loc.T("Client.01", ip, port, e.Message));
             }
         }
 
@@ -73,7 +73,7 @@ namespace RimCoopMod.Networking
                         gotServerInfo = true;
                         if (serverVersion != ProtocolInfo.Version)
                         {
-                            VersionError = $"El servidor usa otra versión de RimCoop (protocolo {serverVersion}; tu mod usa {ProtocolInfo.Version}). Actualizá el mod y el servidor a la misma versión.";
+                            VersionError = Loc.T("Client.02", serverVersion, ProtocolInfo.Version);
                             CoopLog.Warning("[RimCoop] " + VersionError);
                             break;
                         }
@@ -93,9 +93,9 @@ namespace RimCoopMod.Networking
             }
             catch (Exception e)
             {
-                CoopLog.Warning($"[RimCoop] Conexión perdida: {e.Message}");
+                CoopLog.Warning(Loc.T("Client.03", e.Message));
                 if (!gotServerInfo)
-                    VersionError = "No se pudo entender al servidor: seguramente es de una versión anterior de RimCoop. Actualizá el servidor y el mod a la misma versión.";
+                    VersionError = Loc.T("Client.04");
             }
             finally
             {
@@ -172,13 +172,13 @@ namespace RimCoopMod.Networking
 
         public void SendWatchRequest(int hostPlayerId)
         {
-            if (!IsConnected) { CoopLog.Warning("[RimCoop] SendWatchRequest ignorado: no conectado."); return; }
+            if (!IsConnected) { CoopLog.Warning(Loc.T("Client.05")); return; }
             NetIO.SendPacket(_stream, Packet.Create(PacketType.WatchRequest, new WatchRequestPayload
             {
                 FromPlayerId = LocalPlayerId,
                 ToPlayerId = hostPlayerId
             }));
-            CoopLog.Message($"[RimCoop] WatchRequest enviado a jugador {hostPlayerId}.");
+            CoopLog.Message(Loc.T("Client.06", hostPlayerId));
         }
 
         public void SendUnwatchRequest(int hostPlayerId)
@@ -199,7 +199,7 @@ namespace RimCoopMod.Networking
 
         public void SendPawnOrder(int hostPlayerId, int pawnId, PawnOrderPayload payload)
         {
-            if (!IsConnected) { CoopLog.Warning("[RimCoop] SendPawnOrder ignorado: no conectado."); return; }
+            if (!IsConnected) { CoopLog.Warning(Loc.T("Client.07")); return; }
             payload.FromPlayerId = LocalPlayerId;
             payload.ToPlayerId = hostPlayerId;
             payload.PawnId = pawnId;
@@ -216,7 +216,7 @@ namespace RimCoopMod.Networking
         {
             if (!IsConnected)
             {
-                CoopLog.Warning($"[RimCoop] SendJoinRequest ignorado: no conectado (LocalPlayerId={LocalPlayerId}).");
+                CoopLog.Warning(Loc.T("Client.08", LocalPlayerId));
                 return;
             }
 
@@ -228,12 +228,12 @@ namespace RimCoopMod.Networking
                 OwnerNames = ownerNames ?? new System.Collections.Generic.List<string>(),
                 Uids = uids ?? new System.Collections.Generic.List<string>()
             }));
-            CoopLog.Message($"[RimCoop] JoinRequest enviado a jugador {hostPlayerId} con {serializedPawns.Count} colono(s) (yo soy el jugador {LocalPlayerId}).");
+            CoopLog.Message(Loc.T("Client.09", hostPlayerId, serializedPawns.Count, LocalPlayerId));
         }
 
         public void SendJoinResult(int toPlayerId, bool success, string message)
         {
-            if (!IsConnected) { CoopLog.Warning("[RimCoop] SendJoinResult ignorado: no conectado."); return; }
+            if (!IsConnected) { CoopLog.Warning(Loc.T("Client.10")); return; }
             NetIO.SendPacket(_stream, Packet.Create(PacketType.JoinResult, new JoinResultPayload
             {
                 ToPlayerId = toPlayerId,
@@ -241,7 +241,7 @@ namespace RimCoopMod.Networking
                 Success = success,
                 Message = message
             }));
-            CoopLog.Message($"[RimCoop] JoinResult enviado a jugador {toPlayerId}: éxito={success} - {message}");
+            CoopLog.Message(Loc.T("Client.11", toPlayerId, success, message));
         }
 
         public void SendBaseSnapshotRequest(int hostPlayerId)
@@ -472,7 +472,7 @@ namespace RimCoopMod.Networking
                         var connectTask = tcp.ConnectAsync(ip, port);
                         if (!connectTask.Wait(timeoutMs))
                         {
-                            result.Error = "Tiempo de espera agotado";
+                            result.Error = Loc.T("Client.12");
                             callback(result);
                             return;
                         }
@@ -498,7 +498,7 @@ namespace RimCoopMod.Networking
                             }
                             else
                             {
-                                result.Error = "El servidor no entendió la consulta (¿versión muy vieja?)";
+                                result.Error = Loc.T("Client.13");
                             }
                         }
                     }

@@ -27,7 +27,7 @@ namespace RimCoopMod.World
 
             Rot4 rot = Traverse.Create(__instance).Field("placingRot").GetValue<Rot4>();
             CoopClient.Instance.SendBuildRequest(hostPlayerId, defName, __instance.StuffDef?.defName, c.x, c.z, rot.AsInt);
-            Messages.Message("Se mandó el pedido de construcción al dueño de la base.", MessageTypeDefOf.NeutralEvent, false);
+            Messages.Message(Loc.T("BuildPatch.01"), MessageTypeDefOf.NeutralEvent, false);
             return false;
         }
     }
@@ -45,7 +45,7 @@ namespace RimCoopMod.World
             int host = CoopSessionManager.GetHostPlayerIdForMap(Find.CurrentMap);
             if (host < 0 || t == null) return true;
             CoopSessionManager.SendRemovalRequest(host, CoopSessionManager.BuildActionDeconstruct, t.Position);
-            Messages.Message("Se pidió desmontar al dueño de la base.", MessageTypeDefOf.NeutralEvent, false);
+            Messages.Message(Loc.T("BuildPatch.02"), MessageTypeDefOf.NeutralEvent, false);
             return false;
         }
     }
@@ -60,7 +60,7 @@ namespace RimCoopMod.World
             int host = CoopSessionManager.GetHostPlayerIdForMap(Find.CurrentMap);
             if (host < 0 || t == null) return true;
             CoopSessionManager.SendRemovalRequest(host, CoopSessionManager.BuildActionCancel, t.Position);
-            Messages.Message("Se pidió cancelar al dueño de la base.", MessageTypeDefOf.NeutralEvent, false);
+            Messages.Message(Loc.T("BuildPatch.03"), MessageTypeDefOf.NeutralEvent, false);
             return false;
         }
     }
@@ -79,7 +79,7 @@ namespace RimCoopMod.World
             if (host < 0) return true;
             CoopClient.Instance.SendBuildRequest(host, CoopSessionManager.ZoneAddPrefix + __instance.GetType().FullName,
                 CoopSessionManager.CellsToCsv(cells), 0, 0, 0);
-            Messages.Message("Se pidió la zona al dueño de la base.", MessageTypeDefOf.NeutralEvent, false);
+            Messages.Message(Loc.T("BuildPatch.04"), MessageTypeDefOf.NeutralEvent, false);
             return false;
         }
     }
@@ -95,7 +95,7 @@ namespace RimCoopMod.World
             int host = CoopSessionManager.GetHostPlayerIdForMap(Find.CurrentMap);
             if (host < 0) return true;
             CoopClient.Instance.SendBuildRequest(host, CoopSessionManager.ZoneDelete, CoopSessionManager.CellsToCsv(cells), 0, 0, 0);
-            Messages.Message("Se pidió borrar la zona al dueño de la base.", MessageTypeDefOf.NeutralEvent, false);
+            Messages.Message(Loc.T("BuildPatch.05"), MessageTypeDefOf.NeutralEvent, false);
             return false;
         }
     }

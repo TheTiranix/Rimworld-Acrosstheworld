@@ -2,7 +2,7 @@
 <Defs>
   <WorldObjectDef>
     <defName>RimCoop_CoopPlayerBase</defName>
-    <label>base de jugador</label>
+    <label>player base</label>
     <worldObjectClass>RimCoopMod.World.CoopPlayerBase</worldObjectClass>
     <!-- Antes usaba el ícono de campamento de bandidos (World/WorldObjects/Camp) en rojo: se veía
          igual que una base hostil de un NPC. Usamos el mismo ícono que un asentamiento normal,

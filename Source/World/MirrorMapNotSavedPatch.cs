@@ -36,7 +36,7 @@ namespace RimCoopMod.World
             }
             catch (System.Exception e)
             {
-                CoopLog.Warning($"[RimCoop] No se pudo listar mapas espejo antes de guardar: {e.Message}");
+                CoopLog.Warning(Loc.T("MirrorMapNotSavedPatch.01", e.Message));
                 return;
             }
             if (mirrorMaps == null || mirrorMaps.Count == 0) return;

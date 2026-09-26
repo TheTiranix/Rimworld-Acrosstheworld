@@ -24,7 +24,7 @@ namespace RimCoopMod.UI
             var settings = global::RimCoopMod.RimCoopMod.Instance?.Settings;
             _ip = settings?.LastServerIp ?? "127.0.0.1";
             _port = settings?.LastServerPort ?? "34500";
-            _playerName = settings?.LastPlayerName ?? "Jugador";
+            _playerName = string.IsNullOrEmpty(settings?.LastPlayerName) ? Loc.T("Common.Player") : settings.LastPlayerName;
         }
 
         public override void DoWindowContents(Rect inRect)
@@ -33,29 +33,29 @@ namespace RimCoopMod.UI
             listing.Begin(inRect);
 
             Text.Font = GameFont.Medium;
-            listing.Label("RimCoop - Conectar a servidor");
+            listing.Label(Loc.T("Dialog_ConnectToServer.01"));
             Text.Font = GameFont.Small;
             listing.Gap(12f);
 
-            listing.Label("IP del servidor:");
+            listing.Label(Loc.T("Dialog_ConnectToServer.02"));
             _ip = listing.TextEntry(_ip);
             listing.Gap(6f);
 
-            listing.Label("Puerto:");
+            listing.Label(Loc.T("Dialog_ConnectToServer.03"));
             _port = listing.TextEntry(_port);
             listing.Gap(6f);
 
-            listing.Label("Tu nombre de jugador:");
+            listing.Label(Loc.T("Dialog_ConnectToServer.04"));
             _playerName = listing.TextEntry(_playerName);
             listing.Gap(16f);
 
-            if (listing.ButtonText("Conectar"))
+            if (listing.ButtonText(Loc.T("Dialog_ConnectToServer.05")))
             {
                 TryConnect();
             }
 
             listing.Gap(6f);
-            if (listing.ButtonText("Servidores guardados..."))
+            if (listing.ButtonText(Loc.T("Dialog_ConnectToServer.06")))
             {
                 Find.WindowStack.Add(new Dialog_ServerBrowser());
                 Close();
@@ -70,19 +70,20 @@ namespace RimCoopMod.UI
             }
 
             listing.End();
+            ModLanguage.DrawToggle(new Rect(inRect.x, inRect.yMax - 28f, 150f, 26f));
         }
 
         private void TryConnect()
         {
             if (!int.TryParse(_port, out int port))
             {
-                _statusMessage = "El puerto tiene que ser un número.";
+                _statusMessage = Loc.T("Dialog_ConnectToServer.07");
                 return;
             }
 
             if (string.IsNullOrWhiteSpace(_ip))
             {
-                _statusMessage = "Ingresá una IP válida.";
+                _statusMessage = Loc.T("Dialog_ConnectToServer.08");
                 return;
             }
 
@@ -97,19 +98,19 @@ namespace RimCoopMod.UI
                 global::RimCoopMod.RimCoopMod.Instance.WriteSettings();
             }
 
-            _statusMessage = "Conectando...";
+            _statusMessage = Loc.T("Dialog_ConnectToServer.09");
 
             CoopClient.Instance.Connect(_ip, port, _playerName);
 
             if (CoopClient.Instance.IsConnected)
             {
-                Messages.Message("Conectado al servidor. Generando mundo...", MessageTypeDefOf.PositiveEvent, false);
+                Messages.Message(Loc.T("Dialog_ConnectToServer.10"), MessageTypeDefOf.PositiveEvent, false);
                 GameComponents.CoopSessionManager.PendingWorldGeneration = true;
                 Close();
             }
             else
             {
-                _statusMessage = "No se pudo conectar: " + CoopClient.Instance.LastError;
+                _statusMessage = Loc.T("Dialog_ConnectToServer.11", CoopClient.Instance.LastError);
             }
         }
     }
