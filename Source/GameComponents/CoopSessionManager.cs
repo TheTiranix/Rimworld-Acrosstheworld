@@ -105,6 +105,55 @@ namespace RimCoopMod.GameComponents
         // el aviso flotante en cada foto, uno por transición inactivo->activo.
         private readonly HashSet<Pawn> _puppetsInRitual = new HashSet<Pawn>();
 
+        // Dueño real de cada títere (PawnSnapshot.OwnerPlayerId): en el mapa espejo de una base puede haber
+        // colonos de varios jugadores distintos a la vez (el dueño de la base y quienes le mandaron colonos
+        // con Colaborar), así que no alcanza con el dueño DEL MAPA. Se usa para el cartelito de nombre
+        // (CoopOwnerTagPatch).
+        private readonly Dictionary<Pawn, int> _puppetOwners = new Dictionary<Pawn, int>();
+
+        /// <summary>Colores bien distinguibles entre sí para el cartelito de nombre de cada jugador (CoopOwnerTagPatch).</summary>
+        private static readonly Color[] PlayerTagColors =
+        {
+            new Color(1f, 0.65f, 0.15f),  // naranja
+            new Color(0.35f, 0.8f, 1f),   // celeste
+            new Color(1f, 0.45f, 0.75f),  // rosa
+            new Color(1f, 0.9f, 0.25f),   // amarillo
+            new Color(0.65f, 0.5f, 1f),   // violeta
+            new Color(0.55f, 1f, 0.55f),  // verde claro
+            new Color(1f, 0.55f, 0.35f),  // coral
+            new Color(0.8f, 0.6f, 1f),    // lavanda
+        };
+
+        /// <summary>Un color estable para ese jugador (mismo id -> mismo color siempre), distinto del de los demás casi siempre.</summary>
+        public static Color ColorForPlayer(int playerId)
+        {
+            int n = PlayerTagColors.Length;
+            return PlayerTagColors[((playerId % n) + n) % n];
+        }
+
+        /// <summary>Nombre de ese jugador si se conoce (se conocen todos los que se cruzaron alguna vez en esta sesión). Ver CoopOwnerTagPatch.</summary>
+        public static string GetKnownPlayerName(int playerId)
+        {
+            var instance = Current.Game?.GetComponent<CoopSessionManager>();
+            return instance != null && instance._playerNames.TryGetValue(playerId, out var name) ? name : null;
+        }
+
+        /// <summary>
+        /// Dueño real de ese colono para el cartelito de nombre: si es un títere, quien lo mandó (puede no ser el
+        /// dueño de la base); si es un pawn real en mi propia base, quien me lo mandó con Colaborar. -1 = mío (no
+        /// se muestra cartelito).
+        /// </summary>
+        public static int GetOwnerPlayerIdForTag(Pawn pawn)
+        {
+            var instance = Current.Game?.GetComponent<CoopSessionManager>();
+            if (instance == null || pawn == null) return -1;
+
+            if (PuppetPawnRegistry.IsPuppet(pawn))
+                return instance._puppetOwners.TryGetValue(pawn, out var puppetOwner) ? puppetOwner : -1;
+
+            return instance._pawnOwners.TryGetValue(pawn.thingIDNumber, out var owner) ? owner : -1;
+        }
+
         public static string GetPuppetIdeoName(Pawn puppet)
         {
             var instance = Current.Game?.GetComponent<CoopSessionManager>();
@@ -880,12 +929,14 @@ namespace RimCoopMod.GameComponents
                         _puppetIdeoNames.Remove(puppet);
                         _puppetBiotechInfo.Remove(puppet);
                         _puppetsInRitual.Remove(puppet);
+                        _puppetOwners.Remove(puppet);
                         puppet.Destroy(DestroyMode.Vanish);
                         known.Remove(ps.PawnId);
                         continue;
                     }
 
                     FollowHostPosition(puppet, ps, map);
+                    _puppetOwners[puppet] = ps.OwnerPlayerId;
 
                     if (ps.HasMedium)
                     {
@@ -925,6 +976,7 @@ namespace RimCoopMod.GameComponents
                     _puppetIdeoNames.Remove(known[oldId]);
                     _puppetBiotechInfo.Remove(known[oldId]);
                     _puppetsInRitual.Remove(known[oldId]);
+                    _puppetOwners.Remove(known[oldId]);
                     if (known[oldId].Spawned) known[oldId].Destroy(DestroyMode.Vanish);
                     else if (known[oldId].Corpse != null && !known[oldId].Corpse.Destroyed) known[oldId].Corpse.Destroy(DestroyMode.Vanish);
                     else if (known[oldId].holdingOwner != null && !known[oldId].Destroyed) known[oldId].Destroy(DestroyMode.Vanish); // entidad que estaba en una plataforma
@@ -1361,16 +1413,18 @@ namespace RimCoopMod.GameComponents
             }
 
             IntVec3 cell = map.Center;
+            PawnSnapshot ownerPs = null;
             if (_remoteSnapshots.TryGetValue(payload.HostPlayerId, out var snap))
             {
-                var ps = snap.Pawns.FirstOrDefault(p => p.PawnId == payload.PawnId);
-                if (ps != null) cell = new IntVec3(ps.X, 0, ps.Z);
+                ownerPs = snap.Pawns.FirstOrDefault(p => p.PawnId == payload.PawnId);
+                if (ownerPs != null) cell = new IntVec3(ownerPs.X, 0, ownerPs.Z);
             }
 
             try
             {
                 GenSpawn.Spawn(puppet, cell, map, WipeMode.Vanish);
                 PuppetPawnRegistry.Register(puppet, payload.HostPlayerId, payload.PawnId);
+                _puppetOwners[puppet] = ownerPs?.OwnerPlayerId ?? payload.HostPlayerId;
                 // Una copia sacada con el colono drafteado nacería drafteada, y un pawn drafteado ejecuta sus órdenes
                 // de clic derecho sin abrir el menú (solo le quedan opciones "auto").
                 try { if (puppet.drafter != null && puppet.Drafted) puppet.drafter.Drafted = false; } catch { /* no crítico */ }

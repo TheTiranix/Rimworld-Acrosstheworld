@@ -15,7 +15,7 @@ and can see, visit, help, trade with or attack the others.
 - **Colonies on the world map:** you see where every player settled. They refresh when you open "World".
 - **Enter another base:** *Enter the base* button — a real map with animated colonists, buildings, items,
   zones, areas, roofs, plants, weather and light.
-- **Collaborate:** you send your own colonists to another base. Only you can give them orders ("That is not your colonist" for everyone else).
+- **Collaborate:** you send your own colonists to another base. Only you can give them orders ("That is not your colonist" for everyone else). Every colonist that isn't yours shows a small colored tag above its head with its owner's name (a different color per player), so a base with several collaborators' colonists mixed in stays easy to read.
 - **Build and edit in someone else's base:** blueprints, zones, areas, bills, switches... the owner applies them. The colonists
   you sent with *Collaborate* are real pawns in the owner's base and **help build** on their own according to their
   Construction priority (you can change it from the mirror); the progress of every job is visible in the mirror. The mirror never

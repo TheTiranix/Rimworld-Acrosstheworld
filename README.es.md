@@ -15,7 +15,7 @@ y puede ver, visitar, ayudar, comerciar o atacar a los demás.
 - **Colonias en el mapa mundial:** ves dónde fundó cada jugador. Se actualizan al abrir "Mundo".
 - **Entrar a otra base:** botón *Entrar a la base* — mapa real con colonos animados, construcciones, ítems,
   zonas, áreas, techos, plantas, clima y luz.
-- **Colaborar:** mandás colonos tuyos a otra base. Solo vos podés darles órdenes ("Ese no es tu colono" al resto).
+- **Colaborar:** mandás colonos tuyos a otra base. Solo vos podés darles órdenes ("Ese no es tu colono" al resto). Todo colono que no sea tuyo muestra un cartelito chico arriba con el nombre de su dueño (un color distinto por jugador), para que una base con colonos de varios colaboradores mezclados se siga entendiendo de un vistazo.
 - **Construir y editar en la base ajena:** planos, zonas, áreas, recetas, interruptores... el dueño lo aplica. Los colonos que
   mandaste con *Colaborar* son pawns reales en la base del dueño y **ayudan a construir** solos según su prioridad de
   Construcción (la podés cambiar desde el espejo); el avance de cada obra se ve en el espejo. El espejo nunca construye por su
