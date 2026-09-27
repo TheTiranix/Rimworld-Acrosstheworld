@@ -225,27 +225,52 @@ namespace RimCoopMod.GameComponents
         }
 
         /// <summary>
-        /// Ideology/Royalty: si hay un ritual o ceremonia en curso en mi base, se resume como texto (nombre y
-        /// progreso). El Lord que lo maneja tiene estado propio (etapas, roles) y no se espeja (ver
-        /// IsLordDrivenJob); esto es lo único que ve quien mira, además de a los participantes parados.
+        /// Ideology/Royalty: el ritual o ceremonia en curso en mi base, si hay uno (el Lord que lo maneja tiene
+        /// estado propio -etapas, roles- y no se espeja, ver IsLordDrivenJob). Null si no hay ninguno ahora.
         /// </summary>
-        private static string BuildRitualLine()
+        private static LordJob_Ritual FindActiveRitual()
         {
             try
             {
                 var map = LocalBaseMap;
-                if (map?.lordManager?.lords == null) return "";
+                if (map?.lordManager?.lords == null) return null;
                 foreach (var lord in map.lordManager.lords)
                 {
-                    if (!(lord.LordJob is LordJob_Ritual ritual)) continue;
-                    string label = ritual.RitualLabel;
-                    if (string.IsNullOrEmpty(label)) continue;
-                    int pct = Mathf.Clamp(Mathf.RoundToInt(ritual.Progress * 100f), 0, 100);
-                    return Loc.T("SessionManager_Dlc.19", label, pct);
+                    if (lord.LordJob is LordJob_Ritual ritual && !string.IsNullOrEmpty(ritual.RitualLabel)) return ritual;
                 }
             }
             catch { }
-            return "";
+            return null;
+        }
+
+        /// <summary>Texto resumen del ritual en curso (nombre y progreso), para el panel de mi base en el mapa mundial.</summary>
+        private static string BuildRitualLine()
+        {
+            var ritual = FindActiveRitual();
+            if (ritual == null) return "";
+            int pct = Mathf.Clamp(Mathf.RoundToInt(ritual.Progress * 100f), 0, 100);
+            return Loc.T("SessionManager_Dlc.19", ritual.RitualLabel, pct);
+        }
+
+        /// <summary>
+        /// Posición, nombre y progreso del ritual en curso (si hay uno), para dibujarlo justo arriba de donde
+        /// pasa en el mapa espejo (ver DrawRitualOverlayIfNeeded): además de verse en el panel de la base, así
+        /// se ve en el lugar mismo, sin tener que ir a buscarlo al mapa mundial.
+        /// </summary>
+        private static void FillRitualInfo(MapSnapshotPayload payload)
+        {
+            var ritual = FindActiveRitual();
+            if (ritual == null) return;
+            try
+            {
+                IntVec3 cell = ritual.selectedTarget.Cell;
+                if (!cell.IsValid) return;
+                payload.RitualLabel = ritual.RitualLabel;
+                payload.RitualX = cell.x;
+                payload.RitualZ = cell.z;
+                payload.RitualProgressPct = Mathf.Clamp(Mathf.RoundToInt(ritual.Progress * 100f), 0, 100);
+            }
+            catch { }
         }
 
         /// <summary>Nivel del monolito de quien mira: el edificio real NO se espeja (ver CollectThingSnapshots), se muestra como texto.</summary>

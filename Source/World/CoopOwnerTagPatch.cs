@@ -16,8 +16,10 @@ namespace RimCoopMod.World
     public static class PawnUIOverlay_DrawPawnGUIOverlay_OwnerTag_Patch
     {
         // Un poco más arriba que la cabeza: el nombre normal del juego se dibuja debajo del pawn (offset -0.6),
-        // este va del lado opuesto para no pisarlo.
-        private const float TagWorldOffsetZ = 0.9f;
+        // este va del lado opuesto para no pisarlo. El de ritual va todavía más arriba para no pisar el de dueño.
+        private const float OwnerTagWorldOffsetZ = 0.9f;
+        private const float RitualTagWorldOffsetZ = 1.35f;
+        private static readonly Color RitualTagColor = new Color(1f, 0.85f, 0.5f);
 
         public static void Postfix(Pawn ___pawn)
         {
@@ -27,16 +29,29 @@ namespace RimCoopMod.World
             if (!pawn.Spawned || pawn.Map?.fogGrid == null || pawn.Map.fogGrid.IsFogged(pawn.Position)) return;
 
             int ownerId = CoopSessionManager.GetOwnerPlayerIdForTag(pawn);
-            if (ownerId < 0) return;
-            string name = CoopSessionManager.GetKnownPlayerName(ownerId);
-            if (string.IsNullOrEmpty(name)) return;
-
-            try
+            if (ownerId >= 0)
             {
-                Vector2 pos = GenMapUI.LabelDrawPosFor(pawn, TagWorldOffsetZ);
-                GenMapUI.DrawThingLabel(pos, name, CoopSessionManager.ColorForPlayer(ownerId));
+                string name = CoopSessionManager.GetKnownPlayerName(ownerId);
+                if (!string.IsNullOrEmpty(name))
+                {
+                    try
+                    {
+                        Vector2 pos = GenMapUI.LabelDrawPosFor(pawn, OwnerTagWorldOffsetZ);
+                        GenMapUI.DrawThingLabel(pos, name, CoopSessionManager.ColorForPlayer(ownerId));
+                    }
+                    catch { /* un cartelito de menos no debería tirar abajo el dibujado del resto del mapa */ }
+                }
             }
-            catch { /* un cartelito de menos no debería tirar abajo el dibujado del resto del mapa */ }
+
+            if (CoopSessionManager.IsPuppetInRitual(pawn))
+            {
+                try
+                {
+                    Vector2 pos = GenMapUI.LabelDrawPosFor(pawn, RitualTagWorldOffsetZ);
+                    GenMapUI.DrawThingLabel(pos, Loc.T("SessionManager_Extras.21"), RitualTagColor);
+                }
+                catch { /* ídem */ }
+            }
         }
     }
 }

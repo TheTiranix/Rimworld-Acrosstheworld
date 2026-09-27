@@ -241,6 +241,10 @@ namespace RimCoopMod.Networking
                         bw.Write(p.WeatherDefName ?? "");
                         bw.Write(p.SkyGlow);
                         bw.Write(p.DlcInfo ?? "");
+                        bw.Write(p.RitualLabel ?? "");
+                        bw.Write(p.RitualX);
+                        bw.Write(p.RitualZ);
+                        bw.Write(p.RitualProgressPct);
                         bw.Write(p.Pawns.Count);
                         foreach (var pawn in p.Pawns)
                         {
@@ -749,6 +753,10 @@ namespace RimCoopMod.Networking
                             SkyGlow = br.ReadSingle(),
                             DlcInfo = br.ReadString()
                         };
+                        p.RitualLabel = br.ReadString();
+                        p.RitualX = br.ReadInt32();
+                        p.RitualZ = br.ReadInt32();
+                        p.RitualProgressPct = br.ReadInt32();
                         int count = br.ReadInt32();
                         for (int i = 0; i < count; i++)
                         {

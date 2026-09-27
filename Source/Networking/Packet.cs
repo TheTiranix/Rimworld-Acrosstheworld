@@ -134,7 +134,7 @@ namespace RimCoopMod.Networking
     public static class ProtocolInfo
     {
         /// <summary>Subir cada vez que cambia el formato de un paquete. Mod y servidor tienen que coincidir.</summary>
-        public const int Version = 26;
+        public const int Version = 27;
     }
 
     public class ServerInfoPayload
@@ -331,6 +331,14 @@ namespace RimCoopMod.Networking
         public string WeatherDefName; // clima actual de la base real
         public float SkyGlow;         // brillo del cielo real (0=noche, 1=mediodía), para que se vea la misma hora
         public string DlcInfo;    // Anomaly: nivel del monolito y su estudio (texto; el monolito real NO se espeja, ver CollectThingSnapshots)
+
+        // Ideology/Royalty: ritual o ceremonia en curso en mi base (LordJob_Ritual), para dibujarlo justo arriba
+        // del lugar donde pasa en el mapa espejo (ver DrawRitualOverlayIfNeeded). Vacío = no hay ninguno ahora.
+        public string RitualLabel;
+        public int RitualX;
+        public int RitualZ;
+        public int RitualProgressPct;
+
         public List<PawnSnapshot> Pawns = new List<PawnSnapshot>();
         public List<InteractionEvent> Interactions = new List<InteractionEvent>(); // charlas/insultos recientes, para mostrar la burbuja
     }

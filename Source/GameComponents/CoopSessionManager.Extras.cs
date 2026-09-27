@@ -112,25 +112,15 @@ namespace RimCoopMod.GameComponents
         }
 
         /// <summary>
-        /// Ideology/Royalty: el pawn real está en un ritual/ceremonia (ver IsLordDrivenJob). El títere no
-        /// puede "actuar" el ritual (no hay Lord del lado del espejo, ver SyncPuppetJob), así que en vez de
-        /// quedar parado sin más se avisa con un texto flotante, una vez por cada vez que entra al ritual.
+        /// Ideology/Royalty: el pawn real está en un ritual/ceremonia (ver IsLordDrivenJob). El títere no puede
+        /// "actuar" el ritual (no hay Lord del lado del espejo, ver SyncPuppetJob), así que solo se recuerda
+        /// quién está participando: PawnUIOverlay_DrawPawnGUIOverlay_OwnerTag_Patch le dibuja un cartelito fijo
+        /// arriba mientras dure (un texto flotante que aparece una sola vez era muy fácil de no llegar a ver).
         /// </summary>
         private void ApplyRitualIndicator(Pawn puppet, PawnSnapshot ps)
         {
-            bool was = _puppetsInRitual.Contains(puppet);
-            if (ps.InRitual == was) return;
-
-            if (ps.InRitual)
-            {
-                _puppetsInRitual.Add(puppet);
-                try { MoteMaker.ThrowText(puppet.DrawPos, puppet.Map, Loc.T("SessionManager_Extras.21"), 6f); }
-                catch (Exception e) { CoopLog.Warning(Loc.T("SessionManager_Extras.22", puppet.LabelShortCap, e.Message)); }
-            }
-            else
-            {
-                _puppetsInRitual.Remove(puppet);
-            }
+            if (ps.InRitual) _puppetsInRitual.Add(puppet);
+            else _puppetsInRitual.Remove(puppet);
         }
 
         // =====================================================================

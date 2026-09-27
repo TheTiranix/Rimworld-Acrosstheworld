@@ -158,6 +158,13 @@ namespace RimCoopMod.GameComponents
             return instance._pawnOwners.TryGetValue(pawn.thingIDNumber, out var owner) ? owner : -1;
         }
 
+        /// <summary>Ver ApplyRitualIndicator/PawnUIOverlay_DrawPawnGUIOverlay_OwnerTag_Patch: cartelito fijo mientras el títere está en un ritual.</summary>
+        public static bool IsPuppetInRitual(Pawn puppet)
+        {
+            var instance = Current.Game?.GetComponent<CoopSessionManager>();
+            return instance != null && puppet != null && instance._puppetsInRitual.Contains(puppet);
+        }
+
         public static string GetPuppetIdeoName(Pawn puppet)
         {
             var instance = Current.Game?.GetComponent<CoopSessionManager>();
@@ -212,6 +219,8 @@ namespace RimCoopMod.GameComponents
             _remoteSnapshots.TryGetValue(hostPlayerId, out var snapshot);
             if (snapshot == null) return;
 
+            DrawRitualOverlay(currentMap, snapshot);
+
             _syncedPawns.TryGetValue(hostPlayerId, out var puppets);
 
             foreach (var pawn in snapshot.Pawns)
@@ -239,6 +248,27 @@ namespace RimCoopMod.GameComponents
                     TooltipHandler.TipRegion(dotRect, Loc.T("SessionManager.01", pawn.Label));
                 }
             }
+        }
+
+        private static readonly Color RitualOverlayColor = new Color(1f, 0.85f, 0.5f);
+
+        /// <summary>
+        /// Cartelito fijo con el nombre y el progreso del ritual en curso, justo arriba de donde pasa de verdad en
+        /// el mapa espejo (ver CoopSessionManager.Dlc.cs FillRitualInfo): antes solo se veía en el panel de la
+        /// base del mapa mundial, muy lejos de donde uno está mirando mientras el ritual pasa.
+        /// </summary>
+        private static void DrawRitualOverlay(Map map, MapSnapshotPayload snapshot)
+        {
+            if (string.IsNullOrEmpty(snapshot.RitualLabel)) return;
+            var cell = new IntVec3(snapshot.RitualX, 0, snapshot.RitualZ);
+            if (!cell.InBounds(map)) return;
+
+            try
+            {
+                Vector2 pos = GenMapUI.LabelDrawPosFor(cell);
+                GenMapUI.DrawThingLabel(pos, Loc.T("SessionManager_Dlc.19", snapshot.RitualLabel, snapshot.RitualProgressPct), RitualOverlayColor);
+            }
+            catch { /* un cartelito de menos no debería tirar abajo el dibujado del resto del mapa */ }
         }
 
         /// <summary>
@@ -575,6 +605,7 @@ namespace RimCoopMod.GameComponents
                 SkyGlow = map.skyManager.CurSkyGlow,
                 DlcInfo = BuildDlcInfo()
             };
+            FillRitualInfo(payload);
 
             _slowCounter++;
             bool sendSlow = (_slowCounter % 8) == 0;   // datos que casi no cambian: ~cada 0.5 s
