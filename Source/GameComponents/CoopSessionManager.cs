@@ -101,6 +101,10 @@ namespace RimCoopMod.GameComponents
         // pawn.ideo del títere porque el objeto Ideo real es de la partida del dueño y no cruza.
         private readonly Dictionary<Pawn, string> _puppetIdeoNames = new Dictionary<Pawn, string>();
 
+        // Título del rol de ideología del títere si tiene uno (ej. "Líder"), ver PawnSnapshot.RoleLabel: mismo
+        // motivo que arriba, el Precept_Role real tampoco cruza.
+        private readonly Dictionary<Pawn, string> _puppetRoleLabels = new Dictionary<Pawn, string>();
+
         // Títeres que ahora mismo están "en un ritual" (ver IsLordDrivenJob): se usa solo para no repetir
         // el aviso flotante en cada foto, uno por transición inactivo->activo.
         private readonly HashSet<Pawn> _puppetsInRitual = new HashSet<Pawn>();
@@ -159,6 +163,13 @@ namespace RimCoopMod.GameComponents
             var instance = Current.Game?.GetComponent<CoopSessionManager>();
             if (instance == null || puppet == null) return null;
             return instance._puppetIdeoNames.TryGetValue(puppet, out var name) ? name : null;
+        }
+
+        public static string GetPuppetRoleLabel(Pawn puppet)
+        {
+            var instance = Current.Game?.GetComponent<CoopSessionManager>();
+            if (instance == null || puppet == null) return null;
+            return instance._puppetRoleLabels.TryGetValue(puppet, out var label) ? label : null;
         }
 
         // (soy host) watcherId -> (id de pawn -> cuándo le mandé su apariencia), para no repetir el envío pesado si me lo pide
@@ -927,6 +938,7 @@ namespace RimCoopMod.GameComponents
                         _puppetItems.Remove(puppet);
                         _puppetCarriedKey.Remove(puppet);
                         _puppetIdeoNames.Remove(puppet);
+                        _puppetRoleLabels.Remove(puppet);
                         _puppetBiotechInfo.Remove(puppet);
                         _puppetsInRitual.Remove(puppet);
                         _puppetOwners.Remove(puppet);
@@ -974,6 +986,7 @@ namespace RimCoopMod.GameComponents
                     _puppetItems.Remove(known[oldId]);
                     _puppetCarriedKey.Remove(known[oldId]);
                     _puppetIdeoNames.Remove(known[oldId]);
+                    _puppetRoleLabels.Remove(known[oldId]);
                     _puppetBiotechInfo.Remove(known[oldId]);
                     _puppetsInRitual.Remove(known[oldId]);
                     _puppetOwners.Remove(known[oldId]);

@@ -73,6 +73,11 @@ namespace RimCoopMod.World
             if (!string.IsNullOrEmpty(ideoName))
                 __result = string.IsNullOrEmpty(__result) ? Loc.T("ExtrasPatches.01", ideoName) : __result + Loc.T("ExtrasPatches.03", ideoName);
 
+            // Rol de ideología (ej. "Líder"): mismo motivo que el nombre, el Precept_Role real tampoco cruza.
+            string roleLabel = CoopSessionManager.GetPuppetRoleLabel(__instance);
+            if (!string.IsNullOrEmpty(roleLabel))
+                __result = string.IsNullOrEmpty(__result) ? Loc.T("ExtrasPatches.04", roleLabel) : __result + Loc.T("ExtrasPatches.05", roleLabel);
+
             // Biotech: ancho de banda del mecanitor, o supervisor y modo de trabajo del mech.
             string biotech = CoopSessionManager.GetPuppetBiotechInfo(__instance);
             if (!string.IsNullOrEmpty(biotech))

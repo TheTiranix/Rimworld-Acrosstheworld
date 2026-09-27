@@ -303,6 +303,7 @@ namespace RimCoopMod.Networking
                                 bw.Write(pawn.PsyCsv ?? "");
                                 bw.Write(pawn.PermitsCsv ?? "");
                                 bw.Write(pawn.IdeoName ?? "");
+                                bw.Write(pawn.RoleLabel ?? "");
                                 bw.Write(pawn.AgeBiologicalTicks);
                                 bw.Write(pawn.GrowthPoints);
                                 bw.Write(pawn.XenotypeDefName ?? "");
@@ -813,6 +814,7 @@ namespace RimCoopMod.Networking
                                 ps.PsyCsv = br.ReadString();
                                 ps.PermitsCsv = br.ReadString();
                                 ps.IdeoName = br.ReadString();
+                                ps.RoleLabel = br.ReadString();
                                 ps.AgeBiologicalTicks = br.ReadInt64();
                                 ps.GrowthPoints = br.ReadSingle();
                                 ps.XenotypeDefName = br.ReadString();

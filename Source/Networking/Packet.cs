@@ -134,7 +134,7 @@ namespace RimCoopMod.Networking
     public static class ProtocolInfo
     {
         /// <summary>Subir cada vez que cambia el formato de un paquete. Mod y servidor tienen que coincidir.</summary>
-        public const int Version = 25;
+        public const int Version = 26;
     }
 
     public class ServerInfoPayload
@@ -304,6 +304,7 @@ namespace RimCoopMod.Networking
         public string PsyCsv;        // Royalty: "focus=0.5;heat=0.2"
         public string PermitsCsv;    // Royalty: permisos ("factionDef,permitDef;...")
         public string IdeoName;      // Ideology: nombre de la ideología (solo texto: el objeto Ideo real es de ESA partida y no cruza)
+        public string RoleLabel;     // Ideology: título de su rol si tiene uno (ej. "Líder"), también solo texto por lo mismo
 
         // Biotech. Los títeres no simulan nada (Tick salteado), así que crecer, cambiar de etapa de vida o
         // gastar hemógeno solo pasa si el dueño lo manda.

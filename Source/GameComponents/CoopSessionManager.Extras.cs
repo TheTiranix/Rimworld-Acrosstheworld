@@ -188,6 +188,9 @@ namespace RimCoopMod.GameComponents
                 // el nombre como texto para mostrarlo, sin intentar resolver una referencia que del
                 // otro lado no existe.
                 s.IdeoName = ModsConfig.IdeologyActive ? pawn.Ideo?.name : null;
+                // Igual que el nombre de la ideología: el Precept_Role real tampoco cruza, así que solo se manda
+                // el título (ej. "Líder") como texto para mostrarlo en el espejo (ver Pawn_GetInspectString_PuppetIdeo_Patch).
+                s.RoleLabel = ModsConfig.IdeologyActive ? pawn.Ideo?.GetRole(pawn)?.LabelCap : null;
                 FillBiotech(pawn, s);
                 FillAnomaly(pawn, s);
                 s.GuiltyTicksLeft = pawn.guilt?.TicksUntilInnocent ?? 0;
@@ -229,6 +232,9 @@ namespace RimCoopMod.GameComponents
 
                 if (string.IsNullOrEmpty(ps.IdeoName)) _puppetIdeoNames.Remove(puppet);
                 else _puppetIdeoNames[puppet] = ps.IdeoName;
+
+                if (string.IsNullOrEmpty(ps.RoleLabel)) _puppetRoleLabels.Remove(puppet);
+                else _puppetRoleLabels[puppet] = ps.RoleLabel;
 
                 ApplyBiotech(puppet, ps);
                 ApplyAnomaly(puppet, ps);
