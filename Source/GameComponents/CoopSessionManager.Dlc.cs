@@ -191,6 +191,26 @@ namespace RimCoopMod.GameComponents
             }
         }
 
+        /// <summary>
+        /// Anomaly: culpable de un juicio (RitualOutcomeEffectWorker_Trial). Pawn_GuiltTracker.IsGuilty sale de
+        /// un campo privado (guiltyTicksLeft > 0) sin setter público, así que se escribe con Traverse como el
+        /// resto de estos estados; una vez copiado, el juego solo (menú de "ejecutar", inspección, etc.) lo
+        /// muestra solo porque lee ese mismo campo, no hace falta nada más de nuestro lado.
+        /// </summary>
+        private static void ApplyGuilt(Pawn puppet, PawnSnapshot ps)
+        {
+            if (puppet.guilt == null) return;
+            try
+            {
+                if (puppet.guilt.TicksUntilInnocent != ps.GuiltyTicksLeft)
+                    Traverse.Create(puppet.guilt).Field("guiltyTicksLeft").SetValue(ps.GuiltyTicksLeft);
+            }
+            catch (Exception e)
+            {
+                CoopLog.Warning(Loc.T("SessionManager_Dlc.20", puppet.LabelShortCap, e.Message));
+            }
+        }
+
         /// <summary>Texto de info de DLC de mi base para quien me mira (Anomaly y Odyssey): se muestra en el panel de mi base.</summary>
         private static string BuildDlcInfo()
         {

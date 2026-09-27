@@ -310,6 +310,7 @@ namespace RimCoopMod.Networking
                                 bw.Write(pawn.GeneResourcesCsv ?? "");
                                 bw.Write(pawn.BiotechInfo ?? "");
                                 bw.Write(pawn.AnomalyCsv ?? "");
+                                bw.Write(pawn.GuiltyTicksLeft);
                             }
                         }
                         bw.Write(p.Interactions.Count);
@@ -819,6 +820,7 @@ namespace RimCoopMod.Networking
                                 ps.GeneResourcesCsv = br.ReadString();
                                 ps.BiotechInfo = br.ReadString();
                                 ps.AnomalyCsv = br.ReadString();
+                                ps.GuiltyTicksLeft = br.ReadInt32();
                             }
                             p.Pawns.Add(ps);
                         }

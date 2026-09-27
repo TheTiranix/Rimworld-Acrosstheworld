@@ -1809,7 +1809,7 @@ namespace RimCoopMod.GameComponents
                 case PacketType.JoinResult:
                     {
                         var r = p.GetPayload<JoinResultPayload>();
-                        CoopLog.Message(Loc.T("SessionManager.37", r.Success, r.Message));
+                        CoopLog.Message(Loc.T("SessionManager.37", r.Success, Loc.Unwire(r.Message)));
                         Messages.Message(Loc.Unwire(r.Message), r.Success ? MessageTypeDefOf.PositiveEvent : MessageTypeDefOf.RejectInput, false);
                         if (r.Success) AddCollaborator(r.FromPlayerId); // mandaste colonos y los aceptaron: ahora colaboran
                         break;

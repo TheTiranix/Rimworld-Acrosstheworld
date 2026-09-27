@@ -134,7 +134,7 @@ namespace RimCoopMod.Networking
     public static class ProtocolInfo
     {
         /// <summary>Subir cada vez que cambia el formato de un paquete. Mod y servidor tienen que coincidir.</summary>
-        public const int Version = 24;
+        public const int Version = 25;
     }
 
     public class ServerInfoPayload
@@ -316,6 +316,9 @@ namespace RimCoopMod.Networking
 
         // Anomaly: "clave=valor;..." con la actividad y el estudio de la entidad, el modo de contención y si es mutante (ghoul/shambler).
         public string AnomalyCsv;
+
+        // Anomaly: culpable de un juicio (RitualOutcomeEffectWorker_Trial) — 0 = no es culpable, > 0 = ticks que le quedan así.
+        public int GuiltyTicksLeft;
     }
 
     public class MapSnapshotPayload
