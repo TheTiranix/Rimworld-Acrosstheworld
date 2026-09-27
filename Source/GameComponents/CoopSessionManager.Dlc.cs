@@ -199,7 +199,33 @@ namespace RimCoopMod.GameComponents
             if (!string.IsNullOrEmpty(anomaly)) lines.Add(anomaly);
             string odyssey = BuildOdysseyLine();
             if (!string.IsNullOrEmpty(odyssey)) lines.Add(odyssey);
+            string ritual = BuildRitualLine();
+            if (!string.IsNullOrEmpty(ritual)) lines.Add(ritual);
             return string.Join("\n", lines);
+        }
+
+        /// <summary>
+        /// Ideology/Royalty: si hay un ritual o ceremonia en curso en mi base, se resume como texto (nombre y
+        /// progreso). El Lord que lo maneja tiene estado propio (etapas, roles) y no se espeja (ver
+        /// IsLordDrivenJob); esto es lo único que ve quien mira, además de a los participantes parados.
+        /// </summary>
+        private static string BuildRitualLine()
+        {
+            try
+            {
+                var map = LocalBaseMap;
+                if (map?.lordManager?.lords == null) return "";
+                foreach (var lord in map.lordManager.lords)
+                {
+                    if (!(lord.LordJob is LordJob_Ritual ritual)) continue;
+                    string label = ritual.RitualLabel;
+                    if (string.IsNullOrEmpty(label)) continue;
+                    int pct = Mathf.Clamp(Mathf.RoundToInt(ritual.Progress * 100f), 0, 100);
+                    return Loc.T("SessionManager_Dlc.19", label, pct);
+                }
+            }
+            catch { }
+            return "";
         }
 
         /// <summary>Nivel del monolito de quien mira: el edificio real NO se espeja (ver CollectThingSnapshots), se muestra como texto.</summary>

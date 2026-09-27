@@ -134,7 +134,7 @@ namespace RimCoopMod.Networking
     public static class ProtocolInfo
     {
         /// <summary>Subir cada vez que cambia el formato de un paquete. Mod y servidor tienen que coincidir.</summary>
-        public const int Version = 23;
+        public const int Version = 24;
     }
 
     public class ServerInfoPayload
@@ -245,6 +245,7 @@ namespace RimCoopMod.Networking
         public bool Moving;     // está caminando (para que el títere lo siga a pie en vez de teletransportarse)
         public bool HasMedium;  // si false, arma/ropa/inventario/necesidades no vienen en esta foto (se mandan cada tanto)
         public string JobLabel;
+        public bool InRitual;   // Ideology/Royalty: su trabajo actual lo maneja un Lord (ritual, ceremonia, espectador...) que no se espeja
         public bool Downed;
         public bool Dead;
         public bool Hostile;

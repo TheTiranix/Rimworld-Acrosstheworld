@@ -91,7 +91,7 @@ in each case and adapts to the DLC you have:
 - **Ideology:** the visual style of furniture, buildings and clothes is copied, and each colonist's ideology name is shown in
   their inspect panel (the Ideo object itself belongs to the owner's game and does not cross between games, so its precepts are not
   synchronized and it cannot be "edited" from the mirror).
-- Jobs that depend on rituals/ceremonies are not imitated on the mirror map (you see the result, not the ritual).
+- Jobs that depend on rituals/ceremonies are not acted out on the mirror map: the participants just stand in place with an "In a ceremony..." notice above them (you see the result afterwards, not the ritual itself), and while it lasts the base panel shows its name and progress.
 - **Odyssey:** "my base" is always the surface settlement that was announced to the server, not any map you own;
   this way a gravship that takes off (and creates new maps) does not confuse what the others see. If the ship **moves the
   base to another tile** (and abandons the old one), the new location is announced again: the others see the dot move and, if they were

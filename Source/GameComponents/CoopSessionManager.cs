@@ -101,6 +101,10 @@ namespace RimCoopMod.GameComponents
         // pawn.ideo del títere porque el objeto Ideo real es de la partida del dueño y no cruza.
         private readonly Dictionary<Pawn, string> _puppetIdeoNames = new Dictionary<Pawn, string>();
 
+        // Títeres que ahora mismo están "en un ritual" (ver IsLordDrivenJob): se usa solo para no repetir
+        // el aviso flotante en cada foto, uno por transición inactivo->activo.
+        private readonly HashSet<Pawn> _puppetsInRitual = new HashSet<Pawn>();
+
         public static string GetPuppetIdeoName(Pawn puppet)
         {
             var instance = Current.Game?.GetComponent<CoopSessionManager>();
@@ -534,6 +538,7 @@ namespace RimCoopMod.GameComponents
                     Z = pawn.PositionHeld.z,
                     HeldOnPlatform = !pawn.Spawned,
                     JobLabel = pawn.CurJob?.def?.reportString ?? "",
+                    InRitual = IsLordDrivenJob(pawn.CurJob?.def),
                     Downed = pawn.Downed,
                     Dead = pawn.Dead,
                     Hostile = pawn.HostileTo(Faction.OfPlayer),
@@ -874,6 +879,7 @@ namespace RimCoopMod.GameComponents
                         _puppetCarriedKey.Remove(puppet);
                         _puppetIdeoNames.Remove(puppet);
                         _puppetBiotechInfo.Remove(puppet);
+                        _puppetsInRitual.Remove(puppet);
                         puppet.Destroy(DestroyMode.Vanish);
                         known.Remove(ps.PawnId);
                         continue;
@@ -888,6 +894,7 @@ namespace RimCoopMod.GameComponents
                         SyncPuppetApparel(puppet, ps);
                     }
                     ApplyPuppetExtras(puppet, ps, map);
+                    ApplyRitualIndicator(puppet, ps);
                     SyncPuppetJob(map, snapshot.HostPlayerId, puppet, ps);
                     continue;
                 }
@@ -917,6 +924,7 @@ namespace RimCoopMod.GameComponents
                     _puppetCarriedKey.Remove(known[oldId]);
                     _puppetIdeoNames.Remove(known[oldId]);
                     _puppetBiotechInfo.Remove(known[oldId]);
+                    _puppetsInRitual.Remove(known[oldId]);
                     if (known[oldId].Spawned) known[oldId].Destroy(DestroyMode.Vanish);
                     else if (known[oldId].Corpse != null && !known[oldId].Corpse.Destroyed) known[oldId].Corpse.Destroy(DestroyMode.Vanish);
                     else if (known[oldId].holdingOwner != null && !known[oldId].Destroyed) known[oldId].Destroy(DestroyMode.Vanish); // entidad que estaba en una plataforma
@@ -940,6 +948,17 @@ namespace RimCoopMod.GameComponents
             // Disparar/usar un verbo sobre algo: el Verb del trabajo no viaja, así que en el títere tira NullReferenceException cada vez.
             "UseVerbOnThing", "UseVerbOnThingStatic"
         };
+
+        /// <summary>
+        /// Rituales, ceremonias y "hacer de espectador": los maneja un Lord (Verse.AI.Group) con estado propio
+        /// (etapas, roles, participantes) que no se espeja. Se detecta por el nombre de la clase del JobDriver
+        /// porque no hay un JobDef propio para "estar en un ritual": lo arma el LordToil según el caso.
+        /// </summary>
+        private static bool IsLordDrivenJob(JobDef def)
+        {
+            string driverName = def?.driverClass?.Name ?? "";
+            return driverName.Contains("Ritual") || driverName.Contains("Spectate") || driverName.Contains("Lord") || driverName.Contains("Ceremon");
+        }
 
         [ThreadStatic] public static bool MirrorPathing;
 
@@ -1005,7 +1024,7 @@ namespace RimCoopMod.GameComponents
             // mandarle también el trabajo de caminar haría que se peleen dos destinos distintos.
             var mirrorJobDef = DefDatabase<JobDef>.GetNamedSilentFail(ps.CurJobDefName);
             string driverName = mirrorJobDef?.driverClass?.Name ?? "";
-            bool needsLord = driverName.Contains("Ritual") || driverName.Contains("Spectate") || driverName.Contains("Lord") || driverName.Contains("Ceremon");
+            bool needsLord = IsLordDrivenJob(mirrorJobDef);
             // Estos jobs abren una ventana apenas arrancan (el toil que empieza a comerciar hace
             // Find.WindowStack.Add(new Dialog_Trade(...)) él solo): si al real le arranca una compra
             // con un mercader visitante, replicárselo al títere le abría el mismo diálogo de comercio

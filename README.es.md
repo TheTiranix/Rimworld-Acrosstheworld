@@ -89,7 +89,7 @@ en cada caso y se adapta a los DLC que tengas:
 - **Ideology:** se copia el estilo visual de muebles, edificios y ropa, y el nombre de la ideología de
   cada colono se muestra en su panel de inspección (el objeto Ideo en sí es de la partida del dueño y
   no cruza entre juegos, así que no se sincronizan sus preceptos ni se puede "editarla" desde el espejo).
-- Los trabajos que dependen de rituales/ceremonias no se imitan en el mapa espejo (se ve el resultado, no el ritual).
+- Los trabajos que dependen de rituales/ceremonias no se actúan en el mapa espejo: los participantes quedan parados en su lugar con un aviso de "En ceremonia..." arriba (se ve el resultado después, no el ritual en sí), y mientras dura el panel de la base muestra su nombre y el progreso.
 - **Odyssey:** "mi base" es siempre el asentamiento de la superficie que se avisó al servidor, no cualquier mapa propio;
   así una nave gravitatoria que despega (y crea mapas nuevos) no confunde lo que ven los demás. Si la nave **muda la
   base a otro tile** (y abandona la anterior), se re-avisa la ubicación nueva: los demás ven el punto moverse y, si la estaban

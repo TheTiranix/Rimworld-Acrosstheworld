@@ -253,6 +253,7 @@ namespace RimCoopMod.Networking
                             bw.Write(pawn.Moving);
                             bw.Write(pawn.HeldOnPlatform);
                             bw.Write(pawn.JobLabel ?? "");
+                            bw.Write(pawn.InRitual);
                             bw.Write(pawn.Downed);
                             bw.Write(pawn.Dead);
                             bw.Write(pawn.Hostile);
@@ -760,6 +761,7 @@ namespace RimCoopMod.Networking
                                 Moving = br.ReadBoolean(),
                                 HeldOnPlatform = br.ReadBoolean(),
                                 JobLabel = br.ReadString(),
+                                InRitual = br.ReadBoolean(),
                                 Downed = br.ReadBoolean(),
                                 Dead = br.ReadBoolean(),
                                 Hostile = br.ReadBoolean(),
