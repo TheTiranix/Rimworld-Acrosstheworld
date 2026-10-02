@@ -403,7 +403,6 @@ namespace RimCoopMod
             { "Common.No", "No" },
             { "Common.Player", "Jugador" },
             { "SessionManager_Extras.21", "En ceremonia..." },
-            { "SessionManager_Extras.22", "[RimCoop] No se pudo mostrar el aviso de ritual de {0}: {1}" },
             { "SessionManager_Dlc.19", "Ritual: {0} ({1}%)" },
             { "SessionManager_Dlc.20", "[RimCoop] No se pudo copiar el estado de culpable de {0}: {1}" },
             { "ExtrasPatches.04", "Rol: {0}" },
@@ -420,6 +419,12 @@ namespace RimCoopMod
             { "Program.52", "  idioma <es|en>             cambia el idioma de la consola y de los mensajes del servidor" },
             { "Program.53", "Idioma actual: {0}. Uso: idioma es | idioma en" },
             { "Program.54", "Idioma cambiado a {0}." },
+            { "PawnTransfer.04", "[RimCoop] No se pudieron reparar los títulos de honor del colono recibido: {0}" },
+            { "SessionManager_Extras.23", "[RimCoop] Error leyendo el peinado/aspecto de {0}: {1}" },
+            { "SessionManager_Extras.24", "[RimCoop] Error aplicando el peinado/aspecto al títere {0}: {1}" },
+            { "SessionManager_Dlc.21", "Ritual: {0}" },
+            { "SessionManager_Skyfallers.01", "[RimCoop] No se pudo leer una nave que cae para mostrarla: {0}" },
+            { "SessionManager_Skyfallers.02", "[RimCoop] No se pudo mostrar la animación de {0} en el mapa espejo: {1}" },
         };
 
         public static readonly Dictionary<string, string> En = new Dictionary<string, string>
@@ -820,7 +825,6 @@ namespace RimCoopMod
             { "Common.No", "No" },
             { "Common.Player", "Player" },
             { "SessionManager_Extras.21", "In a ceremony..." },
-            { "SessionManager_Extras.22", "[RimCoop] Could not show the ritual notice for {0}: {1}" },
             { "SessionManager_Dlc.19", "Ritual: {0} ({1}%)" },
             { "SessionManager_Dlc.20", "[RimCoop] Could not copy the guilty status of {0}: {1}" },
             { "ExtrasPatches.04", "Role: {0}" },
@@ -837,6 +841,12 @@ namespace RimCoopMod
             { "Program.52", "  language <es|en>           changes the language of the console and of the server's messages" },
             { "Program.53", "Current language: {0}. Usage: language es | language en" },
             { "Program.54", "Language changed to {0}." },
+            { "PawnTransfer.04", "[RimCoop] Could not repair the royal titles of the received colonist: {0}" },
+            { "SessionManager_Extras.23", "[RimCoop] Error reading the hairstyle/looks of {0}: {1}" },
+            { "SessionManager_Extras.24", "[RimCoop] Error applying the hairstyle/looks to puppet {0}: {1}" },
+            { "SessionManager_Dlc.21", "Ritual: {0}" },
+            { "SessionManager_Skyfallers.01", "[RimCoop] Could not read a falling ship to show it: {0}" },
+            { "SessionManager_Skyfallers.02", "[RimCoop] Could not show the {0} animation on the mirror map: {1}" },
         };
     }
 }

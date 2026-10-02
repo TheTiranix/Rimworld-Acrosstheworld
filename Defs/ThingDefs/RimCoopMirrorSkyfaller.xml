@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Defs>
+  <!--
+    Copia puramente visual de una nave/cápsula/meteorito que cae o se va en la base REAL de otro jugador, para que
+    quien mira esa base vea la animación (ver MirrorSkyfaller). No es un Skyfaller de verdad: no tiene contenido, no
+    impacta, no rompe techos ni crea nada. Solo se dibuja con el gráfico y las curvas del def real y se destruye sola.
+  -->
+  <ThingDef ParentName="EtherealThingBase">
+    <defName>RimCoop_MirrorSkyfaller</defName>
+    <label>mirror skyfaller</label>
+    <thingClass>RimCoopMod.World.MirrorSkyfaller</thingClass>
+    <tickerType>Normal</tickerType>
+    <drawerType>RealtimeOnly</drawerType>
+    <drawOffscreen>true</drawOffscreen>
+    <altitudeLayer>Skyfaller</altitudeLayer>
+    <selectable>false</selectable>
+  </ThingDef>
+</Defs>

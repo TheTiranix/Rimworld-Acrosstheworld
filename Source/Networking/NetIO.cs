@@ -245,6 +245,19 @@ namespace RimCoopMod.Networking
                         bw.Write(p.RitualX);
                         bw.Write(p.RitualZ);
                         bw.Write(p.RitualProgressPct);
+                        bw.Write(p.Skyfallers.Count);
+                        foreach (var sf in p.Skyfallers)
+                        {
+                            bw.Write(sf.Id);
+                            bw.Write(sf.DefName ?? "");
+                            bw.Write(sf.X);
+                            bw.Write(sf.Z);
+                            bw.Write(sf.Rot);
+                            bw.Write(sf.TicksToImpact);
+                            bw.Write(sf.TicksToImpactMax);
+                            bw.Write(sf.TicksToDiscard);
+                            bw.Write(sf.Angle);
+                        }
                         bw.Write(p.Pawns.Count);
                         foreach (var pawn in p.Pawns)
                         {
@@ -316,6 +329,8 @@ namespace RimCoopMod.Networking
                                 bw.Write(pawn.BiotechInfo ?? "");
                                 bw.Write(pawn.AnomalyCsv ?? "");
                                 bw.Write(pawn.GuiltyTicksLeft);
+                                bw.Write(pawn.GuiltAwaitingExecution);
+                                bw.Write(pawn.StyleCsv ?? "");
                             }
                         }
                         bw.Write(p.Interactions.Count);
@@ -757,6 +772,22 @@ namespace RimCoopMod.Networking
                         p.RitualX = br.ReadInt32();
                         p.RitualZ = br.ReadInt32();
                         p.RitualProgressPct = br.ReadInt32();
+                        int skyfallerCount = br.ReadInt32();
+                        for (int i = 0; i < skyfallerCount; i++)
+                        {
+                            p.Skyfallers.Add(new SkyfallerSnapshot
+                            {
+                                Id = br.ReadInt32(),
+                                DefName = br.ReadString(),
+                                X = br.ReadInt32(),
+                                Z = br.ReadInt32(),
+                                Rot = br.ReadInt32(),
+                                TicksToImpact = br.ReadInt32(),
+                                TicksToImpactMax = br.ReadInt32(),
+                                TicksToDiscard = br.ReadInt32(),
+                                Angle = br.ReadSingle()
+                            });
+                        }
                         int count = br.ReadInt32();
                         for (int i = 0; i < count; i++)
                         {
@@ -831,6 +862,8 @@ namespace RimCoopMod.Networking
                                 ps.BiotechInfo = br.ReadString();
                                 ps.AnomalyCsv = br.ReadString();
                                 ps.GuiltyTicksLeft = br.ReadInt32();
+                                ps.GuiltAwaitingExecution = br.ReadBoolean();
+                                ps.StyleCsv = br.ReadString();
                             }
                             p.Pawns.Add(ps);
                         }

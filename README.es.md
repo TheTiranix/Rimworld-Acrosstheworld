@@ -88,7 +88,10 @@ en cada caso y se adapta a los DLC que tengas:
   el juego del dueño.
 - **Ideology:** se copia el estilo visual de muebles, edificios y ropa, y el nombre de la ideología de
   cada colono se muestra en su panel de inspección (el objeto Ideo en sí es de la partida del dueño y
-  no cruza entre juegos, así que no se sincronizan sus preceptos ni se puede "editarla" desde el espejo).
+  no cruza entre juegos, así que no se sincronizan sus preceptos ni se puede "editarla" desde el espejo). El rol de ideología de un
+  colono (Líder, Guía moral...) se muestra como texto junto a ella. El peinado, color de pelo, barba, tatuajes, color de piel y forma
+  del cuerpo/cabeza se mantienen al día después de crear al colono (estación de estilo, genes, crecimiento), y la ropa teñida y los
+  muebles pintados con el color de la ideología conservan su color.
 - Los trabajos que dependen de rituales/ceremonias no se actúan en el mapa espejo: los participantes quedan parados en su lugar con un aviso de "En ceremonia..." arriba (se ve el resultado después, no el ritual en sí), y mientras dura el panel de la base muestra su nombre y el progreso.
 - **Odyssey:** "mi base" es siempre el asentamiento de la superficie que se avisó al servidor, no cualquier mapa propio;
   así una nave gravitatoria que despega (y crea mapas nuevos) no confunde lo que ven los demás. Si la nave **muda la
@@ -103,7 +106,9 @@ en cada caso y se adapta a los DLC que tengas:
   títere), y los colonos que se vuelven mutantes (ghoul) se actualizan. El estudio de estructuras también se copia.
   Los ghouls/shamblers ajenos no aparecen en tu barra de colonos. El **monolito real no se espeja** como edificio
   (registraría su propia instancia como el monolito de tu partida y rompería el tuyo): su nivel se ve como texto
-  en el panel de la base del jugador. Los incidentes de Anomaly llegan como cartas, igual que el resto.
+  en el panel de la base del jugador. Los incidentes de Anomaly llegan como cartas, igual que el resto. Un colono declarado
+  **culpable** en un juicio (y si ya espera su ejecución) se ve así también en el espejo, y los rituales psíquicos se muestran como
+  cualquier otro ritual (nombre y lugar).
 - **Royalty:** se copian y se mantienen al día los psicasts (habilidades), el enfoque psíquico, el calor neural, los títulos
   con su favor, los herederos y los permisos. Los psicasts y los permisos que uses con un colono tuyo en el mapa espejo
   los ejecuta el dueño en su base real. Las naves de transporte posadas y los árboles de anima se ven como cualquier
@@ -114,8 +119,10 @@ en cada caso y se adapta a los DLC que tengas:
   sumaron, y las incursiones y amenazas que dispara suben un **35 % por cada jugador sumado**. Los objetivos que
   apuntan a algo del mundo del dueño (un sitio, un mapa, un colono suyo) se ven, pero "ir a verlo" no encuentra el
   objeto en el juego de los demás. Otras recompensas (colonos, cambios de relación con facciones) son solo del dueño.
-  Las ceremonias de investidura y otros rituales no se imitan en el mapa espejo (los participantes se ven
-  en su posición, sin la animación del ritual), ni la animación de las naves aterrizando o despegando.
+  Las ceremonias de investidura y otros rituales no se actúan en el mapa espejo (los participantes se ven en su
+  posición, sin la animación del ritual, con el aviso "En ceremonia..." arriba y el nombre y progreso del ritual sobre el lugar
+  donde pasa). Las naves, cápsulas y meteoritos que caen o se van **sí** se ven: una copia solo visual de la animación (sin las
+  naves de pasajeros).
 
 ## Guardar y cargar
 

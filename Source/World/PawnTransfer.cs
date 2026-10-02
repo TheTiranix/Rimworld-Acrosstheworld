@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using HarmonyLib;
 using RimCoopMod.Networking;
 using RimWorld;
 using Verse;
@@ -89,6 +91,7 @@ namespace RimCoopMod.World
                 Scribe.loader.FinalizeLoading();
                 MarkTransferNoise(); // el spawn que viene justo después también dispara algunos de esos mensajes
                 ReassignUniqueIds(pawn);
+                RepairRoyalty(pawn);
                 return pawn;
             }
             catch (Exception e)
@@ -100,6 +103,36 @@ namespace RimCoopMod.World
             {
                 try { File.Delete(path); } catch { }
                 Scribe.mode = LoadSaveMode.Inactive;
+            }
+        }
+
+        /// <summary>
+        /// Royalty: los títulos y permisos de un colono guardan una referencia a la facción (el Imperio). Si en esta partida
+        /// esa referencia no se resuelve (la facción tiene otro id), quedan con facción null y después tiran errores al
+        /// mirarlos (panel de honor, permisos, herederos). Se los reasigna al Imperio de ESTA partida; si la referencia
+        /// ya estaba bien no hace nada.
+        /// </summary>
+        private static void RepairRoyalty(Pawn pawn)
+        {
+            if (!ModsConfig.RoyaltyActive || pawn?.royalty == null) return;
+            try
+            {
+                Faction empire = Faction.OfEmpire;
+                if (empire == null) return;
+
+                var titles = Traverse.Create(pawn.royalty).Field("titles").GetValue<List<RoyalTitle>>();
+                if (titles != null)
+                    foreach (var title in titles)
+                        if (title != null && title.faction == null) title.faction = empire;
+
+                var permits = Traverse.Create(pawn.royalty).Field("factionPermits").GetValue<List<FactionPermit>>();
+                if (permits != null)
+                    foreach (var permit in permits)
+                        if (permit != null && permit.Faction == null) Traverse.Create(permit).Field("faction").SetValue(empire);
+            }
+            catch (Exception e)
+            {
+                CoopLog.Warning(Loc.T("PawnTransfer.04", e.Message));
             }
         }
 

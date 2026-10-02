@@ -165,6 +165,21 @@ namespace RimCoopMod.GameComponents
             return instance != null && puppet != null && instance._puppetsInRitual.Contains(puppet);
         }
 
+        /// <summary>Saca a ese títere de TODO lo que se lleva por títere (registro, trabajo, ítems, ideología, rol, ritual, dueño...). Un solo lugar para no olvidarse de uno al agregar estados nuevos.</summary>
+        private void ForgetPuppetState(Pawn puppet)
+        {
+            if (puppet == null) return;
+            PuppetPawnRegistry.Unregister(puppet);
+            _puppetJobFingerprints.Remove(puppet);
+            _puppetItems.Remove(puppet);
+            _puppetCarriedKey.Remove(puppet);
+            _puppetIdeoNames.Remove(puppet);
+            _puppetRoleLabels.Remove(puppet);
+            _puppetBiotechInfo.Remove(puppet);
+            _puppetsInRitual.Remove(puppet);
+            _puppetOwners.Remove(puppet);
+        }
+
         public static string GetPuppetIdeoName(Pawn puppet)
         {
             var instance = Current.Game?.GetComponent<CoopSessionManager>();
@@ -266,7 +281,7 @@ namespace RimCoopMod.GameComponents
             try
             {
                 Vector2 pos = GenMapUI.LabelDrawPosFor(cell);
-                GenMapUI.DrawThingLabel(pos, Loc.T("SessionManager_Dlc.19", snapshot.RitualLabel, snapshot.RitualProgressPct), RitualOverlayColor);
+                GenMapUI.DrawThingLabel(pos, FormatRitualText(snapshot.RitualLabel, snapshot.RitualProgressPct), RitualOverlayColor);
             }
             catch { /* un cartelito de menos no debería tirar abajo el dibujado del resto del mapa */ }
         }
@@ -606,6 +621,7 @@ namespace RimCoopMod.GameComponents
                 DlcInfo = BuildDlcInfo()
             };
             FillRitualInfo(payload);
+            FillSkyfallers(payload, map);
 
             _slowCounter++;
             bool sendSlow = (_slowCounter % 8) == 0;   // datos que casi no cambian: ~cada 0.5 s
@@ -629,7 +645,7 @@ namespace RimCoopMod.GameComponents
                     Z = pawn.PositionHeld.z,
                     HeldOnPlatform = !pawn.Spawned,
                     JobLabel = pawn.CurJob?.def?.reportString ?? "",
-                    InRitual = IsLordDrivenJob(pawn.CurJob?.def),
+                    InRitual = IsInRitual(pawn),
                     Downed = pawn.Downed,
                     Dead = pawn.Dead,
                     Hostile = pawn.HostileTo(Faction.OfPlayer),
@@ -964,15 +980,7 @@ namespace RimCoopMod.GameComponents
                 {
                     if (ps.Dead)
                     {
-                        PuppetPawnRegistry.Unregister(puppet);
-                        _puppetJobFingerprints.Remove(puppet);
-                        _puppetItems.Remove(puppet);
-                        _puppetCarriedKey.Remove(puppet);
-                        _puppetIdeoNames.Remove(puppet);
-                        _puppetRoleLabels.Remove(puppet);
-                        _puppetBiotechInfo.Remove(puppet);
-                        _puppetsInRitual.Remove(puppet);
-                        _puppetOwners.Remove(puppet);
+                        ForgetPuppetState(puppet);
                         puppet.Destroy(DestroyMode.Vanish);
                         known.Remove(ps.PawnId);
                         continue;
@@ -1004,6 +1012,7 @@ namespace RimCoopMod.GameComponents
             }
 
             ApplyInteractions(snapshot);
+            SyncMirrorSkyfallers(map, snapshot);
 
             foreach (var oldId in requested.Keys.Where(id => !seenIds.Contains(id)).ToList())
                 requested.Remove(oldId);
@@ -1012,15 +1021,7 @@ namespace RimCoopMod.GameComponents
             {
                 if (known[oldId] != null)
                 {
-                    PuppetPawnRegistry.Unregister(known[oldId]);
-                    _puppetJobFingerprints.Remove(known[oldId]);
-                    _puppetItems.Remove(known[oldId]);
-                    _puppetCarriedKey.Remove(known[oldId]);
-                    _puppetIdeoNames.Remove(known[oldId]);
-                    _puppetRoleLabels.Remove(known[oldId]);
-                    _puppetBiotechInfo.Remove(known[oldId]);
-                    _puppetsInRitual.Remove(known[oldId]);
-                    _puppetOwners.Remove(known[oldId]);
+                    ForgetPuppetState(known[oldId]);
                     if (known[oldId].Spawned) known[oldId].Destroy(DestroyMode.Vanish);
                     else if (known[oldId].Corpse != null && !known[oldId].Corpse.Destroyed) known[oldId].Corpse.Destroy(DestroyMode.Vanish);
                     else if (known[oldId].holdingOwner != null && !known[oldId].Destroyed) known[oldId].Destroy(DestroyMode.Vanish); // entidad que estaba en una plataforma
@@ -1054,6 +1055,23 @@ namespace RimCoopMod.GameComponents
         {
             string driverName = def?.driverClass?.Name ?? "";
             return driverName.Contains("Ritual") || driverName.Contains("Spectate") || driverName.Contains("Lord") || driverName.Contains("Ceremon");
+        }
+
+        /// <summary>
+        /// ¿Está participando de un ritual/ceremonia ahora? Se mira primero a qué Lord pertenece (los rituales de Ideology/Royalty y
+        /// los psíquicos de Anomaly): sus participantes casi nunca tienen un trabajo "de ritual" (van, esperan, miran), así que solo
+        /// por el trabajo se perdían la mayoría. El trabajo (IsLordDrivenJob) queda como respaldo.
+        /// </summary>
+        private static bool IsInRitual(Pawn pawn)
+        {
+            try
+            {
+                var lordJob = Verse.AI.Group.LordUtility.GetLord(pawn)?.LordJob;
+                if (lordJob is LordJob_Ritual) return true;
+                if (ModsConfig.AnomalyActive && lordJob is LordJob_PsychicRitual) return true;
+            }
+            catch { }
+            return IsLordDrivenJob(pawn.CurJob?.def);
         }
 
         [ThreadStatic] public static bool MirrorPathing;
@@ -1120,7 +1138,7 @@ namespace RimCoopMod.GameComponents
             // mandarle también el trabajo de caminar haría que se peleen dos destinos distintos.
             var mirrorJobDef = DefDatabase<JobDef>.GetNamedSilentFail(ps.CurJobDefName);
             string driverName = mirrorJobDef?.driverClass?.Name ?? "";
-            bool needsLord = IsLordDrivenJob(mirrorJobDef);
+            bool needsLord = ps.InRitual || IsLordDrivenJob(mirrorJobDef); // en un ritual: sus trabajos dependen de un Lord que el títere no tiene
             // Estos jobs abren una ventana apenas arrancan (el toil que empieza a comerciar hace
             // Find.WindowStack.Add(new Dialog_Trade(...)) él solo): si al real le arranca una compra
             // con un mercader visitante, replicárselo al títere le abría el mismo diálogo de comercio
@@ -1158,7 +1176,8 @@ namespace RimCoopMod.GameComponents
 
             if (!targetA.IsValid) return null; // el target (ítem/pawn) todavía no se sincronizó acá
 
-            if (!ps.CurJobHasTargetB) return new Job(jobDef, targetA) { count = ps.CurJobCount };
+            int count = MirrorJobCount(jobDef, ps);
+            if (!ps.CurJobHasTargetB) return new Job(jobDef, targetA) { count = count };
 
             LocalTargetInfo targetB = ps.CurJobTargetBThingId >= 0
                 ? (LocalTargetInfo)FindLocalMirrorThing(hostPlayerId, ps.CurJobTargetBThingId)
@@ -1166,7 +1185,18 @@ namespace RimCoopMod.GameComponents
 
             if (!targetB.IsValid) return null;
 
-            return new Job(jobDef, targetA, targetB) { count = ps.CurJobCount };
+            return new Job(jobDef, targetA, targetB) { count = count };
+        }
+
+        /// <summary>
+        /// El count del trabajo del pawn real. Al cargar a una construcción/contenedor, el real ya "gastó" su count al levantar
+        /// el ítem (queda en 0 mientras lo lleva): arrancar el mismo trabajo de cero en el títere con 0 hace que el juego tire
+        /// "Invalid count: 0, setting to 1" (error en rojo) cada vez. El juego lo corrige solo a 1; se lo ponemos de entrada.
+        /// </summary>
+        private static int MirrorJobCount(JobDef jobDef, PawnSnapshot ps)
+        {
+            if (ps.CurJobCount <= 0 && (jobDef.driverClass?.Name ?? "").Contains("Haul")) return 1;
+            return ps.CurJobCount;
         }
 
         /// <summary>El reverso de ResolveHostThingId: dado el id del DUEÑO real, busca la copia local (títere o construcción/ítem espejo).</summary>
@@ -1276,7 +1306,7 @@ namespace RimCoopMod.GameComponents
         // en vez del sprite genérico del def — sin esto la ropa del títere se ve siempre igual sin
         // importar la ideología del dueño real.
         private static string ApparelEntry(Apparel a) =>
-            a.def.defName + "," + (a.Stuff?.defName ?? "") + "," + QualityOf(a) + "," + a.HitPoints + "," + (a.StyleDef?.defName ?? "");
+            a.def.defName + "," + (a.Stuff?.defName ?? "") + "," + QualityOf(a) + "," + a.HitPoints + "," + (a.StyleDef?.defName ?? "") + "," + ThingColorKey(a);
 
         // Iguala la ropa puesta del títere con la del pawn real (si difiere, la reemplaza entera).
         private static void SyncPuppetApparel(Pawn puppet, PawnSnapshot ps)
@@ -1288,9 +1318,9 @@ namespace RimCoopMod.GameComponents
                 : ps.ApparelCsv.Split(';').Select(e =>
                 {
                     var f = e.Split(',');
-                    return f[0] + "|" + f[1] + "|" + (f.Length > 4 ? f[4] : "");
+                    return f[0] + "|" + f[1] + "|" + (f.Length > 4 ? f[4] : "") + "|" + (f.Length > 5 ? f[5] : "");
                 }).OrderBy(x => x).ToList();
-            var currentDefs = puppet.apparel.WornApparel.Select(a => a.def.defName + "|" + (a.Stuff?.defName ?? "") + "|" + (a.StyleDef?.defName ?? "")).OrderBy(x => x).ToList();
+            var currentDefs = puppet.apparel.WornApparel.Select(a => a.def.defName + "|" + (a.Stuff?.defName ?? "") + "|" + (a.StyleDef?.defName ?? "") + "|" + ThingColorKey(a)).OrderBy(x => x).ToList();
             if (wantedDefs.SequenceEqual(currentDefs)) return;
 
             try
@@ -1312,6 +1342,7 @@ namespace RimCoopMod.GameComponents
                     var apparel = (Apparel)ThingMaker.MakeThing(def, stuff);
                     ApplyQualityAndHp(apparel, int.TryParse(f[2], out int q) ? q : -1, int.TryParse(f[3], out int hp) ? hp : 0);
                     if (f.Length > 4) ApplyThingStyle(apparel, f[4]);
+                    if (f.Length > 5) ApplyThingColorKey(apparel, f[5]); // ropa teñida (Ideology)
                     puppet.apparel.Wear(apparel, false, false);
                 }
             }

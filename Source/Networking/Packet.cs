@@ -134,7 +134,7 @@ namespace RimCoopMod.Networking
     public static class ProtocolInfo
     {
         /// <summary>Subir cada vez que cambia el formato de un paquete. Mod y servidor tienen que coincidir.</summary>
-        public const int Version = 27;
+        public const int Version = 28;
     }
 
     public class ServerInfoPayload
@@ -320,6 +320,11 @@ namespace RimCoopMod.Networking
 
         // Anomaly: culpable de un juicio (RitualOutcomeEffectWorker_Trial) — 0 = no es culpable, > 0 = ticks que le quedan así.
         public int GuiltyTicksLeft;
+        public bool GuiltAwaitingExecution; // ya se lo condenó a ser ejecutado (Pawn_GuiltTracker.awaitingExecution)
+
+        // Apariencia que puede cambiar con el colono ya en pie: "clave=valor;..." con peinado, color de pelo, barba, tatuajes
+        // (Ideology), color de piel, cuerpo y cabeza (Biotech, crecimiento y genes). Ver FillStyle/ApplyStyle.
+        public string StyleCsv;
     }
 
     public class MapSnapshotPayload
@@ -339,8 +344,25 @@ namespace RimCoopMod.Networking
         public int RitualZ;
         public int RitualProgressPct;
 
+        // Naves, cápsulas y meteoritos que están cayendo o yéndose en mi base ahora mismo (solo para que se vea la animación).
+        public List<SkyfallerSnapshot> Skyfallers = new List<SkyfallerSnapshot>();
+
         public List<PawnSnapshot> Pawns = new List<PawnSnapshot>();
         public List<InteractionEvent> Interactions = new List<InteractionEvent>(); // charlas/insultos recientes, para mostrar la burbuja
+    }
+
+    /// <summary>Un Skyfaller real de la base del dueño, con lo mínimo para dibujar su animación en el espejo (ver MirrorSkyfaller).</summary>
+    public class SkyfallerSnapshot
+    {
+        public int Id;               // thingIDNumber del dueño: identifica a esta nave entre fotos
+        public string DefName;       // el def real (de ahí salen el gráfico, las curvas y la sombra)
+        public int X;
+        public int Z;
+        public int Rot;
+        public int TicksToImpact;    // negativo y creciente en las que se van (reversed)
+        public int TicksToImpactMax;
+        public int TicksToDiscard;
+        public float Angle;
     }
 
     public class InteractionEvent

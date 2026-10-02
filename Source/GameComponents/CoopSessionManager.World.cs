@@ -66,10 +66,7 @@ namespace RimCoopMod.GameComponents
             {
                 if (puppet.Spawned)
                 {
-                    PuppetPawnRegistry.Unregister(puppet);
-                    _puppetJobFingerprints.Remove(puppet);
-                    _puppetItems.Remove(puppet);
-                    _puppetCarriedKey.Remove(puppet);
+                    ForgetPuppetState(puppet);
 
                     puppet.health.SetDead();
                     var pos = cell.InBounds(map) ? cell : puppet.Position;
@@ -218,6 +215,9 @@ namespace RimCoopMod.GameComponents
 
                 var study = t.TryGetComp<CompStudiable>(); // Anomaly: estudio de estructuras
                 if (study != null) parts.Add("stdy=" + Inv(study.studyPoints) + "," + (study.studyEnabled ? 1 : 0));
+
+                string color = ThingColorKey(t); // Ideology: muebles y edificios pintados con el color de la ideología
+                if (color.Length > 0) parts.Add("col=" + color);
             }
             catch { }
             return string.Join("|", parts);
@@ -292,6 +292,9 @@ namespace RimCoopMod.GameComponents
                                 if (sv.Length > 1) c.studyEnabled = sv[1] == "1";
                                 break;
                             }
+                        case "col":
+                            ApplyThingColorKey(t, val);
+                            break;
                         case "bills":
                             ApplyBills(t, val);
                             break;

@@ -204,6 +204,8 @@ namespace RimCoopMod.GameComponents
             {
                 if (puppet.guilt.TicksUntilInnocent != ps.GuiltyTicksLeft)
                     Traverse.Create(puppet.guilt).Field("guiltyTicksLeft").SetValue(ps.GuiltyTicksLeft);
+                if (puppet.guilt.awaitingExecution != ps.GuiltAwaitingExecution)
+                    puppet.guilt.awaitingExecution = ps.GuiltAwaitingExecution;
             }
             catch (Exception e)
             {
@@ -224,33 +226,57 @@ namespace RimCoopMod.GameComponents
             return string.Join("\n", lines);
         }
 
-        /// <summary>
-        /// Ideology/Royalty: el ritual o ceremonia en curso en mi base, si hay uno (el Lord que lo maneja tiene
-        /// estado propio -etapas, roles- y no se espeja, ver IsLordDrivenJob). Null si no hay ninguno ahora.
-        /// </summary>
-        private static LordJob_Ritual FindActiveRitual()
+        private struct RitualInfo
         {
+            public string Label;
+            public IntVec3 Cell;
+            public int ProgressPct; // -1 = el juego no lo expone (rituales psíquicos de Anomaly)
+        }
+
+        /// <summary>
+        /// El ritual o ceremonia en curso en mi base, si hay uno: los de Ideology/Royalty (LordJob_Ritual, con progreso) y los
+        /// rituales psíquicos de Anomaly (LordJob_PsychicRitual). El Lord que los maneja tiene estado propio -etapas, roles- y no
+        /// se espeja (ver IsLordDrivenJob); de él solo viajan el nombre, el lugar y el progreso.
+        /// </summary>
+        private static bool TryFindActiveRitual(out RitualInfo info)
+        {
+            info = default;
             try
             {
                 var map = LocalBaseMap;
-                if (map?.lordManager?.lords == null) return null;
+                if (map?.lordManager?.lords == null) return false;
                 foreach (var lord in map.lordManager.lords)
                 {
-                    if (lord.LordJob is LordJob_Ritual ritual && !string.IsNullOrEmpty(ritual.RitualLabel)) return ritual;
+                    if (lord.LordJob is LordJob_Ritual ritual && !string.IsNullOrEmpty(ritual.RitualLabel))
+                    {
+                        var cell = ritual.selectedTarget.Cell;
+                        if (!cell.IsValid) continue;
+                        info = new RitualInfo { Label = ritual.RitualLabel, Cell = cell, ProgressPct = Mathf.Clamp(Mathf.RoundToInt(ritual.Progress * 100f), 0, 100) };
+                        return true;
+                    }
+
+                    if (ModsConfig.AnomalyActive && lord.LordJob is LordJob_PsychicRitual psychic && psychic.def != null)
+                    {
+                        var cell = psychic.assignments != null ? psychic.assignments.Target.Cell : IntVec3.Invalid;
+                        if (!cell.IsValid) continue;
+                        info = new RitualInfo { Label = psychic.def.LabelCap, Cell = cell, ProgressPct = -1 };
+                        return true;
+                    }
                 }
             }
             catch { }
-            return null;
+            return false;
         }
 
         /// <summary>Texto resumen del ritual en curso (nombre y progreso), para el panel de mi base en el mapa mundial.</summary>
         private static string BuildRitualLine()
         {
-            var ritual = FindActiveRitual();
-            if (ritual == null) return "";
-            int pct = Mathf.Clamp(Mathf.RoundToInt(ritual.Progress * 100f), 0, 100);
-            return Loc.T("SessionManager_Dlc.19", ritual.RitualLabel, pct);
+            if (!TryFindActiveRitual(out var ritual)) return "";
+            return FormatRitualText(ritual.Label, ritual.ProgressPct);
         }
+
+        private static string FormatRitualText(string label, int progressPct) =>
+            progressPct < 0 ? Loc.T("SessionManager_Dlc.21", label) : Loc.T("SessionManager_Dlc.19", label, progressPct);
 
         /// <summary>
         /// Posición, nombre y progreso del ritual en curso (si hay uno), para dibujarlo justo arriba de donde
@@ -259,18 +285,11 @@ namespace RimCoopMod.GameComponents
         /// </summary>
         private static void FillRitualInfo(MapSnapshotPayload payload)
         {
-            var ritual = FindActiveRitual();
-            if (ritual == null) return;
-            try
-            {
-                IntVec3 cell = ritual.selectedTarget.Cell;
-                if (!cell.IsValid) return;
-                payload.RitualLabel = ritual.RitualLabel;
-                payload.RitualX = cell.x;
-                payload.RitualZ = cell.z;
-                payload.RitualProgressPct = Mathf.Clamp(Mathf.RoundToInt(ritual.Progress * 100f), 0, 100);
-            }
-            catch { }
+            if (!TryFindActiveRitual(out var ritual)) return;
+            payload.RitualLabel = ritual.Label;
+            payload.RitualX = ritual.Cell.x;
+            payload.RitualZ = ritual.Cell.z;
+            payload.RitualProgressPct = ritual.ProgressPct;
         }
 
         /// <summary>Nivel del monolito de quien mira: el edificio real NO se espeja (ver CollectThingSnapshots), se muestra como texto.</summary>
@@ -359,16 +378,11 @@ namespace RimCoopMod.GameComponents
             {
                 foreach (var pawn in pawns.Values)
                 {
-                    if (pawn == null) continue;
-                    PuppetPawnRegistry.Unregister(pawn);
-                    _puppetJobFingerprints.Remove(pawn);
-                    _puppetItems.Remove(pawn);
-                    _puppetCarriedKey.Remove(pawn);
-                    _puppetIdeoNames.Remove(pawn);
-                    _puppetBiotechInfo.Remove(pawn);
+                    ForgetPuppetState(pawn);
                 }
             }
 
+            _mirrorSkyfallers.Remove(playerId); // las copias visuales mueren con el mapa
             _coopMaps.Remove(playerId);
             _syncedThings.Remove(playerId);
             _syncedPawns.Remove(playerId);
@@ -536,15 +550,17 @@ namespace RimCoopMod.GameComponents
                     }
                 }
 
-                if (puppet.royalty != null && !string.IsNullOrEmpty(ps.TitlesCsv))
+                if (puppet.royalty != null && ps.TitlesCsv != null)
                 {
-                    foreach (var entry in ps.TitlesCsv.Split(';'))
+                    var wantedFactions = new HashSet<string>();
+                    foreach (var entry in ps.TitlesCsv.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries))
                     {
                         var f = entry.Split(',');
                         if (f.Length < 3) continue;
                         var faction = Find.FactionManager.AllFactionsListForReading.FirstOrDefault(x => x.def.defName == f[0]);
                         var title = DefDatabase<RoyalTitleDef>.GetNamedSilentFail(f[1]);
                         if (faction == null || title == null) continue;
+                        wantedFactions.Add(f[0]);
                         if (puppet.royalty.GetCurrentTitle(faction) != title) puppet.royalty.SetTitle(faction, title, false, false, false);
                         if (int.TryParse(f[2], out int favor) && puppet.royalty.GetFavor(faction) != favor) puppet.royalty.SetFavor(faction, favor, false);
 
@@ -553,6 +569,11 @@ namespace RimCoopMod.GameComponents
                             && knownPawns.TryGetValue(heirId, out var heir) && heir != null && puppet.royalty.GetHeir(faction) != heir)
                             puppet.royalty.SetHeir(heir, faction);
                     }
+
+                    // Un título que el colono real perdió (renunció, se lo quitaron) no puede quedarse para siempre en la copia.
+                    foreach (var t in puppet.royalty.AllTitlesForReading.ToList())
+                        if (t?.faction != null && !wantedFactions.Contains(t.faction.def.defName))
+                            puppet.royalty.SetTitle(t.faction, null, false, false, false);
                 }
 
                 if (puppet.royalty != null && ps.PermitsCsv != null)

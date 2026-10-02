@@ -32,6 +32,157 @@ namespace RimCoopMod.GameComponents
             float.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out float v) ? v : fallback;
 
         // =====================================================================
+        // Apariencia que cambia con el colono ya en pie: Ideology (peinado, barba y tatuajes en la estación de estilo),
+        // Biotech (color de piel/pelo por genes, cuerpo y cabeza al crecer). La apariencia completa viaja UNA vez cuando
+        // se crea el títere; esto la mantiene al día después.
+        // =====================================================================
+
+        private static string ColorCsv(Color c) => Inv(c.r) + "," + Inv(c.g) + "," + Inv(c.b) + "," + Inv(c.a);
+
+        private static bool TryParseColor(string s, out Color color)
+        {
+            color = default;
+            var p = s.Split(',');
+            if (p.Length != 4) return false;
+            color = new Color(ParseF(p[0]), ParseF(p[1]), ParseF(p[2]), ParseF(p[3], 1f));
+            return true;
+        }
+
+        // Color de una cosa teñida (CompColorable: ropa teñida, muebles/edificios con color de ideología). "" si no tiene uno activo.
+        // Va con ":" (no ",") porque viaja dentro de listas separadas por comas.
+        private static string ThingColorKey(Thing t)
+        {
+            var comp = t?.TryGetComp<CompColorable>();
+            if (comp == null || !comp.Active) return "";
+            var c = comp.Color;
+            return Inv(c.r) + ":" + Inv(c.g) + ":" + Inv(c.b) + ":" + Inv(c.a);
+        }
+
+        private static void ApplyThingColorKey(Thing t, string key)
+        {
+            if (string.IsNullOrEmpty(key)) return;
+            var comp = t?.TryGetComp<CompColorable>();
+            if (comp == null) return;
+            var p = key.Split(':');
+            if (p.Length != 4) return;
+            var color = new Color(ParseF(p[0]), ParseF(p[1]), ParseF(p[2]), ParseF(p[3], 1f));
+            if (!comp.Active || !SameColor(comp.Color, color)) comp.SetColor(color);
+        }
+
+        private static bool SameColor(Color a, Color b) =>
+            Mathf.Abs(a.r - b.r) < 0.004f && Mathf.Abs(a.g - b.g) < 0.004f && Mathf.Abs(a.b - b.b) < 0.004f && Mathf.Abs(a.a - b.a) < 0.004f;
+
+        private static void FillStyle(Pawn pawn, PawnSnapshot s)
+        {
+            var story = pawn.story;
+            if (story == null || pawn.RaceProps == null || !pawn.RaceProps.Humanlike) return;
+            try
+            {
+                var parts = new List<string>();
+                if (story.hairDef != null) parts.Add("hair=" + story.hairDef.defName);
+                // El campo crudo, no la propiedad HairColor (que cambia el color de pelo de los shamblers y los cadáveres).
+                parts.Add("hc=" + ColorCsv(Traverse.Create(story).Field("hairColor").GetValue<Color>()));
+                if (pawn.style?.beardDef != null) parts.Add("beard=" + pawn.style.beardDef.defName);
+                if (ModsConfig.IdeologyActive && pawn.style != null)
+                {
+                    if (pawn.style.FaceTattoo != null) parts.Add("ft=" + pawn.style.FaceTattoo.defName);
+                    if (pawn.style.BodyTattoo != null) parts.Add("bt=" + pawn.style.BodyTattoo.defName);
+                }
+                if (story.skinColorOverride.HasValue) parts.Add("skin=" + ColorCsv(story.skinColorOverride.Value));
+                if (story.bodyType != null) parts.Add("body=" + story.bodyType.defName);
+                if (story.headType != null) parts.Add("head=" + story.headType.defName);
+                s.StyleCsv = string.Join(";", parts);
+            }
+            catch (Exception e)
+            {
+                CoopLog.Warning(Loc.T("SessionManager_Extras.23", pawn.LabelShortCap, e.Message));
+            }
+        }
+
+        private static void ApplyStyle(Pawn puppet, PawnSnapshot ps)
+        {
+            var story = puppet.story;
+            if (story == null || string.IsNullOrEmpty(ps.StyleCsv)) return;
+            try
+            {
+                bool dirty = false;
+                bool hasSkin = false;
+                foreach (var part in ps.StyleCsv.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries))
+                {
+                    int eq = part.IndexOf('=');
+                    if (eq < 0) continue;
+                    string key = part.Substring(0, eq), val = part.Substring(eq + 1);
+                    switch (key)
+                    {
+                        case "hair":
+                            {
+                                var def = DefDatabase<HairDef>.GetNamedSilentFail(val);
+                                if (def != null && story.hairDef != def) { story.hairDef = def; dirty = true; }
+                                break;
+                            }
+                        case "hc":
+                            {
+                                if (!TryParseColor(val, out var c)) break;
+                                var cur = Traverse.Create(story).Field("hairColor").GetValue<Color>();
+                                if (!SameColor(cur, c)) { Traverse.Create(story).Field("hairColor").SetValue(c); dirty = true; }
+                                break;
+                            }
+                        case "beard":
+                            {
+                                var def = DefDatabase<BeardDef>.GetNamedSilentFail(val);
+                                if (def != null && puppet.style != null && puppet.style.beardDef != def) { puppet.style.beardDef = def; dirty = true; }
+                                break;
+                            }
+                        case "ft":
+                            {
+                                var def = DefDatabase<TattooDef>.GetNamedSilentFail(val);
+                                if (def != null && ModsConfig.IdeologyActive && puppet.style != null && puppet.style.FaceTattoo != def) { puppet.style.FaceTattoo = def; dirty = true; }
+                                break;
+                            }
+                        case "bt":
+                            {
+                                var def = DefDatabase<TattooDef>.GetNamedSilentFail(val);
+                                if (def != null && ModsConfig.IdeologyActive && puppet.style != null && puppet.style.BodyTattoo != def) { puppet.style.BodyTattoo = def; dirty = true; }
+                                break;
+                            }
+                        case "skin":
+                            {
+                                hasSkin = true;
+                                if (!TryParseColor(val, out var c)) break;
+                                if (!story.skinColorOverride.HasValue || !SameColor(story.skinColorOverride.Value, c)) { story.skinColorOverride = c; dirty = true; }
+                                break;
+                            }
+                        case "body":
+                            {
+                                var def = DefDatabase<BodyTypeDef>.GetNamedSilentFail(val);
+                                if (def != null && story.bodyType != def) { story.bodyType = def; dirty = true; }
+                                break;
+                            }
+                        case "head":
+                            {
+                                var def = DefDatabase<HeadTypeDef>.GetNamedSilentFail(val);
+                                if (def != null && story.headType != def) { story.headType = def; dirty = true; }
+                                break;
+                            }
+                    }
+                }
+
+                // Si el real ya no tiene un color de piel forzado (se quitó el gen que lo ponía), el espejo tampoco.
+                if (!hasSkin && story.skinColorOverride.HasValue) { story.skinColorOverride = null; dirty = true; }
+
+                if (dirty)
+                {
+                    puppet.Drawer.renderer.SetAllGraphicsDirty();
+                    PortraitsCache.SetDirty(puppet);
+                }
+            }
+            catch (Exception e)
+            {
+                CoopLog.Warning(Loc.T("SessionManager_Extras.24", puppet.LabelShortCap, e.Message));
+            }
+        }
+
+        // =====================================================================
         // Eventos / cartas
         // =====================================================================
 
@@ -184,6 +335,8 @@ namespace RimCoopMod.GameComponents
                 FillBiotech(pawn, s);
                 FillAnomaly(pawn, s);
                 s.GuiltyTicksLeft = pawn.guilt?.TicksUntilInnocent ?? 0;
+                s.GuiltAwaitingExecution = pawn.guilt?.awaitingExecution ?? false;
+                FillStyle(pawn, s);
                 s.SkillsCsv = pawn.skills == null ? "" : string.Join(";", pawn.skills.skills.Select(k => k.def.defName + "," + k.Level + "," + Inv(k.xpSinceLastLevel) + "," + (int)k.passion));
                 s.TraitsCsv = pawn.story?.traits == null ? "" : string.Join(";", pawn.story.traits.allTraits.Select(t => t.def.defName + "," + t.Degree));
 
@@ -229,6 +382,7 @@ namespace RimCoopMod.GameComponents
                 ApplyBiotech(puppet, ps);
                 ApplyAnomaly(puppet, ps);
                 ApplyGuilt(puppet, ps);
+                ApplyStyle(puppet, ps);
 
                 ApplyHediffs(puppet, ps.HediffsCsv);
                 ApplyMemories(puppet, ps.MemoriesCsv);

@@ -90,7 +90,9 @@ in each case and adapts to the DLC you have:
   changed from the owner's game.
 - **Ideology:** the visual style of furniture, buildings and clothes is copied, and each colonist's ideology name is shown in
   their inspect panel (the Ideo object itself belongs to the owner's game and does not cross between games, so its precepts are not
-  synchronized and it cannot be "edited" from the mirror).
+  synchronized and it cannot be "edited" from the mirror). A colonist's ideoligion role (Leader, Moral Guide...) is shown as text next to
+  it. Hairstyle, hair color, beard, tattoos, skin color and body/head shape are kept up to date after the colonist is created (style station,
+  genes, growing up), and dyed apparel and ideoligion-painted furniture keep their color.
 - Jobs that depend on rituals/ceremonies are not acted out on the mirror map: the participants just stand in place with an "In a ceremony..." notice above them (you see the result afterwards, not the ritual itself), and while it lasts the base panel shows its name and progress.
 - **Odyssey:** "my base" is always the surface settlement that was announced to the server, not any map you own;
   this way a gravship that takes off (and creates new maps) does not confuse what the others see. If the ship **moves the
@@ -105,7 +107,8 @@ in each case and adapts to the DLC you have:
   and colonists who become mutants (ghouls) are updated. Structure study is copied as well.
   Other players' ghouls/shamblers do not show up in your colonist bar. The **real monolith is not mirrored** as a building
   (it would register its own instance as your game's monolith and break yours): its level is shown as text
-  in the player's base panel. Anomaly incidents arrive as letters, like everything else.
+  in the player's base panel. Anomaly incidents arrive as letters, like everything else. A colonist found **guilty** by a trial (and
+  whether they are awaiting execution) shows that on the mirror too, and psychic rituals show up like any other ritual (name and spot).
 - **Royalty:** psycasts (abilities), psyfocus, neural heat, titles with their favor, heirs and permits are copied and kept up to date.
   Psycasts and permits you use with one of your colonists on the mirror map are executed by the owner in their real base.
   Landed shuttles and anima trees show up like any other building or plant. **Shared quests:** at the bases of players you
@@ -115,8 +118,10 @@ in each case and adapts to the DLC you have:
   joined, and the raids and threats it triggers go up **35% for each player who joined**. Objectives that point to something in
   the owner's world (a site, a map, one of their colonists) are shown, but "go see it" does not find the object in the
   others' game. Other rewards (colonists, faction relation changes) belong to the owner only.
-  Investiture ceremonies and other rituals are not imitated on the mirror map (participants are seen at their
-  position, without the ritual animation), nor is the animation of ships landing or taking off.
+  Investiture ceremonies and other rituals are not acted out on the mirror map (participants are seen at their
+  position, without the ritual animation, with the "In a ceremony..." tag above them and the ritual's name and progress over the
+  spot where it happens). Ships, drop pods and meteorites falling or leaving **are** shown: a visual-only copy of the animation
+  (passenger shuttles excluded).
 
 ## Saving and loading
 
