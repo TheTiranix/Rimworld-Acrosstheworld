@@ -32,6 +32,12 @@ namespace RimCoopMod.World
         private bool _soundPlayed;
         private Graphic _graphic;
         private Material _shadowMaterial;
+        private int _kind;            // 0 común, 1 nave de pasajeros llegando, 2 nave de pasajeros yéndose (ver SkyfallerSnapshot.Kind)
+        private Color? _hostColor;    // el color con que el dueño la dibuja (solo las de pasajeros: el de su edificio)
+
+        // Odyssey, PassengerShuttleIncoming/Leaving: el ángulo no sale del def sino de hacia dónde mira la nave.
+        private static readonly SimpleCurve PassengerArrivingAngle = new SimpleCurve { new CurvePoint(0f, 30f), new CurvePoint(1f, 0f) };
+        private static readonly SimpleCurve PassengerLeavingAngle = new SimpleCurve { new CurvePoint(0f, 0f), new CurvePoint(1f, 20f) };
 
         public bool Reversed => _source?.skyfaller != null && _source.skyfaller.reversed;
         private int LeaveMapAfterTicks => _ticksToDiscard <= 0 ? DefaultLeaveTicks : _ticksToDiscard;
@@ -43,6 +49,38 @@ namespace RimCoopMod.World
             _ticksMax = s.TicksToImpactMax > 0 ? s.TicksToImpactMax : DefaultLeaveTicks;
             _ticksToDiscard = s.TicksToDiscard;
             _angle = s.Angle;
+            _kind = s.Kind;
+            _hostColor = TryParseColorKey(s.ColorKey);
+        }
+
+        private static Color? TryParseColorKey(string key)
+        {
+            if (string.IsNullOrEmpty(key)) return null;
+            var p = key.Split(':');
+            if (p.Length != 4) return null;
+            var inv = System.Globalization.CultureInfo.InvariantCulture;
+            float r, g, b, a;
+            if (!float.TryParse(p[0], System.Globalization.NumberStyles.Float, inv, out r) || !float.TryParse(p[1], System.Globalization.NumberStyles.Float, inv, out g)
+                || !float.TryParse(p[2], System.Globalization.NumberStyles.Float, inv, out b) || !float.TryParse(p[3], System.Globalization.NumberStyles.Float, inv, out a)) return null;
+            return new Color(r, g, b, a);
+        }
+
+        // Igual que PassengerShuttleIncoming/Leaving.GetAngle.
+        private float PassengerAngle(float timeInAnimation)
+        {
+            var curve = _kind == 1 ? PassengerArrivingAngle : PassengerLeavingAngle;
+            switch (Rotation.AsInt)
+            {
+                case 1: return Rotation.Opposite.AsAngle + curve.Evaluate(timeInAnimation);
+                case 3: return Rotation.Opposite.AsAngle - curve.Evaluate(timeInAnimation);
+                default: return Rotation.Opposite.AsAngle;
+            }
+        }
+
+        public override Color DrawColor
+        {
+            get { return _hostColor ?? base.DrawColor; }
+            set { base.DrawColor = value; }
         }
 
         /// <summary>El dueño manda su cuenta real en cada foto; solo se corrige si se desfasó de más (si no, saltaría en cada una).</summary>
@@ -68,7 +106,8 @@ namespace RimCoopMod.World
         {
             get
             {
-                if (_graphic == null && _source?.graphicData != null) _graphic = _source.graphicData.Graphic;
+                if (_graphic == null && _source?.graphicData != null)
+                    _graphic = _kind != 0 ? _source.graphicData.GraphicColoredFor(this) : _source.graphicData.Graphic;
                 return _graphic ?? base.Graphic;
             }
         }
@@ -129,13 +168,27 @@ namespace RimCoopMod.World
             if (_source?.skyfaller == null) return;
             var sp = _source.skyfaller;
 
-            // Igual que Skyfaller.GetDrawPositionAndRotation: curvas de ángulo, rotación y desplazamiento del def real.
             float extraRotation = 0f;
-            if (sp.rotateGraphicTowardsDirection) extraRotation = _angle;
-            if (sp.angleCurve != null) _angle = sp.angleCurve.Evaluate(TimeInAnimation);
-            if (sp.rotationCurve != null) extraRotation += sp.rotationCurve.Evaluate(TimeInAnimation);
-            if (sp.xPositionCurve != null) drawLoc.x += sp.xPositionCurve.Evaluate(TimeInAnimation);
-            if (sp.zPositionCurve != null) drawLoc.z += sp.zPositionCurve.Evaluate(TimeInAnimation);
+            if (_kind != 0)
+            {
+                // Igual que PassengerShuttleIncoming/Leaving.GetDrawPositionAndRotation.
+                _angle = PassengerAngle(TimeInAnimation);
+                if (sp.rotationCurve != null)
+                {
+                    if (Rotation.AsInt == 1) extraRotation += sp.rotationCurve.Evaluate(TimeInAnimation);
+                    else if (Rotation.AsInt == 3) extraRotation -= sp.rotationCurve.Evaluate(TimeInAnimation);
+                }
+                if (sp.zPositionCurve != null) drawLoc.z += sp.zPositionCurve.Evaluate(TimeInAnimation);
+            }
+            else
+            {
+                // Igual que Skyfaller.GetDrawPositionAndRotation: curvas de ángulo, rotación y desplazamiento del def real.
+                if (sp.rotateGraphicTowardsDirection) extraRotation = _angle;
+                if (sp.angleCurve != null) _angle = sp.angleCurve.Evaluate(TimeInAnimation);
+                if (sp.rotationCurve != null) extraRotation += sp.rotationCurve.Evaluate(TimeInAnimation);
+                if (sp.xPositionCurve != null) drawLoc.x += sp.xPositionCurve.Evaluate(TimeInAnimation);
+                if (sp.zPositionCurve != null) drawLoc.z += sp.zPositionCurve.Evaluate(TimeInAnimation);
+            }
 
             Graphic?.Draw(drawLoc, flip ? Rotation.Opposite : Rotation, this, extraRotation);
 

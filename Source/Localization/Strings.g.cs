@@ -425,6 +425,15 @@ namespace RimCoopMod
             { "SessionManager_Dlc.21", "Ritual: {0}" },
             { "SessionManager_Skyfallers.01", "[RimCoop] No se pudo leer una nave que cae para mostrarla: {0}" },
             { "SessionManager_Skyfallers.02", "[RimCoop] No se pudo mostrar la animación de {0} en el mapa espejo: {1}" },
+            { "PlayerBase.15", "Ideología" },
+            { "PlayerBase.16", "Ver la ideología de {0}: memes, preceptos y roles." },
+            { "Ideo.Title", "Ideología de {0}" },
+            { "Ideo.Culture", "Cultura: {0}" },
+            { "Ideo.Memes", "Memes: {0}" },
+            { "Ideo.Precepts", "Preceptos" },
+            { "Ideo.Roles", "Roles" },
+            { "Ideo.Vacant", "(vacante)" },
+            { "SessionManager_Dlc.22", "Grupo {0}: {1}" },
         };
 
         public static readonly Dictionary<string, string> En = new Dictionary<string, string>
@@ -847,6 +856,15 @@ namespace RimCoopMod
             { "SessionManager_Dlc.21", "Ritual: {0}" },
             { "SessionManager_Skyfallers.01", "[RimCoop] Could not read a falling ship to show it: {0}" },
             { "SessionManager_Skyfallers.02", "[RimCoop] Could not show the {0} animation on the mirror map: {1}" },
+            { "PlayerBase.15", "Ideoligion" },
+            { "PlayerBase.16", "See {0}'s ideoligion: memes, precepts and roles." },
+            { "Ideo.Title", "{0}'s ideoligion" },
+            { "Ideo.Culture", "Culture: {0}" },
+            { "Ideo.Memes", "Memes: {0}" },
+            { "Ideo.Precepts", "Precepts" },
+            { "Ideo.Roles", "Roles" },
+            { "Ideo.Vacant", "(vacant)" },
+            { "SessionManager_Dlc.22", "Group {0}: {1}" },
         };
     }
 }

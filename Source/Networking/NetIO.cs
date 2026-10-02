@@ -245,6 +245,7 @@ namespace RimCoopMod.Networking
                         bw.Write(p.RitualX);
                         bw.Write(p.RitualZ);
                         bw.Write(p.RitualProgressPct);
+                        bw.Write(p.IdeoSummary ?? "");
                         bw.Write(p.Skyfallers.Count);
                         foreach (var sf in p.Skyfallers)
                         {
@@ -257,6 +258,8 @@ namespace RimCoopMod.Networking
                             bw.Write(sf.TicksToImpactMax);
                             bw.Write(sf.TicksToDiscard);
                             bw.Write(sf.Angle);
+                            bw.Write(sf.Kind);
+                            bw.Write(sf.ColorKey ?? "");
                         }
                         bw.Write(p.Pawns.Count);
                         foreach (var pawn in p.Pawns)
@@ -772,6 +775,7 @@ namespace RimCoopMod.Networking
                         p.RitualX = br.ReadInt32();
                         p.RitualZ = br.ReadInt32();
                         p.RitualProgressPct = br.ReadInt32();
+                        p.IdeoSummary = br.ReadString();
                         int skyfallerCount = br.ReadInt32();
                         for (int i = 0; i < skyfallerCount; i++)
                         {
@@ -785,7 +789,9 @@ namespace RimCoopMod.Networking
                                 TicksToImpact = br.ReadInt32(),
                                 TicksToImpactMax = br.ReadInt32(),
                                 TicksToDiscard = br.ReadInt32(),
-                                Angle = br.ReadSingle()
+                                Angle = br.ReadSingle(),
+                                Kind = br.ReadInt32(),
+                                ColorKey = br.ReadString()
                             });
                         }
                         int count = br.ReadInt32();

@@ -83,12 +83,15 @@ en cada caso y se adapta a los DLC que tengas:
   (hemógeno), el crecimiento de los niños (edad biológica, cambio de etapa de vida, puntos de crecimiento, necesidades de
   aprendizaje y juego) y los embarazos (como cualquier otra condición de salud; el parto solo lo dispara el dueño real).
   Los mechs se ven en el mapa espejo con su batería (energía), y en su panel se ve el supervisor y el modo de trabajo; el
-  mecanitor muestra su ancho de banda y cuántos mechs tiene a cargo. El vínculo real mecanitor-mech no cruza entre partidas
-  (es un objeto de la partida del dueño), así que los grupos de control y el modo de trabajo solo se pueden cambiar desde
-  el juego del dueño.
+  mecanitor muestra su ancho de banda, cuántos mechs tiene a cargo y cada grupo de control con su modo de trabajo y sus
+  integrantes. El vínculo real mecanitor-mech no cruza entre partidas (es un objeto de la partida del dueño), así que los grupos
+  de control y el modo de trabajo solo se pueden cambiar desde el juego del dueño. Las cubas de crecimiento, gestadores de mechs,
+  ensambladores de genes y máquinas parecidas muestran el texto de inspección del dueño (quién está adentro, progreso), y los
+  genepacks y xenogérmenes llevan sus genes.
 - **Ideology:** se copia el estilo visual de muebles, edificios y ropa, y el nombre de la ideología de
   cada colono se muestra en su panel de inspección (el objeto Ideo en sí es de la partida del dueño y
-  no cruza entre juegos, así que no se sincronizan sus preceptos ni se puede "editarla" desde el espejo). El rol de ideología de un
+  no cruza entre juegos, así que no se sincronizan sus preceptos ni se puede "editarla" desde el espejo) — pero sus memes, preceptos y
+  roles se pueden leer en el botón *Ideología* de la base del jugador (una vez que entraste a ella). El rol de ideología de un
   colono (Líder, Guía moral...) se muestra como texto junto a ella. El peinado, color de pelo, barba, tatuajes, color de piel y forma
   del cuerpo/cabeza se mantienen al día después de crear al colono (estación de estilo, genes, crecimiento), y la ropa teñida y los
   muebles pintados con el color de la ideología conservan su color.
@@ -121,8 +124,9 @@ en cada caso y se adapta a los DLC que tengas:
   objeto en el juego de los demás. Otras recompensas (colonos, cambios de relación con facciones) son solo del dueño.
   Las ceremonias de investidura y otros rituales no se actúan en el mapa espejo (los participantes se ven en su
   posición, sin la animación del ritual, con el aviso "En ceremonia..." arriba y el nombre y progreso del ritual sobre el lugar
-  donde pasa). Las naves, cápsulas y meteoritos que caen o se van **sí** se ven: una copia solo visual de la animación (sin las
-  naves de pasajeros).
+  donde pasa). Las naves, cápsulas, naves de pasajeros y meteoritos que caen o se van **sí** se ven: una copia solo visual de la
+  animación. La cinemática de despegue/aterrizaje de la nave gravitatoria no se reproduce (el juego la dibuja con la estructura real
+  de la nave): los demás ven desaparecer la base y aparecer en el lugar nuevo.
 
 ## Guardar y cargar
 

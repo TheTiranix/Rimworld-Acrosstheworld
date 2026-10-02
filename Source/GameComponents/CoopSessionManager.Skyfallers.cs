@@ -34,10 +34,18 @@ namespace RimCoopMod.GameComponents
                 {
                     if (sf == null || sf.Destroyed) { SkyfallerRegistry.Active.Remove(sf); continue; }
                     if (!sf.Spawned || sf.Map != map) continue;
-                    // Sin gráfico propio en el def (se tomaría del contenido) no hay con qué dibujarlo, y los de pasajeros
-                    // (Odyssey) dibujan con su propia lógica de ángulos: no se copian.
+                    // Sin gráfico propio en el def (se tomaría del contenido) no hay con qué dibujarlo.
                     if (sf.def.graphicData == null || sf.def.skyfaller == null) continue;
-                    if (sf is PassengerShuttleIncoming || sf is PassengerShuttleLeaving) continue;
+
+                    // Las naves de pasajeros (Odyssey) calculan su ángulo según hacia dónde miran y se pintan con el color de su
+                    // edificio: se marcan para que la copia haga lo mismo.
+                    int kind = sf is PassengerShuttleIncoming ? 1 : sf is PassengerShuttleLeaving ? 2 : 0;
+                    string colorKey = "";
+                    if (kind != 0)
+                    {
+                        try { var c = sf.DrawColor; colorKey = Inv(c.r) + ":" + Inv(c.g) + ":" + Inv(c.b) + ":" + Inv(c.a); }
+                        catch { /* sin edificio todavía: se dibuja con el color del def */ }
+                    }
 
                     payload.Skyfallers.Add(new SkyfallerSnapshot
                     {
@@ -49,7 +57,9 @@ namespace RimCoopMod.GameComponents
                         TicksToImpact = sf.ticksToImpact,
                         TicksToImpactMax = Traverse.Create(sf).Field("ticksToImpactMax").GetValue<int>(),
                         TicksToDiscard = sf.ticksToDiscard,
-                        Angle = sf.angle
+                        Angle = sf.angle,
+                        Kind = kind,
+                        ColorKey = colorKey
                     });
                 }
                 catch (Exception e)

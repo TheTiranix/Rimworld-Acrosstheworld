@@ -85,12 +85,14 @@ in each case and adapts to the DLC you have:
 - **Biotech:** terrain pollution, xenogenes and xenotype of the colonists, gene resources (hemogen), children's
   growth (biological age, life stage change, growth points, learning and play needs) and pregnancies (like any other health
   condition; only the real owner triggers the birth) are copied. Mechs show up on the mirror map with their battery (energy), and
-  their panel shows the overseer and work mode; the mechanitor shows their bandwidth and how many mechs they control. The real
-  mechanitor-mech link does not cross between games (it is an object of the owner's game), so control groups and work mode can only be
-  changed from the owner's game.
+  their panel shows the overseer and work mode; the mechanitor shows their bandwidth, how many mechs they control and each control
+  group with its work mode and members. The real mechanitor-mech link does not cross between games (it is an object of the owner's
+  game), so control groups and work mode can only be changed from the owner's game. Growth vats, mech gestators, gene assemblers and
+  similar machines show the owner's own inspect text (who is inside, progress), and gene packs and xenogerms carry their genes.
 - **Ideology:** the visual style of furniture, buildings and clothes is copied, and each colonist's ideology name is shown in
   their inspect panel (the Ideo object itself belongs to the owner's game and does not cross between games, so its precepts are not
-  synchronized and it cannot be "edited" from the mirror). A colonist's ideoligion role (Leader, Moral Guide...) is shown as text next to
+  synchronized and it cannot be "edited" from the mirror) — but its memes, precepts and roles are readable from the *Ideoligion* button
+  on the player's base (once you have entered it). A colonist's ideoligion role (Leader, Moral Guide...) is shown as text next to
   it. Hairstyle, hair color, beard, tattoos, skin color and body/head shape are kept up to date after the colonist is created (style station,
   genes, growing up), and dyed apparel and ideoligion-painted furniture keep their color.
 - Jobs that depend on rituals/ceremonies are not acted out on the mirror map: the participants just stand in place with an "In a ceremony..." notice above them (you see the result afterwards, not the ritual itself), and while it lasts the base panel shows its name and progress.
@@ -120,8 +122,9 @@ in each case and adapts to the DLC you have:
   others' game. Other rewards (colonists, faction relation changes) belong to the owner only.
   Investiture ceremonies and other rituals are not acted out on the mirror map (participants are seen at their
   position, without the ritual animation, with the "In a ceremony..." tag above them and the ritual's name and progress over the
-  spot where it happens). Ships, drop pods and meteorites falling or leaving **are** shown: a visual-only copy of the animation
-  (passenger shuttles excluded).
+  spot where it happens). Ships, drop pods, passenger shuttles and meteorites falling or leaving **are** shown: a visual-only copy of
+  the animation. The gravship take-off/landing cutscene is not reproduced (the game renders it with the ship's real structure): the
+  others see the base disappear and reappear at the new location.
 
 ## Saving and loading
 

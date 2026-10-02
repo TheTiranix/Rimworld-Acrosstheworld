@@ -624,6 +624,7 @@ namespace RimCoopMod.GameComponents
             FillSkyfallers(payload, map);
 
             _slowCounter++;
+            if (_ideoSummaryDue || (_slowCounter % 64) == 0) { payload.IdeoSummary = BuildIdeoSummary(); _ideoSummaryDue = false; }
             bool sendSlow = (_slowCounter % 8) == 0;   // datos que casi no cambian: ~cada 0.5 s
             bool sendMedium = (_slowCounter % 4) == 0; // arma, ropa, inventario, necesidades: ~cada 0.25 s
             foreach (var pawn in map.mapPawns.AllPawnsSpawned.Concat(HeldEntities(map)))
@@ -789,7 +790,7 @@ namespace RimCoopMod.GameComponents
                     StackCount = thing is Filth filth ? filth.thickness : thing is Fire fire ? (int)(fire.fireSize * 100f) : thing is Blight blight ? (int)(blight.Severity * 100f) : thing.stackCount,
                     HitPoints = thing.HitPoints,
                     StyleDefName = thing.StyleDef?.defName,
-                    StateStr = (thing is Building || thing is Frame) ? BuildStateString(thing) : ""
+                    StateStr = (thing is Building || thing is Frame) ? BuildStateString(thing) : thing.def.category == ThingCategory.Item ? BuildItemStateString(thing) : ""
                 });
             }
             return result;
@@ -1841,6 +1842,7 @@ namespace RimCoopMod.GameComponents
                     {
                         var w = p.GetPayload<WatchRequestPayload>();
                         _watchers.Add(w.FromPlayerId);
+                        _ideoSummaryDue = true; // el que empieza a mirar necesita mi ideología ya, no dentro de unos segundos
                         _sentAppearances.Remove(w.FromPlayerId); // su mapa espejo es nuevo: necesita el aspecto de todos de nuevo
                         // Siempre arranca de cero: si ya lo teníamos anotado (por ej. guardó y cargó
                         // sin avisar que dejaba de mirar, o se reconectó), su mapa espejo es nuevo y no
@@ -1865,6 +1867,7 @@ namespace RimCoopMod.GameComponents
                     {
                         var snap = p.GetPayload<MapSnapshotPayload>();
                         _remoteSnapshots[snap.HostPlayerId] = snap;
+                        if (!string.IsNullOrEmpty(snap.IdeoSummary)) _remoteIdeoSummaries[snap.HostPlayerId] = snap.IdeoSummary;
                         SyncPuppetPawns(snap);
                         break;
                     }

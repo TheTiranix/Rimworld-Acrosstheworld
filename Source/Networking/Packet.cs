@@ -134,7 +134,7 @@ namespace RimCoopMod.Networking
     public static class ProtocolInfo
     {
         /// <summary>Subir cada vez que cambia el formato de un paquete. Mod y servidor tienen que coincidir.</summary>
-        public const int Version = 28;
+        public const int Version = 29;
     }
 
     public class ServerInfoPayload
@@ -344,6 +344,10 @@ namespace RimCoopMod.Networking
         public int RitualZ;
         public int RitualProgressPct;
 
+        // Ideology: resumen en texto de la ideología de la colonia (memes, preceptos, roles). Solo viaja de vez en cuando, ver
+        // CoopSessionManager.Ideology.cs; vacío en el resto de las fotos.
+        public string IdeoSummary;
+
         // Naves, cápsulas y meteoritos que están cayendo o yéndose en mi base ahora mismo (solo para que se vea la animación).
         public List<SkyfallerSnapshot> Skyfallers = new List<SkyfallerSnapshot>();
 
@@ -363,6 +367,8 @@ namespace RimCoopMod.Networking
         public int TicksToImpactMax;
         public int TicksToDiscard;
         public float Angle;
+        public int Kind;             // 0 = común; 1/2 = nave de pasajeros llegando/yéndose (Odyssey: ángulos y color propios)
+        public string ColorKey;      // "r:g:b:a" del color con que se dibuja (el de la nave de pasajeros viene de su edificio)
     }
 
     public class InteractionEvent

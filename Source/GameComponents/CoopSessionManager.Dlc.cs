@@ -436,6 +436,18 @@ namespace RimCoopMod.GameComponents
                 {
                     var mt = pawn.mechanitor;
                     info.Add(Loc.T("SessionManager_Dlc.07", mt.UsedBandwidth, mt.TotalBandwidth, mt.OverseenPawns.Count));
+
+                    // El vínculo real mecanitor-mech no cruza, pero sí se puede ver cómo tiene organizados a sus mechs: cada grupo de
+                    // control con su modo de trabajo y quiénes lo forman.
+                    foreach (var group in mt.controlGroups)
+                    {
+                        try
+                        {
+                            if (group == null || group.MechsForReading.Count == 0) continue;
+                            info.Add(Loc.T("SessionManager_Dlc.22", group.LabelIndexWithWorkMode, string.Join(", ", group.MechsForReading.Select(m => m.LabelShortCap))));
+                        }
+                        catch { /* un grupo sin modo de trabajo no debería cortar el resto */ }
+                    }
                 }
 
                 if (pawn.RaceProps != null && pawn.RaceProps.IsMechanoid && pawn.Faction == Faction.OfPlayer)

@@ -89,6 +89,22 @@ namespace RimCoopMod.GameComponents
         // Suciedad y fuego: la "cantidad" no es stackCount
         // =====================================================================
 
+        // Biotech: los genes de un genepack/xenogérmen del dueño. El pack nuevo nace con genes al azar: se reemplazan por los reales.
+        private static void ApplyGeneSetHolder(Thing t, string csv)
+        {
+            if (!(t is GeneSetHolderBase holder) || holder.GeneSet == null) return;
+            var wanted = csv.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries).ToList();
+            var current = holder.GeneSet.GenesListForReading;
+            if (current.Select(g => g.defName).SequenceEqual(wanted)) return;
+
+            current.Clear();
+            foreach (var name in wanted)
+            {
+                var def = DefDatabase<GeneDef>.GetNamedSilentFail(name);
+                if (def != null) holder.GeneSet.AddGene(def);
+            }
+        }
+
         // Ideology: el estilo visual de un objeto (mueble/edificio con el estilo de una ideología).
         private static void ApplyThingStyle(Thing t, string styleDefName)
         {
@@ -218,9 +234,48 @@ namespace RimCoopMod.GameComponents
 
                 string color = ThingColorKey(t); // Ideology: muebles y edificios pintados con el color de la ideología
                 if (color.Length > 0) parts.Add("col=" + color);
+
+                // Edificios cuyo estado interno (ocupante de una cuba de crecimiento, progreso de un gestador de mechs, de un
+                // ensamblador de genes...) no viaja: se manda el texto de inspección del dueño, y el espejo lo muestra.
+                if (HostInspectClasses.Contains(t.GetType().Name))
+                {
+                    string insp = t.GetInspectString();
+                    if (!string.IsNullOrEmpty(insp)) parts.Add("insp=" + insp.Replace('|', '/'));
+                }
             }
             catch { }
             return string.Join("|", parts);
+        }
+
+        // Clases de edificios (Biotech, Odyssey, Anomaly) cuyo texto de inspección real se le muestra a quien mira (ver HostInspect).
+        private static readonly HashSet<string> HostInspectClasses = new HashSet<string>
+        {
+            "Building_GrowthVat", "Building_MechGestator", "Building_GeneAssembler", "Building_GeneExtractor", "Building_SubcoreScanner",
+            "Building_MechCharger", "Building_LifeSupportUnit", "Building_PassengerShuttle", "Building_BioferriteHarvester",
+            "Building_Electroharvester", "Building_FleshmassHeart"
+        };
+
+        /// <summary>Ítems: calidad, color y, en genepacks y xenogérmenes (Biotech), los genes que llevan.</summary>
+        private static string BuildItemStateString(Thing t)
+        {
+            try
+            {
+                var parts = new List<string>();
+                var quality = t.TryGetComp<CompQuality>();
+                if (quality != null) parts.Add("q=" + (int)quality.Quality);
+
+                string color = ThingColorKey(t);
+                if (color.Length > 0) parts.Add("col=" + color);
+
+                if (ModsConfig.BiotechActive && t is GeneSetHolderBase holder && holder.GeneSet != null)
+                {
+                    parts.Add("genes=" + string.Join(",", holder.GeneSet.GenesListForReading.Where(g => g != null).Select(g => g.defName)));
+                    if (t is Xenogerm xenogerm && !string.IsNullOrEmpty(xenogerm.xenotypeName))
+                        parts.Add("xn=" + xenogerm.xenotypeName.Replace('|', '/'));
+                }
+                return string.Join("|", parts);
+            }
+            catch { return ""; }
         }
 
         private class EditTrack
@@ -243,7 +298,14 @@ namespace RimCoopMod.GameComponents
             ApplyStateParts(t, state);
 
             int host = GetHostPlayerIdForMap(t.Map);
-            if (host >= 0) _thingEditTracks[t] = new EditTrack { Host = host, Sig = EditableState(t), CooldownUntil = track?.CooldownUntil ?? 0f };
+            if (host >= 0)
+            {
+                // Solo se vigilan las cosas con algo que el que mira pueda tocar (interruptores, recetas...): WatchMirrorThingEdits
+                // las recorre todas en cada tick, y los ítems/marcos con estado (calidad, avance de obra) no tienen nada editable.
+                string editable = EditableState(t);
+                if (editable.Length > 0 || track != null)
+                    _thingEditTracks[t] = new EditTrack { Host = host, Sig = editable, CooldownUntil = track?.CooldownUntil ?? 0f };
+            }
         }
 
         private static void ApplyStateParts(Thing t, string state)
@@ -294,6 +356,21 @@ namespace RimCoopMod.GameComponents
                             }
                         case "col":
                             ApplyThingColorKey(t, val);
+                            break;
+                        case "q":
+                            {
+                                var qc = t.TryGetComp<CompQuality>();
+                                if (qc != null && int.TryParse(val, out int qv) && (int)qc.Quality != qv) qc.SetQuality((QualityCategory)qv, ArtGenerationContext.Colony);
+                                break;
+                            }
+                        case "genes":
+                            ApplyGeneSetHolder(t, val);
+                            break;
+                        case "xn":
+                            if (t is Xenogerm xg && xg.xenotypeName != val) xg.xenotypeName = val;
+                            break;
+                        case "insp":
+                            HostInspect.Set(t, val);
                             break;
                         case "bills":
                             ApplyBills(t, val);

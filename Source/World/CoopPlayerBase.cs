@@ -73,6 +73,17 @@ namespace RimCoopMod.World
                 action = () => CoopSessionManager.EnterCoopMap(this)
             };
 
+            string ideoSummary = CoopSessionManager.GetRemoteIdeoSummary(RemotePlayerId);
+            if (!string.IsNullOrEmpty(ideoSummary))
+            {
+                yield return new Command_Action
+                {
+                    defaultLabel = Loc.T("PlayerBase.15"),
+                    defaultDesc = Loc.T("PlayerBase.16", RemotePlayerName),
+                    action = () => Find.WindowStack.Add(new Dialog_RemoteIdeo(RemotePlayerName, ideoSummary))
+                };
+            }
+
             yield return new Command_Action
             {
                 defaultLabel = Loc.T("PlayerBase.12"),
