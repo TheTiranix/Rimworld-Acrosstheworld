@@ -21,6 +21,17 @@ namespace RimCoopMod.Networking
 
         public static void SendPacket(NetworkStream stream, Packet packet)
         {
+            byte[] frame = EncodeFrame(packet);
+            lock (stream)
+            {
+                stream.Write(frame, 0, frame.Length);
+                stream.Flush();
+            }
+        }
+
+        /// <summary>El frame completo listo para escribir (longitud + flag + cuerpo): el servidor lo arma una sola vez y lo encola a cada destino.</summary>
+        public static byte[] EncodeFrame(Packet packet)
+        {
             byte[] body;
             using (var ms = new MemoryStream())
             using (var bw = new BinaryWriter(ms))
@@ -46,23 +57,25 @@ namespace RimCoopMod.Networking
             byte[] lenPrefix = BitConverter.GetBytes(frameLen);
             if (BitConverter.IsLittleEndian) Array.Reverse(lenPrefix);
 
-            lock (stream)
-            {
-                stream.Write(lenPrefix, 0, 4);
-                stream.WriteByte(flag);
-                stream.Write(payload, 0, payload.Length);
-                stream.Flush();
-            }
+            var frame = new byte[4 + frameLen];
+            Buffer.BlockCopy(lenPrefix, 0, frame, 0, 4);
+            frame[4] = flag;
+            Buffer.BlockCopy(payload, 0, frame, 5, payload.Length);
+            return frame;
         }
 
-        public static Packet ReadPacket(NetworkStream stream)
+        // Antes del handshake nadie legítimo manda más que unos bytes: un desconocido no puede hacer reservar 96 MB.
+        public const int MaxHandshakeFrameSize = 64 * 1024;
+        private const int MaxDecompressedSize = 256 * 1024 * 1024;
+
+        public static Packet ReadPacket(NetworkStream stream, int maxFrameSize = MaxFrameSize)
         {
             byte[] lenBuf = ReadExact(stream, 4);
             if (lenBuf == null) return null;
             if (BitConverter.IsLittleEndian) Array.Reverse(lenBuf);
             int frameLen = BitConverter.ToInt32(lenBuf, 0);
 
-            if (frameLen <= 0 || frameLen > MaxFrameSize)
+            if (frameLen <= 0 || frameLen > maxFrameSize)
                 throw new IOException(Loc.T("NetIO.01", frameLen));
 
             byte[] frame = ReadExact(stream, frameLen);
@@ -96,7 +109,14 @@ namespace RimCoopMod.Networking
             using (var gzip = new GZipStream(inMs, CompressionMode.Decompress))
             using (var outMs = new MemoryStream())
             {
-                gzip.CopyTo(outMs);
+                // Con tope: unos KB de gzip "bomba" no pueden inflarse hasta quedarse sin memoria.
+                var buf = new byte[81920];
+                int n;
+                while ((n = gzip.Read(buf, 0, buf.Length)) > 0)
+                {
+                    if (outMs.Length + n > MaxDecompressedSize) throw new IOException("decompressed packet too large");
+                    outMs.Write(buf, 0, n);
+                }
                 return outMs.ToArray();
             }
         }

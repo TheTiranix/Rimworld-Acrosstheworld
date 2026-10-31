@@ -26,7 +26,15 @@ namespace RimCoopMod.GameComponents
         // =====================================================================
 
         private static IEnumerable<Thing> FreeItems(Map map) =>
-            map.listerThings.ThingsInGroup(ThingRequestGroup.HaulableEver).Where(t => t.Spawned && t.def.category == ThingCategory.Item && !(t is Corpse));
+            map.listerThings.ThingsInGroup(ThingRequestGroup.HaulableEver).Where(t => t.Spawned && t.def.category == ThingCategory.Item && !(t is Corpse) && IsCsvTransferable(t));
+
+        /// <summary>
+        /// Lo que viaja como "def,material,cantidad,calidad,vida" (comercio, naves compartidas, recompensas de misión) se rehace del
+        /// otro lado con ThingMaker: un mueble desarmado salía sin el mueble adentro (error en cada cuadro), un genepack con genes al
+        /// azar y un libro con otro contenido. Esos no viajan por esta vía.
+        /// </summary>
+        public static bool IsCsvTransferable(Thing t) =>
+            !(t is MinifiedThing) && !(t is UnfinishedThing) && !(t is GeneSetHolderBase) && !(t is Book);
 
         public static Dictionary<ThingDef, int> AggregateStock(Map map)
         {
@@ -163,15 +171,43 @@ namespace RimCoopMod.GameComponents
 
                 case "accept":
                     {
-                        // El otro aceptó y ya me mandó lo que yo pedía: ahora cumplo mi parte.
-                        if (!_pendingOffersSent.TryGetValue(m.OfferId, out var sent)) break;
+                        // El otro aceptó: mando lo mío y confirmo; él paga al recibir la confirmación. Una oferta que ya no tengo
+                        // (vencida, de una partida anterior) o que ya no puedo cumplir se anula sin que nadie entregue nada.
+                        if (!_pendingOffersSent.TryGetValue(m.OfferId, out var sent))
+                        {
+                            CoopClient.Instance.SendTradeMessage(m.FromPlayerId, "void", "", m.OfferId);
+                            break;
+                        }
                         ForgetSentOffer(m.OfferId);
                         var give = ParseSimpleItems(sent.Data.Split('#')[0]);
+                        string missing = MissingItem(LocalBaseMap, give);
+                        if (missing != null)
+                        {
+                            CoopClient.Instance.SendTradeMessage(m.FromPlayerId, "void", "", m.OfferId);
+                            Messages.Message(Loc.T("SessionManager_Trade.13", missing, m.FromPlayerName), MessageTypeDefOf.RejectInput, false);
+                            break;
+                        }
                         string removed = RemoveItems(LocalBaseMap, give);
                         CoopClient.Instance.SendTradeMessage(m.FromPlayerId, "transfer", removed);
+                        CoopClient.Instance.SendTradeMessage(m.FromPlayerId, "confirm", "", m.OfferId);
                         Messages.Message(Loc.T("SessionManager_Trade.04", m.FromPlayerName), MessageTypeDefOf.PositiveEvent, false);
                         break;
                     }
+
+                case "confirm":
+                    {
+                        // El oferente ya mandó lo suyo: ahora pago yo lo que acepté.
+                        string key = m.FromPlayerId + ":" + m.OfferId;
+                        if (!_acceptedOffers.TryGetValue(key, out var want)) break;
+                        _acceptedOffers.Remove(key);
+                        CoopClient.Instance.SendTradeMessage(m.FromPlayerId, "transfer", RemoveItems(LocalBaseMap, ParseSimpleItems(want)));
+                        break;
+                    }
+
+                case "void":
+                    if (_acceptedOffers.Remove(m.FromPlayerId + ":" + m.OfferId))
+                        Messages.Message(Loc.T("SessionManager_Trade.14", m.FromPlayerName), MessageTypeDefOf.RejectInput, false);
+                    break;
 
                 case "transfer":
                     ReceiveItems(m.Data, m.FromPlayerName ?? Loc.T("SessionManager_Trade.05"));
@@ -179,7 +215,27 @@ namespace RimCoopMod.GameComponents
             }
         }
 
-        /// <summary>El receptor aceptó la oferta: saca lo que le piden (si lo tiene), se lo manda al oferente y le avisa.</summary>
+        // Ofertas que acepté y que pago cuando el oferente confirme que mandó lo suyo (ver "confirm"). Clave: "jugador:oferta".
+        private readonly Dictionary<string, string> _acceptedOffers = new Dictionary<string, string>();
+
+        /// <summary>Primer ítem de la lista que no alcanza en el mapa (su nombre), o null si está todo.</summary>
+        private static string MissingItem(Map map, Dictionary<string, int> items)
+        {
+            var stock = AggregateStock(map);
+            foreach (var kv in items)
+            {
+                var def = DefDatabase<ThingDef>.GetNamedSilentFail(kv.Key);
+                stock.TryGetValue(def ?? ThingDefOf.Silver, out int have);
+                if (def == null || have < kv.Value) return def?.label ?? kv.Key;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// El receptor aceptó la oferta. Dos pasos: acá solo avisa que acepta (si tiene lo que le piden); el oferente manda lo suyo
+        /// y confirma, y recién ahí el receptor paga. Antes el receptor pagaba primero, y una oferta vencida o de una partida que el
+        /// otro ya no tiene le sacaba los ítems a cambio de nada.
+        /// </summary>
         public static bool AcceptOffer(int fromPlayerId, string fromName, int offerId, string wantCsv)
         {
             // Los mensajes a un jugador desconectado se pierden: si acepto ahora, mis ítems saldrían y nunca llegarían.
@@ -189,24 +245,19 @@ namespace RimCoopMod.GameComponents
                 return false;
             }
 
-            var map = LocalBaseMap;
-            var want = ParseSimpleItems(wantCsv);
-            var stock = AggregateStock(map);
-            foreach (var kv in want)
+            var instance = Current.Game?.GetComponent<CoopSessionManager>();
+            if (instance == null) return false;
+            string missing = MissingItem(LocalBaseMap, ParseSimpleItems(wantCsv));
+            if (missing != null)
             {
-                var def = DefDatabase<ThingDef>.GetNamedSilentFail(kv.Key);
-                stock.TryGetValue(def ?? ThingDefOf.Silver, out int have);
-                if (def == null || have < kv.Value)
-                {
-                    Messages.Message(Loc.T("SessionManager_Trade.07", def?.label ?? kv.Key), MessageTypeDefOf.RejectInput, false);
-                    CoopClient.Instance.SendTradeMessage(fromPlayerId, "reject", "", offerId);
-                    return true; // la oferta quedó resuelta (rechazada)
-                }
+                Messages.Message(Loc.T("SessionManager_Trade.07", missing), MessageTypeDefOf.RejectInput, false);
+                CoopClient.Instance.SendTradeMessage(fromPlayerId, "reject", "", offerId);
+                return true; // la oferta quedó resuelta (rechazada)
             }
 
-            string removed = RemoveItems(map, want);
-            CoopClient.Instance.SendTradeMessage(fromPlayerId, "transfer", removed);
+            instance._acceptedOffers[fromPlayerId + ":" + offerId] = wantCsv;
             CoopClient.Instance.SendTradeMessage(fromPlayerId, "accept", "", offerId);
+            Messages.Message(Loc.T("SessionManager_Trade.12", fromName), MessageTypeDefOf.NeutralEvent, false);
             return true;
         }
 

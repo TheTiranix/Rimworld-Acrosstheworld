@@ -489,7 +489,7 @@ namespace RimCoopMod.GameComponents
         {
             if (!_pendingProposePause.HasValue) return;
 
-            bool approved = _votesNo.Count == 0 && _votesYes.Count > 0;
+            bool approved = _votesNo.Count == 0 && (_votesYes.Count > 0 || _connectedPlayerIds.Count == 0); // si se fueron todos, decide quien propuso
             bool proposePause = _pendingProposePause.Value;
 
             _pendingProposePause = null;
@@ -1635,7 +1635,11 @@ namespace RimCoopMod.GameComponents
             if (map == null)
             {
                 CoopLog.Warning(Loc.T("SessionManager.20"));
-                if (!restoring) CoopClient.Instance.SendJoinResult(req.FromPlayerId, false, Loc.Wire("SessionManager.21"));
+                if (!restoring)
+                {
+                    CoopClient.Instance.SendJoinResult(req.FromPlayerId, false, Loc.Wire("SessionManager.21"));
+                    ReturnToSender(req, Enumerable.Range(0, req.SerializedPawns.Count));
+                }
                 return;
             }
 
@@ -1643,15 +1647,18 @@ namespace RimCoopMod.GameComponents
             string localName = CoopClient.Instance.LocalPlayerName;
 
             int added = 0;
+            var failed = new List<int>();
             for (int i = 0; i < req.SerializedPawns.Count; i++)
             {
                 string xml = req.SerializedPawns[i];
+                Pawn pawn = null;
                 try
                 {
-                    Pawn pawn = PawnTransfer.DeserializePawn(xml);
+                    pawn = PawnTransfer.DeserializePawn(xml);
                     if (pawn == null)
                     {
                         CoopLog.Warning(Loc.T("SessionManager.22"));
+                        failed.Add(i);
                         continue;
                     }
 
@@ -1689,6 +1696,7 @@ namespace RimCoopMod.GameComponents
                     if (!string.IsNullOrEmpty(ownerName) && ownerName == localName)
                     {
                         CoopLog.Message(Loc.T("SessionManager.24", pawn.LabelShortCap, cell));
+                        if (!restoring) Messages.Message(Loc.T("SessionManager.65", pawn.LabelShortCap), new LookTargets(pawn), MessageTypeDefOf.PositiveEvent, false);
                     }
                     else
                     {
@@ -1710,8 +1718,11 @@ namespace RimCoopMod.GameComponents
                 catch (System.Exception e)
                 {
                     CoopLog.Error(Loc.T("SessionManager.26", e));
+                    if (pawn == null || !pawn.Spawned) failed.Add(i); // si ya apareció acá, no se devuelve (quedaría duplicado)
                 }
             }
+
+            if (!restoring && failed.Count > 0) ReturnToSender(req, failed);
 
             if (restoring)
             {
@@ -1722,6 +1733,28 @@ namespace RimCoopMod.GameComponents
             CoopClient.Instance.SendJoinResult(req.FromPlayerId, added > 0,
                 added > 0 ? Loc.Wire("SessionManager.27", added) : Loc.Wire("SessionManager.28"));
             if (added > 0) AddCollaborator(req.FromPlayerId); // me mandaron colonos: colaboramos
+        }
+
+        /// <summary>
+        /// Los colonos que no pude recibir vuelven a quien los mandó: él ya los había sacado de su mapa y antes se perdían. Los que
+        /// eran míos volviendo a casa no se rebotan (sería un ida y vuelta sin fin): esos los repone el registro del servidor.
+        /// </summary>
+        private void ReturnToSender(JoinRequestPayload req, IEnumerable<int> indexes)
+        {
+            _playerNames.TryGetValue(req.FromPlayerId, out var senderName);
+            string me = CoopClient.Instance.LocalPlayerName;
+            var blobs = new List<string>();
+            var owners = new List<string>();
+            var uids = new List<string>();
+            foreach (int i in indexes)
+            {
+                string owner = (req.OwnerNames != null && i < req.OwnerNames.Count && !string.IsNullOrEmpty(req.OwnerNames[i])) ? req.OwnerNames[i] : senderName;
+                if (owner == me) continue;
+                blobs.Add(req.SerializedPawns[i]);
+                owners.Add(owner ?? "");
+                uids.Add(req.Uids != null && i < req.Uids.Count ? req.Uids[i] : "");
+            }
+            if (blobs.Count > 0) CoopClient.Instance.SendJoinRequest(req.FromPlayerId, blobs, owners, uids);
         }
 
         private static int CountLocalColonists()
@@ -1743,7 +1776,9 @@ namespace RimCoopMod.GameComponents
                         var wd = p.GetPayload<WorldDataPayload>();
                         foreach (var existing in wd.ExistingPlayers)
                         {
-                            _connectedPlayerIds.Add(existing.PlayerId);
+                            // La lista incluye al que entra (yo): contarme hacía que el voto de pausa esperara un voto mío que nunca
+                            // llega (siempre al plazo) y que, solo en el servidor, no pudiera pausar nunca.
+                            if (existing.PlayerId != wd.AssignedPlayerId) _connectedPlayerIds.Add(existing.PlayerId);
                             _playerNames[existing.PlayerId] = existing.PlayerName;
                         }
                         RestorePawnOwners();
@@ -1769,6 +1804,8 @@ namespace RimCoopMod.GameComponents
                     {
                         var info = p.GetPayload<PlayerBaseInfo>();
                         _connectedPlayerIds.Remove(info.PlayerId);
+                        Dialog_PauseVotePrompt.CloseFrom(info.PlayerId); // propuso y se fue: su votación ya no se cierra nunca
+                        if (_pendingProposePause.HasValue && _votesYes.Count + _votesNo.Count >= _connectedPlayerIds.Count) FinalizeVote(); // faltaba solo su voto
                         if (_remoteBases.TryGetValue(info.PlayerName, out var wobj))
                         {
                             // Si estaba mirando su base, el mapa espejo se saca ANTES que el punto del mapa mundial (si no queda un mapa huérfano).
@@ -1932,6 +1969,7 @@ namespace RimCoopMod.GameComponents
                 case PacketType.PauseVoteResult:
                     {
                         var result = p.GetPayload<PauseVoteResultPayload>();
+                        Dialog_PauseVotePrompt.CloseAll(); // ya se decidió (o venció el plazo): el cartel de votar no queda abierto
                         if (result.Approved)
                         {
                             ApplyPauseChange(result.ProposePause);

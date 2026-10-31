@@ -25,17 +25,79 @@ namespace RimCoopMod.GameComponents
             public int OriginPlayerId;
             public int ShipId;
             public string LastSig = "";
+            public readonly List<string> PendingDeltas = new List<string>(); // llegaron mientras yo comerciaba con esta nave
         }
+
+        private static bool IsTradingWith(TradeShip ship) => TradeSession.Active && TradeSession.trader == ship;
 
         private readonly List<ShipLink> _shipLinks = new List<ShipLink>();
 
         private static int ShipLoadId(PassingShip ship) => Traverse.Create(ship).Field("loadID").GetValue<int>();
 
         private static string GoodsCsv(TradeShip ship) => string.Join(";", ship.Goods
-            .Where(t => t != null && !(t is Pawn) && !t.Destroyed)
+            .Where(t => t != null && !(t is Pawn) && !t.Destroyed && IsCsvTransferable(t))
             .Select(t => t.def.defName + "," + (t.Stuff?.defName ?? "") + "," + t.stackCount + "," + QualityOf(t) + "," + t.HitPoints));
 
-        private static void ApplyShipGoods(TradeShip ship, string csv)
+        // "def,material,cantidad,calidad,vida" -> cantidad por "def,material,calidad,vida"
+        private static Dictionary<string, int> GoodsCounts(string csv)
+        {
+            var counts = new Dictionary<string, int>();
+            foreach (var entry in (csv ?? "").Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                var f = entry.Split(',');
+                if (f.Length < 5 || !int.TryParse(f[2], out int n)) continue;
+                string key = f[0] + "," + f[1] + "," + f[3] + "," + f[4];
+                counts.TryGetValue(key, out int old);
+                counts[key] = old + n;
+            }
+            return counts;
+        }
+
+        /// <summary>
+        /// Qué cambió entre dos fotos del stock, con cantidades negativas para lo que se fue. Las naves compartidas mandan esto y no
+        /// el stock entero: si los dos compraban casi a la vez, el stock entero del último pisaba la compra del otro (y la cosa
+        /// comprada reaparecía); las diferencias se suman sin pisarse.
+        /// </summary>
+        private static string GoodsDelta(string before, string after)
+        {
+            var a = GoodsCounts(before);
+            var b = GoodsCounts(after);
+            var parts = new List<string>();
+            foreach (var key in a.Keys.Union(b.Keys))
+            {
+                a.TryGetValue(key, out int x);
+                b.TryGetValue(key, out int y);
+                if (x == y) continue;
+                var f = key.Split(',');
+                parts.Add(f[0] + "," + f[1] + "," + (y - x) + "," + f[2] + "," + f[3]);
+            }
+            return string.Join(";", parts);
+        }
+
+        private static void ApplyGoodsDelta(TradeShip ship, string delta)
+        {
+            var added = new List<string>();
+            foreach (var entry in (delta ?? "").Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                var f = entry.Split(',');
+                if (f.Length < 5 || !int.TryParse(f[2], out int n) || n == 0) continue;
+                if (n > 0) { added.Add(entry); continue; }
+
+                int left = -n;
+                foreach (var t in ship.GetDirectlyHeldThings().ToList())
+                {
+                    if (left <= 0) break;
+                    if (t is Pawn || t.def.defName != f[0] || (t.Stuff?.defName ?? "") != f[1]
+                        || QualityOf(t).ToString() != f[3] || t.HitPoints.ToString() != f[4]) continue;
+                    int take = Math.Min(left, t.stackCount);
+                    t.SplitOff(take).Destroy(DestroyMode.Vanish);
+                    left -= take;
+                }
+            }
+            foreach (var t in MakeGoods(string.Join(";", added))) ship.GetDirectlyHeldThings().TryAdd(t, true);
+        }
+
+        private static List<Thing> MakeGoods(string csv)
         {
             var things = new List<Thing>();
             foreach (var entry in (csv ?? "").Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries))
@@ -54,6 +116,12 @@ namespace RimCoopMod.GameComponents
                 }
                 catch { }
             }
+            return things;
+        }
+
+        private static void ApplyShipGoods(TradeShip ship, string csv)
+        {
+            var things = MakeGoods(csv);
 
             // Los "bienes" que no son cosas comunes (esclavos, animales) no viajan: se quedan como estén.
             foreach (var old in ship.GetDirectlyHeldThings().ToList())
@@ -113,11 +181,16 @@ namespace RimCoopMod.GameComponents
                         break;
                     }
 
-                case "update":
+                case "delta":
                     {
                         var link = _shipLinks.FirstOrDefault(l => l.PartnerId == m.FromPlayerId && l.OriginPlayerId == m.OriginPlayerId && l.ShipId == m.ShipId);
                         if (link?.Ship == null || link.Ship.Departed) return;
-                        ApplyShipGoods(link.Ship, m.Goods);
+                        // Con la ventana de comercio abierta, sus filas apuntan a estas cosas: destruirlas ahora cobraba la plata sin
+                        // entregar lo comprado. Se aplica apenas se cierre (ver TickShips).
+                        if (IsTradingWith(link.Ship)) { link.PendingDeltas.Add(m.Goods); return; }
+                        string mine = GoodsCsv(link.Ship);
+                        if (mine != link.LastSig) SendShipDelta(link, mine); // lo mío que todavía no mandé sale antes de mezclar
+                        ApplyGoodsDelta(link.Ship, m.Goods);
                         link.LastSig = GoodsCsv(link.Ship);
                         break;
                     }
@@ -153,14 +226,24 @@ namespace RimCoopMod.GameComponents
                 }
 
                 string sig = GoodsCsv(link.Ship);
-                if (sig == link.LastSig) continue;
-                link.LastSig = sig;
-                CoopClient.Instance.SendShipMessage(new ShipMessagePayload
+                if (sig != link.LastSig) SendShipDelta(link, sig);
+                if (link.PendingDeltas.Count > 0 && !IsTradingWith(link.Ship))
                 {
-                    ToPlayerId = link.PartnerId, Kind = "update", OriginPlayerId = link.OriginPlayerId, ShipId = link.ShipId,
-                    Ticks = link.Ship.ticksUntilDeparture, Goods = sig
-                });
+                    foreach (var delta in link.PendingDeltas) ApplyGoodsDelta(link.Ship, delta);
+                    link.PendingDeltas.Clear();
+                }
+                link.LastSig = GoodsCsv(link.Ship);
             }
+        }
+
+        private static void SendShipDelta(ShipLink link, string current)
+        {
+            CoopClient.Instance.SendShipMessage(new ShipMessagePayload
+            {
+                ToPlayerId = link.PartnerId, Kind = "delta", OriginPlayerId = link.OriginPlayerId, ShipId = link.ShipId,
+                Ticks = link.Ship.ticksUntilDeparture, Goods = GoodsDelta(link.LastSig, current)
+            });
+            link.LastSig = current;
         }
 
         // =====================================================================
@@ -173,7 +256,7 @@ namespace RimCoopMod.GameComponents
             if (!CoopClient.Instance.IsConnected) return;
             string name = "RimCoop_" + DateTime.Now.ToString("yyyyMMdd_HHmmss");
             CoopClient.Instance.SendSaveAll(name);
-            SaveGameNow(name, "vos");
+            SaveGameNow(name, Loc.T("Common.You"));
         }
 
         private static void SaveGameNow(string saveName, string requestedBy)

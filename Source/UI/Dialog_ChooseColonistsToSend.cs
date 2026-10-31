@@ -31,7 +31,8 @@ namespace RimCoopMod.UI
             absorbInputAroundWindow = true;
 
             var map = global::RimCoopMod.GameComponents.CoopSessionManager.LocalBaseMap;
-            _candidates = map?.mapPawns?.FreeColonists?.ToList() ?? new List<Pawn>();
+            // Solo los que están en el mapa: uno en una cápsula de criosueño o cargado en un transporte se copiaba y quedaba también acá.
+            _candidates = map?.mapPawns?.FreeColonistsSpawned?.ToList() ?? new List<Pawn>();
         }
 
         public override void DoWindowContents(Rect inRect)
@@ -94,6 +95,17 @@ namespace RimCoopMod.UI
             try { pawn.ideo?.SetIdeo(null); } catch { /* no todos los pawns lo permiten, no es crítico */ }
         }
 
+        // Lo inverso de SanitizeForTransfer, con lo de esta partida (igual que al recibir un colono, ver HandleJoinRequest).
+        private static void RestoreAfterFailedSend(Pawn pawn)
+        {
+            if (pawn.outfits != null) pawn.outfits.CurrentApparelPolicy = Current.Game.outfitDatabase.DefaultOutfit();
+            if (pawn.drugs != null) pawn.drugs.CurrentPolicy = Current.Game.drugPolicyDatabase.DefaultDrugPolicy();
+            if (ModsConfig.IdeologyActive && pawn.ideo != null)
+            {
+                try { pawn.ideo.SetIdeo(Faction.OfPlayer.ideos.PrimaryIdeo); } catch { /* no crítico */ }
+            }
+        }
+
         private void Send()
         {
             if (_selected.Count == 0)
@@ -102,9 +114,17 @@ namespace RimCoopMod.UI
                 return;
             }
 
+            // Sin conexión no se toca a nadie: antes se los sacaba del mapa igual y el envío fallaba en silencio (colonos perdidos).
+            if (!CoopClient.Instance.IsConnected)
+            {
+                Messages.Message(Loc.T("Dialog_ChooseColonistsToSend.07"), MessageTypeDefOf.RejectInput, false);
+                return;
+            }
+
             var blobs = new List<string>();
             var ownerNames = new List<string>();
             var uids = new List<string>();
+            var leaving = new List<Pawn>();
             foreach (var pawn in _selected)
             {
                 // Si este colono no es originalmente mío (me lo habían prestado), lo estoy reenviando o
@@ -121,14 +141,7 @@ namespace RimCoopMod.UI
                 blobs.Add(xml);
                 ownerNames.Add(ownerName);
                 uids.Add(uid);
-                if (pawn.Spawned)
-                {
-                    // No se murió, se va a ayudar a otra base: que no le corte las relaciones a
-                    // los que quedan ni les meta el pensamiento de "lo perdí" (ver PawnTransfer).
-                    PawnTransfer.SuppressRelationLossOnDestroy = true;
-                    try { pawn.Destroy(DestroyMode.Vanish); }
-                    finally { PawnTransfer.SuppressRelationLossOnDestroy = false; }
-                }
+                leaving.Add(pawn);
             }
 
             if (blobs.Count == 0)
@@ -137,7 +150,23 @@ namespace RimCoopMod.UI
                 return;
             }
 
-            CoopClient.Instance.SendJoinRequest(_target.RemotePlayerId, blobs, ownerNames, uids);
+            // Se van del mapa recién cuando el paquete salió: si la red se cortó justo ahora, se quedan (con las políticas de acá).
+            if (!CoopClient.Instance.SendJoinRequest(_target.RemotePlayerId, blobs, ownerNames, uids))
+            {
+                foreach (var pawn in leaving) RestoreAfterFailedSend(pawn);
+                Messages.Message(Loc.T("Dialog_ChooseColonistsToSend.07"), MessageTypeDefOf.RejectInput, false);
+                return;
+            }
+
+            foreach (var pawn in leaving)
+            {
+                if (!pawn.Spawned) continue;
+                // No se murió, se va a ayudar a otra base: que no le corte las relaciones a
+                // los que quedan ni les meta el pensamiento de "lo perdí" (ver PawnTransfer).
+                PawnTransfer.SuppressRelationLossOnDestroy = true;
+                try { pawn.Destroy(DestroyMode.Vanish); }
+                finally { PawnTransfer.SuppressRelationLossOnDestroy = false; }
+            }
             Messages.Message(Loc.T("Dialog_ChooseColonistsToSend.06", blobs.Count), MessageTypeDefOf.NeutralEvent, false);
             Close();
         }

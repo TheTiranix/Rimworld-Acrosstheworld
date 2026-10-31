@@ -91,9 +91,9 @@ namespace RimCoopServer
 
                 switch (key)
                 {
-                    case "Port": config.Port = int.Parse(value); break;
+                    case "Port": if (int.TryParse(value, out int port) && port > 0 && port <= 65535) config.Port = port; break; // un archivo mal editado no rompe el menú de partidas
                     case "Seed": config.Seed = value; break;
-                    case "PlanetCoverage": config.PlanetCoverage = float.Parse(value, CultureInfo.InvariantCulture); break;
+                    case "PlanetCoverage": if (float.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out float cov)) config.PlanetCoverage = cov; break;
                     case "OverallRainfall": config.OverallRainfall = value; break;
                     case "OverallTemperature": config.OverallTemperature = value; break;
                     case "OverallPopulation": config.OverallPopulation = value; break;

@@ -31,6 +31,10 @@ namespace RimCoopMod.GameComponents
         // Colonos que murieron/se fueron mientras estaba desconectado: se avisa al servidor cuando vuelvo.
         private List<string> _pendingGoneUids = new List<string>();
 
+        // Bajas que ya le avisé al servidor en esta sesión: el manifiesto que llegó al conectar se armó antes de ese aviso y todavía
+        // los lista como "te tocan" (un colono muerto mientras estaba desconectado volvía a aparecer vivo al lado de su cadáver).
+        private readonly HashSet<string> _reportedGoneUids = new HashSet<string>();
+
         private ColonistManifestPayload _pendingManifest;
         private float _nextLedgerCheck;
 
@@ -77,6 +81,7 @@ namespace RimCoopMod.GameComponents
         {
             if (_pendingGoneUids.Count == 0 || !CoopClient.Instance.IsConnected) return;
             CoopClient.Instance.SendColonistGone(new List<string>(_pendingGoneUids));
+            _reportedGoneUids.UnionWith(_pendingGoneUids);
             _pendingGoneUids.Clear();
         }
 
@@ -125,7 +130,7 @@ namespace RimCoopMod.GameComponents
 
             foreach (var entry in manifest.Hold)
             {
-                if (existing.Contains(entry.Uid) || _pendingGoneUids.Contains(entry.Uid)) continue;
+                if (existing.Contains(entry.Uid) || _pendingGoneUids.Contains(entry.Uid) || _reportedGoneUids.Contains(entry.Uid)) continue;
                 RestoreColonist(entry);
             }
         }

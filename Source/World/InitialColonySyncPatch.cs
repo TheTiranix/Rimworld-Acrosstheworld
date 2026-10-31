@@ -32,7 +32,8 @@ namespace RimCoopMod.World
             if (cleanupSavedBases) CoopSessionManager.CleanupSavedMirrorState();
 
             if (!CoopClient.Instance.IsConnected) return;
-            CoopClient.Instance.SendPlayersRequest();
+            // Al cargar, el estado de la sesión de esta partida arranca vacío aunque la conexión siga: se pide todo de nuevo.
+            CoopClient.Instance.SendPlayersRequest(fullResync: cleanupSavedBases);
 
             var homeMap = Find.Maps?.FirstOrDefault(m => m.IsPlayerHome);
             if (homeMap == null) return;

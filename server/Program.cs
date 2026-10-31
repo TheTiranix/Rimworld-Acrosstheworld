@@ -36,7 +36,9 @@ namespace RimCoopServer
             while (true)
             {
                 string input = ReadLineClean();
-                if (input == null) break; // la consola se cerró
+                // Sin consola (servicio, docker -d, nohup, tarea programada) la entrada llega cerrada de entrada: el servidor
+                // sigue andando en vez de salir al instante (todos sus hilos son de fondo).
+                if (input == null) { System.Threading.Thread.Sleep(System.Threading.Timeout.Infinite); }
                 if (!HandleCommand(server, input)) break;
             }
         }
@@ -282,7 +284,9 @@ namespace RimCoopServer
 
             while (true)
             {
-                string input = ReadLineClean()?.Trim();
+                string raw = ReadLineClean();
+                if (raw == null) { Console.WriteLine(Loc.T("Program.55")); Environment.Exit(1); }
+                string input = raw.Trim();
                 if (string.IsNullOrEmpty(input))
                 {
                     Console.WriteLine(Loc.T("Program.46"));
@@ -306,7 +310,7 @@ namespace RimCoopServer
                 Console.WriteLine(Loc.T("Program.48", input));
                 Console.Write(Loc.T("Program.49"));
                 string portInput = ReadLineClean()?.Trim();
-                int? port = int.TryParse(portInput, out int p) ? p : (int?)null;
+                int? port = int.TryParse(portInput, out int p) && p > 0 && p <= 65535 ? p : (int?)null;
 
                 Console.Write(Loc.T("Program.50"));
                 string seedInput = ReadLineClean()?.Trim();

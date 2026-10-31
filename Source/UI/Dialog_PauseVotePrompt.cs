@@ -1,3 +1,4 @@
+using System.Linq;
 using RimCoopMod.Networking;
 using RimWorld;
 using UnityEngine;
@@ -33,7 +34,7 @@ namespace RimCoopMod.UI
             listing.Begin(inRect);
 
             Text.Font = GameFont.Medium;
-            string action = _request.ProposePause ? "pausar" : "despausar";
+            string action = Loc.T(_request.ProposePause ? "Dialog_PauseVotePrompt.02" : "Dialog_PauseVotePrompt.03");
             listing.Label(Loc.T("Dialog_PauseVotePrompt.01", _request.FromPlayerName, action));
             Text.Font = GameFont.Small;
             listing.Gap(12f);
@@ -46,6 +47,16 @@ namespace RimCoopMod.UI
             if (Widgets.ButtonText(noRect, Loc.T("Common.No"))) Answer(false);
 
             listing.End();
+        }
+
+        public static void CloseFrom(int playerId)
+        {
+            foreach (var w in Find.WindowStack.Windows.OfType<Dialog_PauseVotePrompt>().Where(w => w._request.FromPlayerId == playerId).ToList()) w.Close(false);
+        }
+
+        public static void CloseAll()
+        {
+            foreach (var w in Find.WindowStack.Windows.OfType<Dialog_PauseVotePrompt>().ToList()) w.Close(false);
         }
 
         private void Answer(bool accept)

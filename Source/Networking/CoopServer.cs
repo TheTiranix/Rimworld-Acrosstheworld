@@ -27,7 +27,7 @@ namespace RimCoopMod.Networking
         // Nombre -> id asignado. Se persiste en disco para que el id de cada jugador sea
         // estable entre reinicios del servidor (si no, un CoopPlayerBase guardado en una
         // partida vieja queda apuntando a un id que ya no existe).
-        private readonly Dictionary<string, int> _nameToId = new Dictionary<string, int>();
+        private readonly Dictionary<string, int> _nameToId = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase); // como los baneos y el registro de colonos
         private string _playerIdsPath;
 
         // Jugadores baneados por nombre (los ids también son por nombre, así que es lo estable). Se persiste
@@ -71,6 +71,65 @@ namespace RimCoopMod.Networking
             public TcpClient TcpClient;
             public NetworkStream Stream;
             public Thread ReadThread;
+
+            // Cola de salida propia, con su hilo: antes se escribía directo desde el hilo de quien mandaba el paquete, y un
+            // jugador que dejaba de leer (juego colgado, laptop dormida) trababa el reenvío para todos los demás.
+            private readonly BlockingCollection<byte[]> _outbox = new BlockingCollection<byte[]>();
+            private long _queuedBytes;
+            private const long MaxQueuedBytes = 256L * 1024 * 1024; // si se le acumula esto sin leer, está muerto: se lo corta
+
+            public void StartWriter() => new Thread(WriteLoop) { IsBackground = true }.Start();
+
+            public void Send(Packet packet) => Enqueue(NetIO.EncodeFrame(packet));
+
+            public void Enqueue(byte[] frame)
+            {
+                if (Interlocked.Add(ref _queuedBytes, frame.Length) > MaxQueuedBytes) { Close(); return; }
+                try { _outbox.Add(frame); } catch (InvalidOperationException) { /* ya se cerró */ }
+            }
+
+            private void WriteLoop()
+            {
+                try
+                {
+                    foreach (var frame in _outbox.GetConsumingEnumerable())
+                    {
+                        Stream.Write(frame, 0, frame.Length);
+                        Interlocked.Add(ref _queuedBytes, -frame.Length);
+                    }
+                }
+                catch { /* socket cerrado o tiempo de envío agotado */ }
+                try { TcpClient.Close(); } catch { }
+            }
+
+            /// <summary>Manda lo que quedó en cola (ej. el motivo de un kick) y recién después cierra.</summary>
+            public void CloseAfterFlush()
+            {
+                try { _outbox.CompleteAdding(); } catch { }
+            }
+
+            public void Close()
+            {
+                CloseAfterFlush();
+                try { TcpClient.Close(); } catch { }
+            }
+        }
+
+        // Quien manda un paquete es quien dice el socket, no lo que escribió el cliente: un cliente que todavía no recibió su id
+        // (FromPlayerId = 0) o uno que mienta no puede hacerse pasar por otro jugador.
+        private static readonly ConcurrentDictionary<Type, KeyValuePair<System.Reflection.FieldInfo, System.Reflection.FieldInfo>> _senderFields =
+            new ConcurrentDictionary<Type, KeyValuePair<System.Reflection.FieldInfo, System.Reflection.FieldInfo>>();
+
+        private static void StampSender(ClientHandle from, object payload)
+        {
+            if (payload is PlayerUpdatePayload pu) { pu.PlayerId = from.PlayerId; pu.PlayerName = from.PlayerName; return; }
+            if (payload is ChatPayload chat) { chat.PlayerId = from.PlayerId; chat.PlayerName = from.PlayerName; return; }
+            if (payload == null) return;
+            var f = _senderFields.GetOrAdd(payload.GetType(), t => new KeyValuePair<System.Reflection.FieldInfo, System.Reflection.FieldInfo>(
+                t.GetField("FromPlayerId") is var id && id?.FieldType == typeof(int) ? id : null,
+                t.GetField("FromPlayerName") is var name && name?.FieldType == typeof(string) ? name : null));
+            f.Key?.SetValue(payload, from.PlayerId);
+            f.Value?.SetValue(payload, from.PlayerName);
         }
 
         /// <summary>
@@ -124,10 +183,7 @@ namespace RimCoopMod.Networking
             IsRunning = false;
             try { _lanResponder?.Stop(); } catch { }
             try { _listener?.Stop(); } catch { }
-            foreach (var c in _clients.Values)
-            {
-                try { c.TcpClient.Close(); } catch { }
-            }
+            foreach (var c in _clients.Values) c.Close();
             _clients.Clear();
         }
 
@@ -150,6 +206,8 @@ namespace RimCoopMod.Networking
                     TcpClient = tcpClient,
                     Stream = tcpClient.GetStream()
                 };
+                tcpClient.SendTimeout = 30000; // un cliente que no lee no deja el hilo de escritura trabado para siempre
+                handle.StartWriter();
 
                 var thread = new Thread(() => ClientLoop(handle)) { IsBackground = true };
                 handle.ReadThread = thread;
@@ -162,49 +220,40 @@ namespace RimCoopMod.Networking
             bool registered = false; // solo un jugador que llegó a entrar de verdad se anota y se avisa cuando se va
             try
             {
-                // 1. Esperar handshake
-                Packet first = NetIO.ReadPacket(handle.Stream);
-                if (first == null)
-                {
-                    handle.TcpClient.Close();
-                    return;
-                }
+                // 1. Esperar handshake: con tiempo límite y tamaño chico, para que un socket desconocido no ocupe un hilo y memoria para siempre
+                handle.Stream.ReadTimeout = 10000;
+                Packet first = NetIO.ReadPacket(handle.Stream, NetIO.MaxHandshakeFrameSize);
+                if (first == null) return;
 
                 // Consulta corta para la lista de servidores (estilo Half-Life/CS): no es un jugador
                 // uniéndose, solo quiere saber si el server responde y cuánta gente hay conectada.
                 if (first.Type == PacketType.PingRequest)
                 {
-                    NetIO.SendPacket(handle.Stream, Packet.Create(PacketType.PingResponse, new PingResponsePayload
+                    handle.Send(Packet.Create(PacketType.PingResponse, new PingResponsePayload
                     {
                         ProtocolVersion = ProtocolInfo.Version,
                         ConnectedPlayers = _clients.Count,
                         WorldSeed = WorldSeed,
                         SaveName = SaveName
                     }));
-                    handle.TcpClient.Close();
                     return;
                 }
 
-                if (first.Type != PacketType.Handshake)
-                {
-                    handle.TcpClient.Close();
-                    return;
-                }
+                if (first.Type != PacketType.Handshake) return;
 
                 var hs = first.GetPayload<HandshakePayload>();
 
                 // Lo primero: mi versión de protocolo. Un cliente nuevo la usa para saber si somos compatibles;
                 // un servidor viejo nunca manda esto, y el cliente lo detecta justamente por eso.
-                NetIO.SendPacket(handle.Stream, Packet.Create(PacketType.ServerInfo, new ServerInfoPayload { ProtocolVersion = ProtocolInfo.Version }));
+                handle.Send(Packet.Create(PacketType.ServerInfo, new ServerInfoPayload { ProtocolVersion = ProtocolInfo.Version }));
                 if (hs.ProtocolVersion != ProtocolInfo.Version)
                 {
                     CoopLog.Warning(Loc.T("Server.02", hs.ProtocolVersion, ProtocolInfo.Version));
-                    NetIO.SendPacket(handle.Stream, Packet.Create(PacketType.Chat, new ChatPayload
+                    handle.Send(Packet.Create(PacketType.Chat, new ChatPayload
                     {
                         PlayerId = 0, PlayerName = "Servidor",
                         Message = Loc.Both("Server.03", hs.ProtocolVersion, ProtocolInfo.Version)
                     }));
-                    handle.TcpClient.Close();
                     return;
                 }
                 string playerName = string.IsNullOrEmpty(hs.PlayerName) ? Loc.T("Common.Player") + _nextPlayerId : hs.PlayerName;
@@ -212,12 +261,11 @@ namespace RimCoopMod.Networking
                 if (IsBanned(playerName))
                 {
                     CoopLog.Warning(Loc.T("Server.04", playerName));
-                    NetIO.SendPacket(handle.Stream, Packet.Create(PacketType.Chat, new ChatPayload
+                    handle.Send(Packet.Create(PacketType.Chat, new ChatPayload
                     {
                         PlayerId = 0, PlayerName = "Servidor",
                         Message = Loc.Wire("Server.05")
                     }));
-                    handle.TcpClient.Close();
                     return;
                 }
 
@@ -233,9 +281,25 @@ namespace RimCoopMod.Networking
                 }
                 handle.PlayerName = playerName;
 
+                // Mismo nombre = mismo id. Si ese id ya tiene una conexión viva: desde la misma máquina es una reconexión (la vieja
+                // quedó colgada y se la cierra); desde otra, son dos personas con el mismo nombre y antes la primera quedaba sorda.
+                if (_clients.TryGetValue(handle.PlayerId, out var live) && !SameAddress(live, handle))
+                {
+                    CoopLog.Warning(Loc.T("Server.25", playerName));
+                    handle.Send(Packet.Create(PacketType.Chat, new ChatPayload
+                    {
+                        PlayerId = 0, PlayerName = "Servidor",
+                        Message = Loc.Wire("Server.26", playerName)
+                    }));
+                    return;
+                }
+
+                handle.Stream.ReadTimeout = Timeout.Infinite;
                 _clients[handle.PlayerId] = handle;
                 registered = true;
+                live?.Close(); // después de reemplazarla: así su cierre no borra al jugador que acaba de volver
 
+                PlayerBaseInfo joinedInfo;
                 lock (_players)
                 {
                     // Si este jugador ya se había conectado antes (mismo id, ahora estable por
@@ -256,26 +320,14 @@ namespace RimCoopMod.Networking
                             ColonistCount = 0
                         };
                     }
+                    joinedInfo = _players[handle.PlayerId];
                 }
 
                 // 2. Enviar WorldData con el estado actual (seed + jugadores existentes)
-                var worldData = new WorldDataPayload
-                {
-                    Seed = WorldSeed,
-                    PlanetCoverage = PlanetCoverage,
-                    OverallRainfall = OverallRainfall,
-                    OverallTemperature = OverallTemperature,
-                    OverallPopulation = OverallPopulation,
-                    AssignedPlayerId = handle.PlayerId
-                };
-                lock (_players)
-                {
-                    worldData.ExistingPlayers.AddRange(_players.Values);
-                }
-                NetIO.SendPacket(handle.Stream, Packet.Create(PacketType.WorldData, worldData));
+                SendWorldData(handle);
 
                 // 3. Avisar a los demás que se unió
-                Broadcast(Packet.Create(PacketType.PlayerJoined, _players[handle.PlayerId]), excludePlayerId: handle.PlayerId);
+                Broadcast(Packet.Create(PacketType.PlayerJoined, joinedInfo), excludePlayerId: handle.PlayerId);
 
                 // Qué colonos le tocan y cuáles están en otro lado: con esto corrige duplicados o pérdidas de partidas viejas.
                 SendColonistManifest(handle);
@@ -297,14 +349,14 @@ namespace RimCoopMod.Networking
             }
             finally
             {
-                try { handle.TcpClient.Close(); } catch { }
+                handle.CloseAfterFlush(); // lo que quedó en cola (respuesta al ping, motivo de un rechazo) sale antes de cerrar
 
                 // Antes esto corría también para pings y conexiones rechazadas (id 0, nombre nulo) y le mandaba a todos un
                 // "PlayerLeft" fantasma. Y si el mismo jugador reconectaba con la conexión vieja todavía viva, la vieja
-                // borraba a la NUEVA al cerrarse: solo se limpia si este handle sigue siendo el vigente.
-                if (registered && _clients.TryGetValue(handle.PlayerId, out var current) && ReferenceEquals(current, handle))
+                // borraba a la NUEVA al cerrarse: solo se limpia si este handle sigue siendo el vigente (comparar y sacar
+                // en un solo paso, sin que una reconexión se cuele en el medio).
+                if (registered && ((ICollection<KeyValuePair<int, ClientHandle>>)_clients).Remove(new KeyValuePair<int, ClientHandle>(handle.PlayerId, handle)))
                 {
-                    _clients.TryRemove(handle.PlayerId, out _);
                     lock (_players) { _players.Remove(handle.PlayerId); }
                     Broadcast(Packet.Create(PacketType.PlayerLeft, new PlayerBaseInfo { PlayerId = handle.PlayerId, PlayerName = handle.PlayerName }));
                     CoopLog.Message(Loc.T("Server.08", handle.PlayerName));
@@ -314,6 +366,7 @@ namespace RimCoopMod.Networking
 
         private void HandleClientPacket(ClientHandle from, Packet p)
         {
+            StampSender(from, p.Payload);
             switch (p.Type)
             {
                 case PacketType.PlayerUpdate:
@@ -334,11 +387,7 @@ namespace RimCoopMod.Networking
                 case PacketType.TradeRequest:
                 case PacketType.AttackRequest:
                     var tradeOrAttack = p.GetPayload<TradeOrAttackPayload>();
-                    // Reenviar solo al jugador destino
-                    if (_clients.TryGetValue(tradeOrAttack.ToPlayerId, out var target))
-                    {
-                        NetIO.SendPacket(target.Stream, p);
-                    }
+                    RouteTo(tradeOrAttack.ToPlayerId, p); // solo al destino (antes un destino caído tiraba la conexión de quien mandaba)
                     break;
 
                 case PacketType.Chat:
@@ -438,12 +487,19 @@ namespace RimCoopMod.Networking
                     break;
 
                 case PacketType.PlayersRequest:
+                    // Cargó una partida estando conectado: su juego arrancó de cero (quién está conectado, colonos prestados) y
+                    // necesita lo mismo que al entrar, incluido el registro de colonos para corregir duplicados o pérdidas.
+                    if (p.GetPayload<WatchRequestPayload>().ToPlayerId == PlayersRequestFullResync)
+                    {
+                        SendWorldData(from);
+                        SendColonistManifest(from);
+                    }
                     lock (_players)
                     {
                         foreach (var info in _players.Values)
                         {
                             if (info.PlayerId == from.PlayerId || info.Tile < 0) continue;
-                            NetIO.SendPacket(from.Stream, Packet.Create(PacketType.PlayerUpdate, new PlayerUpdatePayload
+                            from.Send(Packet.Create(PacketType.PlayerUpdate, new PlayerUpdatePayload
                             {
                                 PlayerId = info.PlayerId,
                                 PlayerName = info.PlayerName,
@@ -463,6 +519,27 @@ namespace RimCoopMod.Networking
                     RouteTo(p.GetPayload<PawnSettingPayload>().ToPlayerId, p);
                     break;
             }
+        }
+
+        /// <summary>PlayersRequest con este destino = "mandame todo como si recién entrara" (ver InitialColonySyncPatch).</summary>
+        public const int PlayersRequestFullResync = -1;
+
+        private void SendWorldData(ClientHandle handle)
+        {
+            var worldData = new WorldDataPayload
+            {
+                Seed = WorldSeed,
+                PlanetCoverage = PlanetCoverage,
+                OverallRainfall = OverallRainfall,
+                OverallTemperature = OverallTemperature,
+                OverallPopulation = OverallPopulation,
+                AssignedPlayerId = handle.PlayerId
+            };
+            lock (_players)
+            {
+                worldData.ExistingPlayers.AddRange(_players.Values);
+            }
+            handle.Send(Packet.Create(PacketType.WorldData, worldData));
         }
 
         // ---- Registro de colonos ----
@@ -530,7 +607,7 @@ namespace RimCoopMod.Networking
                 }
             }
             if (manifest.Hold.Count == 0 && manifest.Elsewhere.Count == 0) return;
-            try { NetIO.SendPacket(handle.Stream, Packet.Create(PacketType.ColonistManifest, manifest)); }
+            try { handle.Send(Packet.Create(PacketType.ColonistManifest, manifest)); }
             catch (Exception e) { CoopLog.Warning(Loc.T("Server.24", handle.PlayerName, e.Message)); }
         }
 
@@ -690,13 +767,9 @@ namespace RimCoopMod.Networking
 
         private void DisconnectWithMessage(ClientHandle target, string message)
         {
-            try
-            {
-                NetIO.SendPacket(target.Stream, Packet.Create(PacketType.Chat, new ChatPayload { PlayerId = 0, PlayerName = "Servidor", Message = message }));
-            }
-            catch { }
-            // Cerrar el socket hace fallar su ReadPacket: el finally de ClientLoop lo saca de la lista y avisa a los demás.
-            try { target.TcpClient.Close(); } catch { }
+            target.Send(Packet.Create(PacketType.Chat, new ChatPayload { PlayerId = 0, PlayerName = "Servidor", Message = message }));
+            // Sale el mensaje y se cierra el socket (sin esperar en la consola): su ReadPacket falla y el finally de ClientLoop lo saca de la lista.
+            target.CloseAfterFlush();
         }
 
         private void LoadBans()
@@ -736,10 +809,10 @@ namespace RimCoopMod.Networking
 
                 foreach (var line in File.ReadAllLines(_playerIdsPath))
                 {
-                    var parts = line.Split(new[] { '=' }, 2);
-                    if (parts.Length != 2 || !int.TryParse(parts[1], out int id)) continue;
+                    int eq = line.LastIndexOf('='); // el último: un nombre puede tener '=' adentro, el id no
+                    if (eq <= 0 || !int.TryParse(line.Substring(eq + 1), out int id)) continue;
 
-                    _nameToId[parts[0]] = id;
+                    _nameToId[line.Substring(0, eq)] = id;
                     if (id >= _nextPlayerId) _nextPlayerId = id + 1;
                 }
 
@@ -769,7 +842,7 @@ namespace RimCoopMod.Networking
         {
             if (_clients.TryGetValue(toPlayerId, out var target))
             {
-                try { NetIO.SendPacket(target.Stream, packet); }
+                try { target.Send(packet); }
                 catch (Exception e) { CoopLog.Warning(Loc.T("Server.22", packet.Type, toPlayerId, e.Message)); }
             }
             else
@@ -780,11 +853,20 @@ namespace RimCoopMod.Networking
 
         private void Broadcast(Packet packet, int excludePlayerId = -1)
         {
+            byte[] frame = NetIO.EncodeFrame(packet); // se arma una vez para todos
             foreach (var kv in _clients)
             {
-                if (kv.Key == excludePlayerId) continue;
-                try { NetIO.SendPacket(kv.Value.Stream, packet); } catch { }
+                if (kv.Key != excludePlayerId) kv.Value.Enqueue(frame);
             }
+        }
+
+        private static bool SameAddress(ClientHandle a, ClientHandle b)
+        {
+            try
+            {
+                return ((IPEndPoint)a.TcpClient.Client.RemoteEndPoint).Address.Equals(((IPEndPoint)b.TcpClient.Client.RemoteEndPoint).Address);
+            }
+            catch { return true; } // el socket viejo ya está cerrado: es una conexión muerta, se puede reemplazar
         }
     }
 }
