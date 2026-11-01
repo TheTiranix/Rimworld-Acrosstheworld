@@ -64,6 +64,9 @@ namespace RimCoopMod.Networking
 
         public bool IsRunning { get; private set; }
 
+        /// <summary>Segundos de aviso antes de que una hostilidad valga (ver DiplomacyTable). Se fija antes de Start.</summary>
+        public int DiplomacyWarningSeconds = DiplomacyTable.HostileWarningSeconds;
+
         private class ClientHandle
         {
             public int PlayerId;
@@ -150,12 +153,16 @@ namespace RimCoopMod.Networking
             _playerIdsPath = Path.Combine(folder, "player_ids.txt");
             _bansPath = Path.Combine(folder, "banned_players.txt");
             _colonistsPath = Path.Combine(folder, "colonists.bin");
+            _diplomacyPath = Path.Combine(folder, "diplomacy.txt");
             _port = port;
             if (dataFolder != null) SaveName = new DirectoryInfo(dataFolder).Name;
 
             LoadPlayerIds();
             LoadBans();
             LoadColonists();
+            _diplomacy = new DiplomacyTable(DiplomacyWarningSeconds);
+            try { _diplomacy.Load(_diplomacyPath); }
+            catch (Exception e) { CoopLog.Warning(Loc.T("Server.27", e.Message)); }
 
             _listener = new TcpListener(IPAddress.Any, port);
             _listener.Start();
@@ -331,6 +338,7 @@ namespace RimCoopMod.Networking
 
                 // Qué colonos le tocan y cuáles están en otro lado: con esto corrige duplicados o pérdidas de partidas viejas.
                 SendColonistManifest(handle);
+                SendDiplomacyState(handle);
 
                 CoopLog.Message(Loc.T("Server.06", handle.PlayerName, handle.PlayerId));
 
@@ -385,9 +393,23 @@ namespace RimCoopMod.Networking
                     break;
 
                 case PacketType.TradeRequest:
+                    RouteTo(p.GetPayload<TradeOrAttackPayload>().ToPlayerId, p); // solo al destino (antes un destino caído tiraba la conexión de quien mandaba)
+                    break;
+
                 case PacketType.AttackRequest:
-                    var tradeOrAttack = p.GetPayload<TradeOrAttackPayload>();
-                    RouteTo(tradeOrAttack.ToPlayerId, p); // solo al destino (antes un destino caído tiraba la conexión de quien mandaba)
+                    {
+                        // Lo decide el servidor, no el botón: solo se ataca a quien está en guerra con vos y ya pasó el aviso.
+                        var attack = p.GetPayload<TradeOrAttackPayload>();
+                        string target = NameOfPlayer(attack.ToPlayerId);
+                        Relation rel;
+                        lock (_diplomacy) rel = _diplomacy.Get(from.PlayerName, target, NowUnix());
+                        if (rel == Relation.Hostile) RouteTo(attack.ToPlayerId, p);
+                        else TellFromServer(from, Loc.Wire("Diplomacy.AttackNotHostile", target ?? "?"));
+                        break;
+                    }
+
+                case PacketType.DiplomacyMessage:
+                    HandleDiplomacy(from, p.GetPayload<DiplomacyMessagePayload>());
                     break;
 
                 case PacketType.Chat:
@@ -493,6 +515,7 @@ namespace RimCoopMod.Networking
                     {
                         SendWorldData(from);
                         SendColonistManifest(from);
+                        SendDiplomacyState(from);
                     }
                     lock (_players)
                     {
@@ -520,6 +543,52 @@ namespace RimCoopMod.Networking
                     break;
             }
         }
+
+        // ---- Diplomacia ----
+
+        private DiplomacyTable _diplomacy;
+        private string _diplomacyPath;
+
+        private static long NowUnix() => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+        private void HandleDiplomacy(ClientHandle from, DiplomacyMessagePayload m)
+        {
+            string target = NameOfPlayer(m.ToPlayerId);
+            if (string.IsNullOrEmpty(target)) { TellFromServer(from, Loc.Wire("Diplomacy.UnknownPlayer")); return; }
+
+            string error;
+            lock (_diplomacy)
+            {
+                switch (m.Kind)
+                {
+                    case "ally": error = _diplomacy.ProposeAlliance(from.PlayerName, target); break;
+                    case "hostile": error = _diplomacy.DeclareHostile(from.PlayerName, target, NowUnix()); break;
+                    case "peace": error = _diplomacy.ProposePeace(from.PlayerName, target); break;
+                    case "break": error = _diplomacy.BreakAlliance(from.PlayerName, target); break;
+                    default: error = "Diplomacy.UnknownPlayer"; break;
+                }
+                if (error == null)
+                {
+                    try { _diplomacy.Save(_diplomacyPath); }
+                    catch (Exception e) { CoopLog.Warning(Loc.T("Server.28", e.Message)); }
+                }
+            }
+
+            if (error != null) { TellFromServer(from, Loc.Wire(error, target)); return; }
+            byte[] frame = DiplomacyStateFrame();
+            foreach (var c in _clients.Values) c.Enqueue(frame);
+        }
+
+        private byte[] DiplomacyStateFrame()
+        {
+            lock (_diplomacy)
+                return NetIO.EncodeFrame(Packet.Create(PacketType.DiplomacyState, new DiplomacyStatePayload { ServerNowUnix = NowUnix(), Entries = _diplomacy.Entries }));
+        }
+
+        private void SendDiplomacyState(ClientHandle handle) => handle.Enqueue(DiplomacyStateFrame());
+
+        private static void TellFromServer(ClientHandle to, string wireMessage) =>
+            to.Send(Packet.Create(PacketType.Chat, new ChatPayload { PlayerId = 0, PlayerName = "Servidor", Message = wireMessage }));
 
         /// <summary>PlayersRequest con este destino = "mandame todo como si recién entrara" (ver InitialColonySyncPatch).</summary>
         public const int PlayersRequestFullResync = -1;

@@ -110,6 +110,7 @@ static class Program
         }
 
         WireTests();
+        ServerTests();
 
         Console.WriteLine(_failed == 0 ? "ALL OK" : _failed + " FAILED");
         return _failed == 0 ? 0 : 1;
@@ -134,6 +135,104 @@ static class Program
         var e0 = back.Entries[0];
         Check("Wire_State.entry", e0.A == "Agus" && e0.B == "Bea" && e0.State == Relation.Hostile && e0.HostileSinceUnix == 99
             && e0.PendingAllyFrom == "" && e0.PendingPeaceFrom == "Bea" && back.Entries[1].State == Relation.Ally);
+    }
+
+    // Cliente mínimo contra el servidor real (sin RimWorld): handshake, y todo lo que llega queda en Inbox.
+    class TestClient
+    {
+        public volatile int Id;
+        private readonly System.Net.Sockets.TcpClient _tcp = new System.Net.Sockets.TcpClient();
+        private System.Net.Sockets.NetworkStream _s;
+        public readonly System.Collections.Concurrent.BlockingCollection<Packet> Inbox = new System.Collections.Concurrent.BlockingCollection<Packet>();
+
+        public static TestClient Connect(int port, string name)
+        {
+            var c = new TestClient();
+            c._tcp.Connect("127.0.0.1", port);
+            c._s = c._tcp.GetStream();
+            NetIO.SendPacket(c._s, Packet.Create(PacketType.Handshake, new HandshakePayload { PlayerName = name, ProtocolVersion = ProtocolInfo.Version }));
+            new System.Threading.Thread(() =>
+            {
+                try
+                {
+                    Packet p;
+                    while ((p = NetIO.ReadPacket(c._s)) != null)
+                    {
+                        if (p.Type == PacketType.WorldData) c.Id = p.GetPayload<WorldDataPayload>().AssignedPlayerId;
+                        c.Inbox.Add(p);
+                    }
+                }
+                catch { }
+            }) { IsBackground = true }.Start();
+            c.WaitFor(PacketType.WorldData, 3000);
+            return c;
+        }
+
+        public void Send(PacketType t, object payload) => NetIO.SendPacket(_s, Packet.Create(t, payload));
+
+        public Packet WaitFor(PacketType t, int ms, Func<Packet, bool> pred = null)
+        {
+            var until = DateTime.UtcNow.AddMilliseconds(ms);
+            while (DateTime.UtcNow < until)
+            {
+                if (Inbox.TryTake(out var p, 50) && p.Type == t && (pred == null || pred(p))) return p;
+            }
+            return null;
+        }
+
+        public void Close() { try { _tcp.Close(); } catch { } }
+    }
+
+    static int FreePort()
+    {
+        var l = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0);
+        l.Start();
+        int port = ((System.Net.IPEndPoint)l.LocalEndpoint).Port;
+        l.Stop();
+        return port;
+    }
+
+    static bool HasRelation(Packet p, string a, string b, Relation r) =>
+        p != null && p.GetPayload<DiplomacyStatePayload>().Entries.Exists(e => e.State == r && Has(e, a) && Has(e, b));
+
+    static void ServerTests()
+    {
+        CoopLog.OnMessage = _ => { };
+        CoopLog.OnWarning = _ => { };
+        string dir = Path.Combine(Path.GetTempPath(), "rimcoop_diplo_server_" + Guid.NewGuid().ToString("N"));
+        int port = FreePort();
+        var server = new CoopServer { DiplomacyWarningSeconds = 0 };
+        server.Start(port, "seed", 0.3f, "Normal", "Normal", "Normal", dir);
+        var ana = TestClient.Connect(port, "Ana");
+        var beto = TestClient.Connect(port, "Beto");
+        Check("Server_Connected", ana.Id > 0 && beto.Id > 0 && ana.Id != beto.Id);
+
+        ana.Send(PacketType.AttackRequest, new TradeOrAttackPayload { ToPlayerId = beto.Id, Points = 300 });
+        Check("Server_AttackNeedsHostile.blocked", beto.WaitFor(PacketType.AttackRequest, 800) == null);
+        Check("Server_AttackNeedsHostile.told", ana.WaitFor(PacketType.Chat, 800, p => p.GetPayload<ChatPayload>().PlayerId == 0) != null);
+
+        ana.Send(PacketType.DiplomacyMessage, new DiplomacyMessagePayload { ToPlayerId = beto.Id, Kind = "hostile" });
+        Check("Server_Hostile.broadcast", HasRelation(beto.WaitFor(PacketType.DiplomacyState, 2000), "Ana", "Beto", Relation.Hostile)
+            && HasRelation(ana.WaitFor(PacketType.DiplomacyState, 2000), "Ana", "Beto", Relation.Hostile));
+        ana.Send(PacketType.AttackRequest, new TradeOrAttackPayload { ToPlayerId = beto.Id, Points = 300 });
+        Check("Server_AttackNeedsHostile.allowed", beto.WaitFor(PacketType.AttackRequest, 2000) != null);
+
+        ana.Send(PacketType.DiplomacyMessage, new DiplomacyMessagePayload { ToPlayerId = ana.Id, Kind = "ally" });
+        Check("Server_Rejected.reason", ana.WaitFor(PacketType.Chat, 800, p => p.GetPayload<ChatPayload>().PlayerId == 0) != null);
+
+        ana.Close();
+        beto.Close();
+        server.Stop();
+
+        // Persistencia: otro servidor sobre la misma carpeta la sigue teniendo y se la manda al que entra.
+        port = FreePort();
+        var again = new CoopServer();
+        again.Start(port, "seed", 0.3f, "Normal", "Normal", "Normal", dir);
+        var beto2 = TestClient.Connect(port, "beto");
+        Check("Server_Persisted", HasRelation(beto2.WaitFor(PacketType.DiplomacyState, 2000), "Ana", "Beto", Relation.Hostile));
+        beto2.Close();
+        again.Stop();
+        try { Directory.Delete(dir, true); } catch { }
     }
 
     static bool Has(DiplomacyEntry e, string n) => string.Equals(e.A, n, StringComparison.OrdinalIgnoreCase) || string.Equals(e.B, n, StringComparison.OrdinalIgnoreCase);

@@ -446,6 +446,15 @@ namespace RimCoopMod
             { "SessionManager_Trade.14", "La oferta de {0} ya no vale (vencida o cancelada): no se cambió nada." },
             { "Common.You", "vos" },
             { "SessionManager.66", "[RimCoop] No se pudo sacar al títere {0}: {1}" },
+            { "Server.27", "[RimCoop] No se pudo cargar la diplomacia guardada: {0}" },
+            { "Server.28", "[RimCoop] No se pudo guardar la diplomacia: {0}" },
+            { "Diplomacy.Self", "No podés hacer eso con tu propia colonia." },
+            { "Diplomacy.MaxAllies", "No se puede: vos o {0} ya tienen 4 aliados (es el máximo)." },
+            { "Diplomacy.HostileFirst", "Con {0} están en guerra: primero tienen que hacer las paces." },
+            { "Diplomacy.NotHostile", "No estás en guerra con {0}." },
+            { "Diplomacy.NotAllied", "No sos aliado de {0}." },
+            { "Diplomacy.UnknownPlayer", "Ese jugador no está en este servidor." },
+            { "Diplomacy.AttackNotHostile", "Solo podés atacar a {0} si están en guerra y ya pasó el aviso." },
         };
 
         public static readonly Dictionary<string, string> En = new Dictionary<string, string>
@@ -889,6 +898,15 @@ namespace RimCoopMod
             { "SessionManager_Trade.14", "{0}'s offer is no longer valid (expired or cancelled): nothing was exchanged." },
             { "Common.You", "you" },
             { "SessionManager.66", "[RimCoop] Could not remove the puppet {0}: {1}" },
+            { "Server.27", "[RimCoop] Could not load the saved diplomacy: {0}" },
+            { "Server.28", "[RimCoop] Could not save the diplomacy: {0}" },
+            { "Diplomacy.Self", "You cannot do that with your own colony." },
+            { "Diplomacy.MaxAllies", "Not possible: you or {0} already have 4 allies (the maximum)." },
+            { "Diplomacy.HostileFirst", "You are at war with {0}: you have to make peace first." },
+            { "Diplomacy.NotHostile", "You are not at war with {0}." },
+            { "Diplomacy.NotAllied", "You are not allied with {0}." },
+            { "Diplomacy.UnknownPlayer", "That player is not on this server." },
+            { "Diplomacy.AttackNotHostile", "You can only attack {0} if you are at war and the warning period is over." },
         };
     }
 }
