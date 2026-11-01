@@ -106,6 +106,25 @@ namespace RimCoopMod.World
         }
     }
 
+    /// <summary>
+    /// "Tirar" en la pestaña de equipo de un colono tuyo que está en la base de otro: lo hace el dueño en su colono real. Antes lo
+    /// equipado fallaba ("no está sincronizado": esa copia no tiene el id real) y lo de la mochila se tiraba solo en el espejo.
+    /// </summary>
+    [HarmonyPatch(typeof(ITab_Pawn_Gear), "InterfaceDrop")]
+    public static class ITab_Pawn_Gear_InterfaceDrop_Patch
+    {
+        [HarmonyPrefix]
+        public static bool Prefix(ITab_Pawn_Gear __instance, Thing t)
+        {
+            var pawn = Traverse.Create(__instance).Property("SelPawnForGear").GetValue<Pawn>();
+            if (t == null || !PuppetPawnRegistry.IsPuppet(pawn)) return true;
+            bool handled = !PuppetSettingHelper.ShouldRunLocally(pawn, "drop", t.def.defName, t.Stuff?.defName ?? "");
+            if (handled && CoopSessionManager.CanLocalPlayerCommand(pawn))
+                Messages.Message(Loc.T("ExtrasPatches.06", t.LabelShortCap), MessageTypeDefOf.NeutralEvent, false);
+            return !handled;
+        }
+    }
+
     [HarmonyPatch(typeof(Pawn_WorkSettings), nameof(Pawn_WorkSettings.SetPriority))]
     public static class Pawn_WorkSettings_SetPriority_Patch
     {

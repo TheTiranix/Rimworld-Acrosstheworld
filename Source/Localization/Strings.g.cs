@@ -500,6 +500,7 @@ namespace RimCoopMod
             { "Diplomacy.ReturnColonists", "Devolver colonos" },
             { "Diplomacy.ReturnColonistsDesc", "Mandarle de vuelta a {0} los colonos suyos que están en tu base (se puede aunque no sean aliados)." },
             { "Diplomacy.NothingToReturn", "No tenés colonos de {0} en tu base. Para mandarle colonos tuyos tienen que ser aliados." },
+            { "ExtrasPatches.06", "Se le pidió al dueño de la base que tire {0}." },
         };
 
         public static readonly Dictionary<string, string> En = new Dictionary<string, string>
@@ -997,6 +998,7 @@ namespace RimCoopMod
             { "Diplomacy.ReturnColonists", "Return colonists" },
             { "Diplomacy.ReturnColonistsDesc", "Send back to {0} their colonists who are in your base (allowed even if you are not allies)." },
             { "Diplomacy.NothingToReturn", "You have none of {0}'s colonists in your base. To send them your own colonists you have to be allies." },
+            { "ExtrasPatches.06", "The base owner was asked to drop {0}." },
         };
     }
 }

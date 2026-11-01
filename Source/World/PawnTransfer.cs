@@ -84,7 +84,7 @@ namespace RimCoopMod.World
             MarkTransferNoise();
             try
             {
-                File.WriteAllText(path, xml);
+                File.WriteAllText(path, PawnXml.StripJobs(xml));
                 Pawn pawn = null;
                 Scribe.loader.InitLoading(path);
                 Scribe_Deep.Look(ref pawn, "pawn");

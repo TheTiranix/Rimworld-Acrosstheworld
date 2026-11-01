@@ -16,5 +16,6 @@
     <Compile Include="..\..\Source\Networking\DiplomacyTable.cs" Link="Networking\DiplomacyTable.cs" />
     <Compile Include="..\..\Source\Localization\Loc.cs" Link="Localization\Loc.cs" />
     <Compile Include="..\..\Source\Localization\Strings.g.cs" Link="Localization\Strings.g.cs" />
+    <Compile Include="..\..\Source\World\PawnXml.cs" Link="World\PawnXml.cs" />
   </ItemGroup>
 </Project>

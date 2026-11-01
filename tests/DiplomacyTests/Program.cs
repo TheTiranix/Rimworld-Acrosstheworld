@@ -144,10 +144,23 @@ static class Program
         }
 
         WireTests();
+        PawnXmlTests();
         ServerTests();
 
         Console.WriteLine(_failed == 0 ? "ALL OK" : _failed + " FAILED");
         return _failed == 0 ? 0 : 1;
+    }
+
+    static void PawnXmlTests()
+    {
+        string xml = "<?xml version=\"1.0\" encoding=\"utf-8\"?><RimCoopPawn><pawn Class=\"Pawn\"><def>Turkey</def><jobs>"
+            + "<curJob><def>Ingest</def></curJob><curDriver Class=\"JobDriver_Ingest\" /><jobQueue><jobs /></jobQueue>"
+            + "<formingCaravanTick>-1</formingCaravanTick></jobs></pawn></RimCoopPawn>";
+        string stripped = RimCoopMod.World.PawnXml.StripJobs(xml);
+        Check("StripJobs.removed", !stripped.Contains("curJob") && !stripped.Contains("curDriver") && !stripped.Contains("jobQueue"));
+        Check("StripJobs.kept", stripped.Contains("<def>Turkey</def>") && stripped.Contains("<formingCaravanTick>-1</formingCaravanTick>") && stripped.Contains("<jobs>"));
+        string noJobs = "<RimCoopPawn><pawn><def>Human</def></pawn></RimCoopPawn>";
+        Check("StripJobs.noJobs", RimCoopMod.World.PawnXml.StripJobs(noJobs).Contains("<def>Human</def>"));
     }
 
     static Packet RoundTrip(Packet p)

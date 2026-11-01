@@ -773,6 +773,9 @@ namespace RimCoopMod.GameComponents
                             if (td != null && pawn.training != null) pawn.training.SetWantedRecursive(td, req.Value == "1");
                             break;
                         }
+                    case "drop":
+                        DropOwnThing(pawn, req.Key, req.Value);
+                        break;
                     case "area":
                         if (pawn.playerSettings != null)
                             pawn.playerSettings.AreaRestrictionInPawnCurrentMap = string.IsNullOrEmpty(req.Value) ? null : map.areaManager.GetLabeled(req.Value);
@@ -784,6 +787,28 @@ namespace RimCoopMod.GameComponents
             {
                 CoopLog.Warning(Loc.T("SessionManager_Extras.12", req.Kind, pawn.LabelShortCap, e.Message));
             }
+        }
+
+        /// <summary>El dueño del colono pidió "Tirar" desde el espejo: lo mismo que el botón de la pestaña de equipo, en el colono real.</summary>
+        private static void DropOwnThing(Pawn pawn, string defName, string stuffDefName)
+        {
+            var stuff = string.IsNullOrEmpty(stuffDefName) ? null : DefDatabase<ThingDef>.GetNamedSilentFail(stuffDefName);
+            bool Match(Thing t) => t.def.defName == defName && t.Stuff == stuff;
+
+            _processingRemoteOrder = true; // es una orden del dueño del colono: el bloqueo de "no es tu colono" no aplica acá
+            try
+            {
+                var equipment = pawn.equipment?.AllEquipmentListForReading.FirstOrDefault(Match);
+                if (equipment != null) { pawn.jobs.TryTakeOrderedJob(JobMaker.MakeJob(JobDefOf.DropEquipment, equipment), Verse.AI.JobTag.Misc); return; }
+
+                var apparel = pawn.apparel?.WornApparel.FirstOrDefault(a => Match(a));
+                if (apparel != null) { pawn.jobs.TryTakeOrderedJob(JobMaker.MakeJob(JobDefOf.RemoveApparel, apparel), Verse.AI.JobTag.Misc); return; }
+
+                var item = pawn.inventory?.innerContainer.FirstOrDefault(Match);
+                if (item != null && !item.def.destroyOnDrop && pawn.Spawned)
+                    pawn.inventory.innerContainer.TryDrop(item, pawn.Position, pawn.Map, ThingPlaceMode.Near, out _);
+            }
+            finally { _processingRemoteOrder = false; }
         }
 
         // =====================================================================
