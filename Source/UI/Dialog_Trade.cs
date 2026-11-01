@@ -155,7 +155,8 @@ namespace RimCoopMod.UI
             }
             if (Widgets.ButtonText(new Rect(third + 3f, inRect.height - 40f, third - 6f, 36f), Loc.T("Dialog_Trade.08")))
             {
-                Close(); // sigue pendiente: se vuelve a mostrar (también después de guardar y cargar) cuando el otro esté conectado
+                CoopSessionManager.SnoozeOffer(_offerId, _fromName);
+                Close(); // sigue pendiente: se vuelve a mostrar en un rato (también después de guardar y cargar) si el otro está conectado
             }
             if (Widgets.ButtonText(new Rect(third * 2f + 6f, inRect.height - 40f, third - 6f, 36f), Loc.T("Dialog_Trade.09")))
             {

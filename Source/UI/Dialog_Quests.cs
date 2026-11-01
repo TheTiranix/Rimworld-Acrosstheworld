@@ -100,7 +100,8 @@ namespace RimCoopMod.UI
             }
             if (Widgets.ButtonText(new Rect(third + 3f, inRect.height - 40f, third - 6f, 36f), Loc.T("Dialog_Quests.06")))
             {
-                Close(); // sigue pendiente: se vuelve a mostrar (también después de guardar y cargar) cuando el otro esté conectado
+                CoopSessionManager.SnoozeQuestInvite(_invite);
+                Close(); // sigue pendiente: se vuelve a mostrar en un rato (también después de guardar y cargar) si el otro está conectado
             }
             if (Widgets.ButtonText(new Rect(third * 2f + 6f, inRect.height - 40f, third - 6f, 36f), Loc.T("Dialog_Quests.07")))
             {

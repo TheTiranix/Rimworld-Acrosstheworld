@@ -215,6 +215,21 @@ namespace RimCoopMod.GameComponents
             return instance != null && instance._connectedPlayerIds.Contains(playerId);
         }
 
+        // "Decidir más tarde": antes la ventana volvía a abrirse a los 4 segundos (en el siguiente repaso de pendientes).
+        private readonly Dictionary<string, float> _snoozedUntil = new Dictionary<string, float>();
+        private const float SnoozeSeconds = 600f;
+
+        public static void SnoozeOffer(int offerId, string fromName) => Snooze("o:" + offerId + ":" + fromName);
+        public static void SnoozeQuestInvite(QuestMessagePayload invite) => Snooze("q:" + invite.QuestId + ":" + invite.FromPlayerName);
+
+        private static void Snooze(string key)
+        {
+            var instance = Current.Game?.GetComponent<CoopSessionManager>();
+            if (instance != null) instance._snoozedUntil[key] = UnityEngine.Time.realtimeSinceStartup + SnoozeSeconds;
+        }
+
+        private bool IsSnoozed(string key) => _snoozedUntil.TryGetValue(key, out float until) && UnityEngine.Time.realtimeSinceStartup < until;
+
         // Cada tanto: vuelve a mostrar lo pendiente cuyo remitente está conectado y todavía no tiene ventana abierta.
         private void TickPendingInteractions()
         {
@@ -228,6 +243,7 @@ namespace RimCoopMod.GameComponents
                 int fromId = PlayerIdByName(offer.FromName);
                 if (fromId < 0 || !_connectedPlayerIds.Contains(fromId)) continue;
                 if (windows.OfType<Dialog_TradeIncoming>().Any(w => w.OfferId == offer.OfferId)) continue;
+                if (IsSnoozed("o:" + offer.OfferId + ":" + offer.FromName)) continue;
                 Find.WindowStack.Add(new Dialog_TradeIncoming(fromId, offer.FromName, offer.OfferId, offer.GiveCsv, offer.WantCsv));
             }
 
@@ -237,6 +253,7 @@ namespace RimCoopMod.GameComponents
                 if (fromId < 0 || !_connectedPlayerIds.Contains(fromId)) continue;
                 if (!IsCollaborator(fromId)) continue; // dejaron de colaborar: la invitación ya no vale
                 if (windows.OfType<Dialog_QuestInvite>().Any(w => w.QuestId == invite.QuestId && w.FromName == invite.FromPlayerName)) continue;
+                if (IsSnoozed("q:" + invite.QuestId + ":" + invite.FromPlayerName)) continue;
                 invite.FromPlayerId = fromId;
                 Find.WindowStack.Add(new Dialog_QuestInvite(invite));
             }

@@ -292,31 +292,25 @@ namespace RimCoopMod.GameComponents
         // Dificultad: se aplica del lado del dueño, cuando la misión dispara su amenaza
         // =====================================================================
 
-        private static readonly Dictionary<object, float> _questBaseThreat = new Dictionary<object, float>();
-
-        public static void ScaleQuestIncident(QuestPart_Incident part)
+        /// <summary>Escala los puntos de la incursión de la misión; devuelve los puntos originales para restaurarlos (o -1 si no tocó nada).</summary>
+        public static float ScaleQuestIncident(QuestPart_Incident part)
         {
             try
             {
                 var parms = Traverse.Create(part).Field("incidentParms").GetValue<IncidentParms>();
-                if (parms == null || !IsQuestShared(part.quest, out float mult)) return;
-                if (!_questBaseThreat.TryGetValue(part, out float basePoints)) { basePoints = parms.points; _questBaseThreat[part] = basePoints; }
+                if (parms == null || !IsQuestShared(part.quest, out float mult)) return -1f;
+                float basePoints = parms.points;
                 parms.points = basePoints * mult;
                 CoopLog.Message(Loc.T("SessionManager_Quests.14", part.quest.name, mult, basePoints, parms.points));
+                return basePoints;
             }
-            catch (Exception e) { CoopLog.Warning(Loc.T("SessionManager_Quests.15", e.Message)); }
+            catch (Exception e) { CoopLog.Warning(Loc.T("SessionManager_Quests.15", e.Message)); return -1f; }
         }
 
-        public static void ScaleQuestThreats(QuestPart_ThreatsGenerator part)
+        public static void RestoreQuestIncident(QuestPart_Incident part, float basePoints)
         {
-            try
-            {
-                if (part == null || !IsQuestShared(part.quest, out float mult)) return;
-                if (!_questBaseThreat.TryGetValue(part, out float baseFactor)) { baseFactor = part.parms.currentThreatPointsFactor; _questBaseThreat[part] = baseFactor; }
-                part.parms.currentThreatPointsFactor = baseFactor * mult;
-                CoopLog.Message(Loc.T("SessionManager_Quests.16", part.quest.name, mult));
-            }
-            catch (Exception e) { CoopLog.Warning(Loc.T("SessionManager_Quests.17", e.Message)); }
+            var parms = Traverse.Create(part).Field("incidentParms").GetValue<IncidentParms>();
+            if (parms != null) parms.points = basePoints;
         }
     }
 }

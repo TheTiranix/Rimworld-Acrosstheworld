@@ -8,7 +8,8 @@ namespace RimCoopMod.World
     /// realidad vive y se simula en el juego de OTRO jugador. Existe solo para que se vea como
     /// una persona de verdad en vez de un cuadrado en el mapa espejo — nunca debe actuar por su
     /// cuenta (comer, patrullar, pelear), porque esa simulación real ya está pasando del otro lado.
-    /// Pawn_Tick_Patch usa este registro para saltearle el Tick() entero.
+    /// El Tick() sí corre (si no, no caminaría ni se animaría): los parches de PuppetTickPatches le saltean lo que tendría efectos
+    /// propios (cumpleaños, charlas, inspiraciones...), y los de CoopSyncPatches que busque trabajo o tenga crisis por su cuenta.
     /// </summary>
     public static class PuppetPawnRegistry
     {

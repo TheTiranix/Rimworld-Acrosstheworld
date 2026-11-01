@@ -445,6 +445,7 @@ namespace RimCoopMod
             { "SessionManager_Trade.13", "Ya no tenés {0}: la oferta a {1} se canceló sin que nadie entregue nada." },
             { "SessionManager_Trade.14", "La oferta de {0} ya no vale (vencida o cancelada): no se cambió nada." },
             { "Common.You", "vos" },
+            { "SessionManager.66", "[RimCoop] No se pudo sacar al títere {0}: {1}" },
         };
 
         public static readonly Dictionary<string, string> En = new Dictionary<string, string>
@@ -887,6 +888,7 @@ namespace RimCoopMod
             { "SessionManager_Trade.13", "You no longer have {0}: the offer to {1} was cancelled and nobody handed anything over." },
             { "SessionManager_Trade.14", "{0}'s offer is no longer valid (expired or cancelled): nothing was exchanged." },
             { "Common.You", "you" },
+            { "SessionManager.66", "[RimCoop] Could not remove the puppet {0}: {1}" },
         };
     }
 }

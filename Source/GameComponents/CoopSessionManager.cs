@@ -180,6 +180,34 @@ namespace RimCoopMod.GameComponents
             _puppetOwners.Remove(puppet);
         }
 
+        /// <summary>
+        /// Saca a un títere del todo. Destroy y DeinitAndRemoveMap pasan los pawns de la facción del jugador a los pawns del
+        /// mundo: el títere quedaba guardado en la partida para siempre (copia completa) y, al cerrar el mapa espejo, todos tus
+        /// colonos recibían "perdí a un colono" por cada colono del otro. Hay que llamarlo antes de cerrar un mapa espejo.
+        /// </summary>
+        private void DiscardPuppet(Pawn puppet)
+        {
+            if (puppet == null) return;
+            PawnTransfer.SuppressRelationLossOnDestroy = true; // no se murió nadie de verdad
+            try
+            {
+                if (puppet.Corpse != null && !puppet.Corpse.Destroyed) puppet.Corpse.Destroy(DestroyMode.Vanish);
+                else if (!puppet.Destroyed) puppet.Destroy(DestroyMode.Vanish);
+            }
+            catch (Exception e) { CoopLog.Warning(Loc.T("SessionManager.66", puppet.LabelShortCap, e.Message)); }
+            finally { PawnTransfer.SuppressRelationLossOnDestroy = false; }
+            ForgetPuppetState(puppet);
+            if (Find.WorldPawns.Contains(puppet)) Find.WorldPawns.RemoveAndDiscardPawnViaGC(puppet);
+        }
+
+        /// <summary>Todos los títeres de esa base, antes de cerrar su mapa espejo (ver DiscardPuppet).</summary>
+        private void DiscardPuppetsOf(int hostPlayerId)
+        {
+            if (!_syncedPawns.TryGetValue(hostPlayerId, out var pawns)) return;
+            foreach (var puppet in pawns.Values.ToList()) DiscardPuppet(puppet);
+            pawns.Clear();
+        }
+
         public static string GetPuppetIdeoName(Pawn puppet)
         {
             var instance = Current.Game?.GetComponent<CoopSessionManager>();
@@ -340,6 +368,7 @@ namespace RimCoopMod.GameComponents
         /// procesamiento de red viviera solo en el tick, votar para despausar sería imposible.
         /// </summary>
         private bool _wasConnectedLastUpdate;
+        private readonly Dictionary<int, float> _unwatchSentAt = new Dictionary<int, float>();
 
         public override void GameComponentUpdate()
         {
@@ -359,6 +388,16 @@ namespace RimCoopMod.GameComponents
                 SendModListTo(0);
             }
             if (isConnected && !_wasConnectedLastUpdate && _localTile < 0) SendModListTo(0); // aunque todavía no fundó su colonia
+            // Al cortarse, el dueño de cada base que estaba mirando me sacó de sus espectadores: sin esto el espejo quedaba congelado
+            // (títeres quietos) hasta volver a tocar "Entrar".
+            if (isConnected && !_wasConnectedLastUpdate)
+            {
+                foreach (int host in _coopMaps.Keys.ToList())
+                {
+                    RequestWatch(host);
+                    CoopClient.Instance.SendBaseSnapshotRequest(host);
+                }
+            }
             _wasConnectedLastUpdate = isConnected;
 
             if (!isConnected) return;
@@ -396,6 +435,7 @@ namespace RimCoopMod.GameComponents
 
             if (Find.TickManager.TicksGame % 30 == 0) WatchMirrorSettingsEdits();
             if (Find.TickManager.TicksGame % 250 == 0) TickPendingInteractions();
+            if (Find.TickManager.TicksGame % 2500 == 0) PruneDestroyedThingKeys();
             TickShared();
 
             if (_watchers.Count > 0 && Find.TickManager.TicksGame % SnapshotIntervalTicks == 0)
@@ -981,8 +1021,7 @@ namespace RimCoopMod.GameComponents
                 {
                     if (ps.Dead)
                     {
-                        ForgetPuppetState(puppet);
-                        puppet.Destroy(DestroyMode.Vanish);
+                        DiscardPuppet(puppet);
                         known.Remove(ps.PawnId);
                         continue;
                     }
@@ -1004,6 +1043,14 @@ namespace RimCoopMod.GameComponents
 
                 if (ps.Dead) continue; // no tiene sentido pedir el look de alguien que ya murió
 
+                // Volvió a la vida (resurrección, el rechazo a la muerte de Anomaly): su cadáver seguía anotado y bloqueaba para
+                // siempre al títere nuevo (la apariencia que llegaba se ignoraba porque "ya existía").
+                if (known.TryGetValue(ps.PawnId, out var stale) && stale != null && (stale.Dead || stale.Destroyed))
+                {
+                    DiscardPuppet(stale);
+                    known.Remove(ps.PawnId);
+                }
+
                 float now = Time.realtimeSinceStartup;
                 if (!requested.TryGetValue(ps.PawnId, out float lastRequest) || now - lastRequest > AppearanceRequestRetrySeconds)
                 {
@@ -1020,13 +1067,7 @@ namespace RimCoopMod.GameComponents
 
             foreach (var oldId in known.Keys.Where(id => !seenIds.Contains(id)).ToList())
             {
-                if (known[oldId] != null)
-                {
-                    ForgetPuppetState(known[oldId]);
-                    if (known[oldId].Spawned) known[oldId].Destroy(DestroyMode.Vanish);
-                    else if (known[oldId].Corpse != null && !known[oldId].Corpse.Destroyed) known[oldId].Corpse.Destroy(DestroyMode.Vanish);
-                    else if (known[oldId].holdingOwner != null && !known[oldId].Destroyed) known[oldId].Destroy(DestroyMode.Vanish); // entidad que estaba en una plataforma
-                }
+                DiscardPuppet(known[oldId]); // vivo, cadáver o entidad que estaba en una plataforma
                 known.Remove(oldId);
             }
         }
@@ -1038,6 +1079,16 @@ namespace RimCoopMod.GameComponents
         /// trabajar, etc. No repetimos el forzado si sigue siendo el mismo trabajo (si no, la
         /// animación arrancaría de cero en cada foto y nunca se vería terminar nada).
         /// </summary>
+        // Trabajos cuyo efecto en el títere no es solo visual: ejecutar o reclutar de verdad a la copia del prisionero (pensamientos,
+        // cartas y reacción de la ideología en TU partida, a veces antes de que llegue la foto con el resultado real), carnear, domar,
+        // desnudar, llevar a alguien a una cama o secuestrarlo (pelea con la posición que manda la foto), lovin y apareo (embarazos),
+        // alimentarse de sangre, entrenar animales. Se buscan por la clase del driver para cubrir también los de otros mods.
+        private static readonly string[] SideEffectDrivers =
+        {
+            "Execute", "Slaughter", "PrisonerAttemptRecruit", "PrisonerEnslave", "Tame", "Strip", "TakeToBed", "Kidnap",
+            "ReleasePrisoner", "Lovin", "Mate", "Bloodfeed", "Train"
+        };
+
         private static readonly HashSet<string> MovementOnlyJobs = new HashSet<string>
         {
             "Goto", "GotoWander", "Wait_Wander", "GotoSafeTemperature", "Follow", "FollowClose", "Flee", "FleeAndCower", "Wait_MaintainPosture",
@@ -1145,8 +1196,9 @@ namespace RimCoopMod.GameComponents
             // con un mercader visitante, replicárselo al títere le abría el mismo diálogo de comercio
             // a CUALQUIERA que estuviera mirando esa base. No tiene sentido "comerciar" desde un títere.
             bool opensUi = driverName.Contains("TradeWithPawn");
+            bool sideEffects = SideEffectDrivers.Any(driverName.Contains);
 
-            if (MovementOnlyJobs.Contains(ps.CurJobDefName) || needsLord || opensUi)
+            if (MovementOnlyJobs.Contains(ps.CurJobDefName) || needsLord || opensUi || sideEffects)
             {
                 try { if (puppet.CurJob != null) puppet.jobs.EndCurrentJob(JobCondition.InterruptForced, false); } catch { }
                 return;
@@ -1206,9 +1258,11 @@ namespace RimCoopMod.GameComponents
             if (_syncedPawns.TryGetValue(hostPlayerId, out var pawns) && pawns.TryGetValue(hostThingId, out var pawn)) return pawn;
             if (_syncedThings.TryGetValue(hostPlayerId, out var things) && things.TryGetValue(hostThingId, out var thing)) return thing;
             if (_syncedPlants.TryGetValue(hostPlayerId, out var plants) && plants.TryGetValue(hostThingId, out var plant) && plant != null && !plant.Destroyed) return plant;
-            // Cosas que el pawn real lleva encima (mochila/manos): viven dentro del títere, no en el mapa.
-            foreach (var items in _puppetItems.Values)
-                if (items.TryGetValue(hostThingId, out var carried) && carried != null && !carried.Destroyed) return carried;
+            // Cosas que el pawn real lleva encima (mochila/manos): viven dentro del títere, no en el mapa. Solo títeres de ESA base:
+            // los ids son de cada partida y el mismo número en otra base es otra cosa (en otro mapa).
+            if (pawns != null)
+                foreach (var kv in _puppetItems)
+                    if (pawns.ContainsValue(kv.Key) && kv.Value.TryGetValue(hostThingId, out var carried) && carried != null && !carried.Destroyed) return carried;
             return null;
         }
 
@@ -1254,7 +1308,10 @@ namespace RimCoopMod.GameComponents
             if (def == null) return;
             // Un cadáver creado con ThingMaker no tiene al pawn muerto adentro: dibujarlo en las manos del títere tira una excepción
             // por frame ("Exception drawing ..." en Corpse.DynamicDrawPhaseAt). Se ve al títere sin cargar nada.
-            if (typeof(Corpse).IsAssignableFrom(def.thingClass)) return;
+            // Lo mismo con un pawn cargado (rescate, captura, un bebé: salía un Pawn sin salud ni historia, NullReferenceException al
+            // soltarlo) y un mueble desarmado (sin el mueble adentro).
+            if (typeof(Corpse).IsAssignableFrom(def.thingClass) || typeof(Pawn).IsAssignableFrom(def.thingClass)
+                || typeof(MinifiedThing).IsAssignableFrom(def.thingClass)) return;
             try
             {
                 var stuff = string.IsNullOrEmpty(f[2]) ? null : DefDatabase<ThingDef>.GetNamedSilentFail(f[2]);
@@ -1620,6 +1677,11 @@ namespace RimCoopMod.GameComponents
             var instance = Current.Game?.GetComponent<CoopSessionManager>();
             if (instance == null || !CoopClient.Instance.IsConnected) return true;
 
+            // Un títere es de la facción del jugador y no está en _pawnOwners: antes se lo tomaba como propio y se le podían dar
+            // órdenes a los colonos del dueño de la base (que las descartaba sin avisar).
+            if (PuppetPawnRegistry.IsPuppet(pawn))
+                return instance._puppetOwners.TryGetValue(pawn, out var puppetOwner) && puppetOwner == CoopClient.Instance.LocalPlayerId;
+
             int owner = instance._pawnOwners.TryGetValue(pawn.thingIDNumber, out var tagged)
                 ? tagged
                 : CoopClient.Instance.LocalPlayerId;
@@ -1811,6 +1873,7 @@ namespace RimCoopMod.GameComponents
                             // Si estaba mirando su base, el mapa espejo se saca ANTES que el punto del mapa mundial (si no queda un mapa huérfano).
                             try
                             {
+                                DiscardPuppetsOf(info.PlayerId);
                                 if (wobj.HasMap)
                                 {
                                     var mirrorMap = wobj.Map;
@@ -1903,6 +1966,16 @@ namespace RimCoopMod.GameComponents
                 case PacketType.MapSnapshot:
                     {
                         var snap = p.GetPayload<MapSnapshotPayload>();
+                        // No tengo su espejo (cargué otra partida, se cerró): el dueño seguía mandándome fotos para siempre.
+                        if (!_coopMaps.ContainsKey(snap.HostPlayerId))
+                        {
+                            if (!_unwatchSentAt.TryGetValue(snap.HostPlayerId, out float sentAt) || Time.realtimeSinceStartup - sentAt > 5f)
+                            {
+                                _unwatchSentAt[snap.HostPlayerId] = Time.realtimeSinceStartup;
+                                RequestUnwatch(snap.HostPlayerId);
+                            }
+                            break;
+                        }
                         _remoteSnapshots[snap.HostPlayerId] = snap;
                         if (!string.IsNullOrEmpty(snap.IdeoSummary)) _remoteIdeoSummaries[snap.HostPlayerId] = snap.IdeoSummary;
                         SyncPuppetPawns(snap);

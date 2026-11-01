@@ -174,23 +174,47 @@ namespace RimCoopMod.World
 namespace RimCoopMod.World
 {
     /// <summary>Misiones compartidas: cuando la misión dispara una incursión/amenaza, sube un 35 % por cada jugador sumado.</summary>
+    // Se escala solo mientras se dispara y se vuelve al valor original: antes el valor escalado quedaba guardado en la partida y,
+    // al cargar, se volvía a escalar encima.
     [HarmonyPatch(typeof(QuestPart_Incident), nameof(QuestPart_Incident.Notify_QuestSignalReceived))]
     public static class QuestPart_Incident_Scale_Patch
     {
         [HarmonyPrefix]
-        public static void Prefix(QuestPart_Incident __instance, Signal signal)
+        public static void Prefix(QuestPart_Incident __instance, Signal signal, out float __state)
         {
-            if (signal.tag == __instance.inSignal) CoopSessionManager.ScaleQuestIncident(__instance);
+            __state = signal.tag == __instance.inSignal ? CoopSessionManager.ScaleQuestIncident(__instance) : -1f;
+        }
+
+        [HarmonyFinalizer]
+        public static void Finalizer(QuestPart_Incident __instance, float __state)
+        {
+            if (__state >= 0f) CoopSessionManager.RestoreQuestIncident(__instance, __state);
         }
     }
 
-    [HarmonyPatch(typeof(QuestPartActivable), "Enable")]
-    public static class QuestPartActivable_Enable_Scale_Patch
+    // Generadores de amenazas: cada amenaza que generan sale escalada en el momento. Antes se escalaba solo al activarse el
+    // generador, y uno activo desde antes de compartir la misión (casi siempre) nunca subía.
+    [HarmonyPatch(typeof(QuestPart_ThreatsGenerator), nameof(QuestPart_ThreatsGenerator.MakeIntervalIncidents))]
+    public static class QuestPart_ThreatsGenerator_Scale_Patch
     {
-        [HarmonyPrefix]
-        public static void Prefix(QuestPartActivable __instance)
+        [HarmonyPostfix]
+        public static void Postfix(QuestPart_ThreatsGenerator __instance, ref System.Collections.Generic.IEnumerable<FiringIncident> __result)
         {
-            if (__instance is QuestPart_ThreatsGenerator generator) CoopSessionManager.ScaleQuestThreats(generator);
+            if (__result != null && CoopSessionManager.IsQuestShared(__instance.quest, out float mult) && mult > 1f)
+                __result = Scaled(__result, mult, __instance.quest);
+        }
+
+        private static System.Collections.Generic.IEnumerable<FiringIncident> Scaled(System.Collections.Generic.IEnumerable<FiringIncident> inner, float mult, Quest quest)
+        {
+            foreach (var fi in inner)
+            {
+                if (fi?.parms != null && fi.parms.points > 0f)
+                {
+                    fi.parms.points *= mult;
+                    CoopLog.Message(Loc.T("SessionManager_Quests.16", quest?.name, mult));
+                }
+                yield return fi;
+            }
         }
     }
 }

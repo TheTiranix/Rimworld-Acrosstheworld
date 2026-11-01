@@ -287,6 +287,13 @@ namespace RimCoopMod.GameComponents
 
         private readonly Dictionary<Thing, EditTrack> _thingEditTracks = new Dictionary<Thing, EditTrack>();
 
+        // Las claves son cosas del espejo: sin esto quedaban para siempre las que ya se destruyeron (crecía toda la sesión).
+        private void PruneDestroyedThingKeys()
+        {
+            foreach (var t in _thingStateSigs.Keys.Where(t => t.Destroyed).ToList()) _thingStateSigs.Remove(t);
+            foreach (var t in _thingEditTracks.Keys.Where(t => t.Destroyed).ToList()) _thingEditTracks.Remove(t);
+        }
+
         // Lado espejo: llega el estado del dueño.
         private void ApplyThingState(Thing t, string state)
         {

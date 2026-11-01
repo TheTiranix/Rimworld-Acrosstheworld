@@ -365,6 +365,7 @@ namespace RimCoopMod.GameComponents
         {
             try
             {
+                DiscardPuppetsOf(playerId);
                 if (wobj.HasMap)
                 {
                     var mirrorMap = wobj.Map;
@@ -373,14 +374,6 @@ namespace RimCoopMod.GameComponents
                 }
             }
             catch (Exception ex) { CoopLog.Warning(Loc.T("SessionManager_Dlc.06", wobj.RemotePlayerName, ex.Message)); }
-
-            if (_syncedPawns.TryGetValue(playerId, out var pawns))
-            {
-                foreach (var pawn in pawns.Values)
-                {
-                    ForgetPuppetState(pawn);
-                }
-            }
 
             _mirrorSkyfallers.Remove(playerId); // las copias visuales mueren con el mapa
             _coopMaps.Remove(playerId);
