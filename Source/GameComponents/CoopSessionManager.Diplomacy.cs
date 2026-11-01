@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using RimCoopMod.Networking;
+using RimCoopMod.UI;
 using RimWorld;
 using UnityEngine;
 using Verse;
@@ -63,6 +64,98 @@ namespace RimCoopMod.GameComponents
 
         private static bool Same(string a, string b) => string.Equals(a, b, System.StringComparison.OrdinalIgnoreCase);
 
+        // ---- Avisos ----
+
+        private enum DiploView { Neutral, Ally, WarPending, War }
+
+        private DiploView ViewOf(int playerId)
+        {
+            var r = RelationOf(playerId);
+            if (r == Relation.Ally) return DiploView.Ally;
+            if (r == Relation.Hostile) return DiploView.War;
+            return IsHostilePendingWith(playerId) ? DiploView.WarPending : DiploView.Neutral;
+        }
+
+        // Lo último que vi con cada uno (por nombre). La primera vez que se lo ve no hay carta: al conectar no se repite todo.
+        private readonly Dictionary<string, DiploView> _lastViews = new Dictionary<string, DiploView>(System.StringComparer.OrdinalIgnoreCase);
+
+        private void AnnounceRelationChanges()
+        {
+            foreach (var kv in _playerNames.ToList())
+            {
+                if (kv.Key == CoopClient.Instance.LocalPlayerId || string.IsNullOrEmpty(kv.Value)) continue;
+                var now = ViewOf(kv.Key);
+                if (!_lastViews.TryGetValue(kv.Value, out var before)) { _lastViews[kv.Value] = now; continue; }
+                if (before == now) continue;
+                _lastViews[kv.Value] = now;
+
+                string name = kv.Value;
+                switch (now)
+                {
+                    case DiploView.Ally: DiploLetter("Diplomacy.LetterAlly", name, LetterDefOf.PositiveEvent); break;
+                    case DiploView.WarPending: DiploLetter("Diplomacy.LetterWarPending", name, LetterDefOf.ThreatSmall, HostileStartsInMinutes(kv.Key)); break;
+                    case DiploView.War: DiploLetter("Diplomacy.LetterWar", name, LetterDefOf.ThreatBig); break;
+                    case DiploView.Neutral:
+                        DiploLetter(before == DiploView.Ally ? "Diplomacy.LetterBreak" : "Diplomacy.LetterPeace", name, LetterDefOf.NeutralEvent);
+                        break;
+                }
+            }
+        }
+
+        private void DiploLetter(string key, string name, LetterDef def, int minutes = 0)
+        {
+            _relayingLetter = true; // es mía, no un evento de mi base: no se les reenvía a quienes la miran
+            try { Find.LetterStack.ReceiveLetter(Loc.T(key + "Label", name, minutes), Loc.T(key + "Text", name, minutes), def); }
+            finally { _relayingLetter = false; }
+        }
+
+        // Propuestas que me hicieron (alianza o paz) y todavía no contesté: se muestran como ventana, también al volver a conectar.
+        private void ShowPendingProposals()
+        {
+            if (!_diplomacyKnown) return;
+            string me = CoopClient.Instance.LocalPlayerName;
+            var open = Find.WindowStack.Windows.OfType<Dialog_DiplomacyProposal>().ToList();
+            foreach (var kv in _playerNames.ToList())
+            {
+                if (kv.Key == CoopClient.Instance.LocalPlayerId || !_connectedPlayerIds.Contains(kv.Key)) continue;
+                foreach (bool peace in new[] { false, true })
+                {
+                    string from = PendingFrom(kv.Key, peace);
+                    if (!Same(from, kv.Value) || Same(from, me)) continue;
+                    if (open.Any(w => w.FromPlayerId == kv.Key && w.Peace == peace)) continue;
+                    if (IsSnoozed(DiploSnoozeKey(kv.Value, peace))) continue;
+                    Find.WindowStack.Add(new Dialog_DiplomacyProposal(kv.Key, kv.Value, peace));
+                }
+            }
+        }
+
+        private static string DiploSnoozeKey(string name, bool peace) => (peace ? "dp:" : "da:") + name;
+        public static void SnoozeDiplomacy(string name, bool peace) => Snooze(DiploSnoozeKey(name, peace));
+
+        /// <summary>Color del punto de la base en el mapa mundial según la relación (ver CoopPlayerBase.ExpandingIconColor).</summary>
+        public static Color? RelationColor(int playerId)
+        {
+            var instance = Current.Game?.GetComponent<CoopSessionManager>();
+            if (instance == null || !instance._diplomacyKnown) return null;
+            switch (instance.ViewOf(playerId))
+            {
+                case DiploView.Ally: return new Color(0.4f, 0.9f, 0.4f);
+                case DiploView.WarPending: return new Color(1f, 0.65f, 0.15f);
+                case DiploView.War: return new Color(0.95f, 0.3f, 0.25f);
+                default: return null; // neutral: el celeste de siempre (el del def)
+            }
+        }
+
+        /// <summary>"Relación: aliado / neutral / guerra en N min / en guerra" para el panel de la base.</summary>
+        public static string RelationLine(int playerId)
+        {
+            var instance = Current.Game?.GetComponent<CoopSessionManager>();
+            if (instance == null || !instance._diplomacyKnown) return null;
+            var view = instance.ViewOf(playerId);
+            string state = view == DiploView.WarPending ? Loc.T("Diplomacy.View.WarPending", HostileStartsInMinutes(playerId)) : Loc.T("Diplomacy.View." + view);
+            return Loc.T("Diplomacy.RelationLine", state);
+        }
+
         // ---- Lo que cada relación permite (se valida en quien recibe el pedido, no solo en los botones) ----
 
         // Un hostil no mira mi base: ni entrar ni seguir mirando cuando empieza la guerra.
@@ -99,6 +192,7 @@ namespace RimCoopMod.GameComponents
             if (Time.realtimeSinceStartup < _nextRelationCheck) return;
             _nextRelationCheck = Time.realtimeSinceStartup + 2f;
             EnforceRelations();
+            AnnounceRelationChanges(); // por ejemplo, el fin del aviso de guerra
         }
 
         private void EnforceRelations()
@@ -138,6 +232,7 @@ namespace RimCoopMod.GameComponents
             }
             TryMigrateCollaborators();
             EnforceRelations();
+            AnnounceRelationChanges();
         }
 
         // Quienes colaboraban en versiones anteriores siguen siendo aliados sin hacer nada: cada lado le propone alianza al otro (con

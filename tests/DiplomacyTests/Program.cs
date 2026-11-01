@@ -110,6 +110,16 @@ static class Program
         }
 
         {
+            var t = new DiplomacyTable(0);
+            t.ProposeAlliance("a", "b");
+            Check("Decline_Alliance", t.Decline("b", "a") == null && t.ProposeAlliance("b", "a") == null && t.Get("a", "b", 0) == Relation.Neutral);
+            Check("Decline_Nothing", t.Decline("c", "d") == "Diplomacy.NothingToDecline");
+            Check("Decline_OwnProposal", t.Decline("b", "a") == "Diplomacy.NothingToDecline"); // b propuso: no puede "rechazar" la suya
+            t.DeclareHostile("e", "f", 0);
+            t.ProposePeace("e", "f");
+            Check("Decline_Peace", t.Decline("f", "e") == null && t.Get("e", "f", 0) == Relation.Hostile && t.ProposePeace("f", "e") == null && t.Get("e", "f", 0) == Relation.Hostile);
+        }
+        {
             // Lado cliente: la tabla que manda el servidor reemplaza la anterior entera.
             var t = Allied("a", "b");
             t.Replace(new System.Collections.Generic.List<DiplomacyEntry>

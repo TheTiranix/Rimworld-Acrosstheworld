@@ -236,6 +236,7 @@ namespace RimCoopMod.GameComponents
             if (!CoopClient.Instance.IsConnected || Current.ProgramState != ProgramState.Playing) return;
 
             PruneOldSentOffers();
+            ShowPendingProposals();
             var windows = Find.WindowStack.Windows;
 
             foreach (var offer in _incomingOffers.ToList())

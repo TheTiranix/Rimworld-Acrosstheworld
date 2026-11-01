@@ -4,6 +4,7 @@ using RimCoopMod.Networking;
 using RimCoopMod.UI;
 using RimWorld;
 using RimWorld.Planet;
+using UnityEngine;
 using Verse;
 
 namespace RimCoopMod.World
@@ -147,9 +148,13 @@ namespace RimCoopMod.World
             }
         }
 
+        public override Color ExpandingIconColor => CoopSessionManager.RelationColor(RemotePlayerId) ?? base.ExpandingIconColor;
+
         public override string GetInspectString()
         {
             string text = Loc.T("PlayerBase.14", RemotePlayerName, ColonistCount, Wealth);
+            string relation = CoopSessionManager.RelationLine(RemotePlayerId);
+            if (!string.IsNullOrEmpty(relation)) text += "\n" + relation;
             string anomaly = CoopSessionManager.GetRemoteSnapshot(RemotePlayerId)?.DlcInfo;
             if (!string.IsNullOrEmpty(anomaly)) text += "\n" + anomaly;
             return text;

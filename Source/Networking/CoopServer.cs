@@ -565,6 +565,7 @@ namespace RimCoopMod.Networking
                     case "hostile": error = _diplomacy.DeclareHostile(from.PlayerName, target, NowUnix()); break;
                     case "peace": error = _diplomacy.ProposePeace(from.PlayerName, target); break;
                     case "break": error = _diplomacy.BreakAlliance(from.PlayerName, target); break;
+                    case "decline": error = _diplomacy.Decline(from.PlayerName, target); break;
                     default: error = "Diplomacy.UnknownPlayer"; break;
                 }
                 if (error == null)

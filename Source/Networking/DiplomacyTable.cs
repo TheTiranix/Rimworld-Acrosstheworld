@@ -113,6 +113,17 @@ namespace RimCoopMod.Networking
             return null;
         }
 
+        /// <summary>"from" rechaza la propuesta (de alianza o de paz) que le hizo "to": se borra y el otro puede volver a proponer.</summary>
+        public string Decline(string from, string to)
+        {
+            var e = Find(from, to);
+            if (e != null && Same(e.PendingAllyFrom, to)) e.PendingAllyFrom = "";
+            else if (e != null && Same(e.PendingPeaceFrom, to)) e.PendingPeaceFrom = "";
+            else return "Diplomacy.NothingToDecline";
+            Cleanup(e);
+            return null;
+        }
+
         /// <summary>Reemplaza todo por lo que mandó el servidor (lado cliente).</summary>
         public void Replace(IEnumerable<DiplomacyEntry> entries)
         {

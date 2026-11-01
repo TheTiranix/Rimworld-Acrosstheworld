@@ -20,8 +20,28 @@ and can see, visit, help, trade with or attack the others.
   you sent with *Collaborate* are real pawns in the owner's base and **help build** on their own according to their
   Construction priority (you can change it from the mirror); the progress of every job is visible in the mirror. The mirror never
   builds by itself: the jobs are done by the owner's game.
-- **Trade** between players (offers with accept/reject) and **attacks** with real raids.
+- **Diplomacy:** with every player you are **allied**, **neutral** or **at war** (see below). Collaborating and building in someone
+  else's base is between allies (up to 4 at a time); attacking, only at war.
+- **Trade** between players (offers with accept/reject, in two steps: nobody hands anything over until the offer is confirmed)
+  and **attacks** with real raids.
 - **Global chat** (`\` key), **pause by vote** and **shared game speed**.
+
+## Diplomacy
+
+From another player's base on the world map:
+
+- **Propose alliance:** if the other player accepts it too, you become **allies**. Allies can *Collaborate* (send each other
+  colonists), build and edit in each other's base, and share quests, trade ships and research. Each player can have **up to 4
+  allies** at a time. *Break alliance* ends it right away (colonists already sent stay where they are, with their owner).
+- **Neutral** (the default): you can watch each other's bases and trade, but not collaborate or build in each other's base (it
+  says "Only watching" when you enter).
+- **Declare war:** one player declares it, it breaks the alliance if there was one and **takes effect after 5 minutes** (both get a
+  letter). At war you can **attack** each other (the server doesn't let you attack anyone else), and you cannot watch each other's
+  base or trade. **Propose peace** goes back to neutral when both propose it.
+- Proposals made to you arrive as a window (*Accept*, *Reject* or *Later*). Each base's dot on the world map is colored by the
+  relation: green allied, light blue neutral, orange war pending, red at war.
+- The server stores the diplomacy (per save, in `ServerData/<save>/diplomacy.txt`), so it is the same for both players and does not
+  depend on the save each one loads. Players who already collaborated in older versions become allies automatically.
 - **English and Spanish**, switchable at any time (see below).
 
 ## Language

@@ -56,7 +56,7 @@ namespace RimCoopMod.Networking
         ColonistManifest = 37, // al entrar, el server me dice qué colonos tengo que tener (con copia) y cuáles están en otro lado
 
         // ---- Diplomacia (aliado / neutral / hostil), la guarda el servidor: ver DiplomacyTable ----
-        DiplomacyMessage = 38, // un jugador pide un cambio: ally | hostile | peace | break (lo resuelve el servidor, no se reenvía)
+        DiplomacyMessage = 38, // un jugador pide un cambio: ally | hostile | peace | break | decline (lo resuelve el servidor, no se reenvía)
         DiplomacyState = 39    // el servidor manda la tabla entera a todos cada vez que cambia (y a cada uno al entrar)
     }
 

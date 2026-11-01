@@ -20,8 +20,29 @@ y puede ver, visitar, ayudar, comerciar o atacar a los demás.
   mandaste con *Colaborar* son pawns reales en la base del dueño y **ayudan a construir** solos según su prioridad de
   Construcción (la podés cambiar desde el espejo); el avance de cada obra se ve en el espejo. El espejo nunca construye por su
   cuenta: las obras las hace el juego del dueño.
-- **Comercio** entre jugadores (ofertas con aceptar/rechazar) y **ataques** con incursiones reales.
+- **Diplomacia:** con cada jugador estás **aliado**, **neutral** o **en guerra** (ver abajo). Colaborar y construir en la base
+  del otro es entre aliados (hasta 4 a la vez); atacar, solo en guerra.
+- **Comercio** entre jugadores (ofertas con aceptar/rechazar, en dos pasos: nadie entrega nada hasta que la oferta se confirma)
+  y **ataques** con incursiones reales.
 - **Chat global** (tecla `\`), **pausa por votación** y **velocidad compartida**.
+
+## Diplomacia
+
+Desde la base de otro jugador en el mapa mundial:
+
+- **Proponer alianza:** si el otro también la acepta, quedan **aliados**. Entre aliados se puede *Colaborar* (mandarse colonos),
+  construir y editar en la base del otro, y compartir misiones, naves comerciales e investigación. Cada jugador puede tener
+  **hasta 4 aliados** a la vez. *Romper alianza* la corta en el momento (los colonos que ya se mandaron se quedan donde están,
+  con su dueño).
+- **Neutral** (lo normal): se pueden mirar las bases y comerciar, pero no colaborar ni construir en la base del otro (al entrar
+  dice "Solo mirando").
+- **Declarar guerra:** la declara uno solo, rompe la alianza si había y **empieza a valer en 5 minutos** (los dos reciben una
+  carta). En guerra se pueden **atacar** (el servidor no deja atacar a nadie más), y no pueden mirar la base del otro ni
+  comerciar. **Proponer paz** vuelve a neutral cuando los dos la proponen.
+- Las propuestas que te hacen llegan como ventana (*Aceptar*, *Rechazar* o *Más tarde*). El punto de cada base en el mapa
+  mundial se pinta según la relación: verde aliado, celeste neutral, naranja guerra en aviso, rojo en guerra.
+- La diplomacia la guarda el servidor (por partida, en `ServerData/<partida>/diplomacy.txt`), así que es la misma para los dos y
+  no depende de la partida que cargue cada uno. Quienes ya colaboraban en versiones anteriores quedan aliados solos.
 
 ## Idioma
 
