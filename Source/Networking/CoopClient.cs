@@ -463,6 +463,12 @@ namespace RimCoopMod.Networking
             }));
         }
 
+        public void SendDiplomacy(int toPlayerId, string kind)
+        {
+            if (!IsConnected) return;
+            Send(Packet.Create(PacketType.DiplomacyMessage, new DiplomacyMessagePayload { FromPlayerId = LocalPlayerId, FromPlayerName = LocalPlayerName, ToPlayerId = toPlayerId, Kind = kind }));
+        }
+
         public void SendSpeedChange(int speed)
         {
             if (!IsConnected) return;

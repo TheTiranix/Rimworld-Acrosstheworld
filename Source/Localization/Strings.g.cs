@@ -455,6 +455,7 @@ namespace RimCoopMod
             { "Diplomacy.NotAllied", "No sos aliado de {0}." },
             { "Diplomacy.UnknownPlayer", "Ese jugador no está en este servidor." },
             { "Diplomacy.AttackNotHostile", "Solo podés atacar a {0} si están en guerra y ya pasó el aviso." },
+            { "Diplomacy.MigrationCapped", "Ya tenés el máximo de 4 aliados: con {0} seguís en buenos términos (neutral) pero ya no colaboran. Podés cambiar de aliados desde su base." },
         };
 
         public static readonly Dictionary<string, string> En = new Dictionary<string, string>
@@ -907,6 +908,7 @@ namespace RimCoopMod
             { "Diplomacy.NotAllied", "You are not allied with {0}." },
             { "Diplomacy.UnknownPlayer", "That player is not on this server." },
             { "Diplomacy.AttackNotHostile", "You can only attack {0} if you are at war and the warning period is over." },
+            { "Diplomacy.MigrationCapped", "You already have the maximum of 4 allies: you stay on good terms (neutral) with {0} but no longer collaborate. You can change allies from their base." },
         };
     }
 }

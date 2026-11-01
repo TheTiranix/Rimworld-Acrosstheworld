@@ -124,8 +124,8 @@ namespace RimCoopMod.GameComponents
             }
         }
 
-        private bool IsCollaborator(int playerId) =>
-            _playerNames.TryGetValue(playerId, out var name) && _collaboratorNames.Contains(name);
+        // Colaborar = ser aliados según el servidor (ver CoopSessionManager.Diplomacy). _collaboratorNames queda solo para migrar.
+        private bool IsCollaborator(int playerId) => RelationOf(playerId) == Relation.Ally;
 
         private List<int> OnlineCollaborators(int exceptPlayerId = -1) =>
             _connectedPlayerIds.Where(id => id != CoopClient.Instance.LocalPlayerId && id != exceptPlayerId && IsCollaborator(id)).ToList();
@@ -137,26 +137,21 @@ namespace RimCoopMod.GameComponents
             return instance != null && instance.IsCollaborator(playerId);
         }
 
-        /// <summary>Corta la colaboración: se deja de compartir investigación (en las dos puntas). Los colonos ya enviados no se tocan.</summary>
+        /// <summary>Corta la colaboración = rompe la alianza (lo resuelve el servidor, también si el otro está desconectado). Los colonos ya enviados no se tocan.</summary>
         public static void StopCollaborating(int playerId)
         {
             var instance = Current.Game?.GetComponent<CoopSessionManager>();
             if (instance == null || !instance._playerNames.TryGetValue(playerId, out var name)) return;
-            if (!instance._collaboratorNames.Remove(name)) return;
-
-            if (instance._connectedPlayerIds.Contains(playerId)) CoopClient.Instance.SendResearchSync(playerId, "leave", "");
-            else instance._pendingLeaveNames.Add(name);
-            Messages.Message(Loc.T("SessionManager_Shared.02", name), MessageTypeDefOf.NeutralEvent, false);
+            instance._collaboratorNames.Remove(name);
+            RequestDiplomacy(playerId, "break");
         }
 
-        /// <summary>Empieza (o se confirma) una colaboración: desde ahora se comparte la investigación con ese jugador.</summary>
+        /// <summary>Me mandaron colonos o aceptaron los míos: si ya somos aliados se pone al día la investigación; si no, se propone la alianza.</summary>
         private void AddCollaborator(int playerId)
         {
             if (!_playerNames.TryGetValue(playerId, out var name) || string.IsNullOrEmpty(name)) return;
-            _pendingLeaveNames.Remove(name); // volvieron a colaborar: ya no hay que avisar que se cortó
-            bool isNew = _collaboratorNames.Add(name);
-            if (isNew) Messages.Message(Loc.T("SessionManager_Shared.03", name), MessageTypeDefOf.PositiveEvent, false);
-            SendResearchFullTo(playerId);
+            if (IsCollaborator(playerId)) { SendResearchFullTo(playerId); return; }
+            if (_diplomacyKnown && RelationOf(playerId) == Relation.Neutral && LocalAllyCount() < DiplomacyTable.MaxAllies) RequestDiplomacy(playerId, "ally");
         }
 
         private static string ResearchProgressString()

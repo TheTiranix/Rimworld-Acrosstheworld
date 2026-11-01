@@ -109,6 +109,22 @@ static class Program
             Check("Load_MissingFile", u.Entries.Count == 0);
         }
 
+        {
+            // Lado cliente: la tabla que manda el servidor reemplaza la anterior entera.
+            var t = Allied("a", "b");
+            t.Replace(new System.Collections.Generic.List<DiplomacyEntry>
+            {
+                new DiplomacyEntry { A = "a", B = "c", State = Relation.Ally },
+                new DiplomacyEntry { A = "a", B = "d", State = Relation.Hostile, HostileSinceUnix = 10 },
+                new DiplomacyEntry { A = "x", B = "x", State = Relation.Ally },
+            });
+            Check("Replace_FromServer.old", t.Get("a", "b", 0) == Relation.Neutral);
+            Check("Replace_FromServer.new", t.Get("A", "c", 0) == Relation.Ally && t.AllyCount("a") == 1 && t.IsHostilePending("a", "d", 10));
+            Check("Replace_FromServer.selfIgnored", t.AllyCount("x") == 0);
+            t.Replace(null);
+            Check("Replace_Null", t.Entries.Count == 0);
+        }
+
         WireTests();
         ServerTests();
 

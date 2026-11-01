@@ -1854,6 +1854,7 @@ namespace RimCoopMod.GameComponents
                         _playerNames[info.PlayerId] = info.PlayerName;
                         RestorePawnOwners();
                         ForceQuestResendFor(info.PlayerName); // si estaba sumado a una misión mía, se pone al día apenas vuelve
+                        TryMigrateCollaborators();
                         EnsureRemoteBase(info);
                         SendModListTo(info.PlayerId); // el que entra recibe mi lista de mods/DLC
                         if (_pendingLeaveNames.Remove(info.PlayerName)) CoopClient.Instance.SendResearchSync(info.PlayerId, "leave", ""); // corté con él mientras estaba desconectado
@@ -2014,6 +2015,10 @@ namespace RimCoopMod.GameComponents
 
                 case PacketType.BaseSnapshot:
                     ApplyBaseSnapshot(p.GetPayload<BaseSnapshotPayload>());
+                    break;
+
+                case PacketType.DiplomacyState:
+                    HandleDiplomacyState(p.GetPayload<DiplomacyStatePayload>());
                     break;
 
                 case PacketType.ColonistManifest:
@@ -2327,7 +2332,8 @@ namespace RimCoopMod.GameComponents
             while (CoopClient.Instance.IncomingPackets.TryPeek(out var peeked))
             {
                 var t = peeked.Type;
-                bool safe = t == PacketType.WorldData || t == PacketType.PlayerJoined || t == PacketType.PlayerLeft || t == PacketType.PlayerUpdate || t == PacketType.Chat;
+                bool safe = t == PacketType.WorldData || t == PacketType.PlayerJoined || t == PacketType.PlayerLeft || t == PacketType.PlayerUpdate || t == PacketType.Chat
+                    || t == PacketType.DiplomacyState;
                 if (!safe || !CoopClient.Instance.IncomingPackets.TryDequeue(out var p)) break;
 
                 try { instance.HandlePacket(p); }
