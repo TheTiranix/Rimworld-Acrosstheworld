@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Tests de la lógica de diplomacia (sin RimWorld): dotnet build -c Release y correr el .exe; sale con 1 si algo falla. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net472</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\..\Source\Networking\DiplomacyTable.cs" Link="DiplomacyTable.cs" />
+  </ItemGroup>
+</Project>
