@@ -146,6 +146,15 @@ namespace RimCoopMod.GameComponents
 
         private void HandleTradeMessage(TradeMessagePayload m)
         {
+            // En guerra no se comercia: se contesta que no, y lo que llegue de antes se anula.
+            if (RelationOf(m.FromPlayerId) == Relation.Hostile)
+            {
+                if (m.Kind == "offer") CoopClient.Instance.SendTradeMessage(m.FromPlayerId, "reject", "", m.OfferId);
+                else if (m.Kind == "accept") CoopClient.Instance.SendTradeMessage(m.FromPlayerId, "void", "", m.OfferId);
+                if (m.Kind == "offer" || m.Kind == "stockreq") TellOnce(m.FromPlayerId, "trade", Loc.Wire("Diplomacy.TradeHostile", CoopClient.Instance.LocalPlayerName));
+                if (m.Kind != "reject" && m.Kind != "void") return;
+            }
+
             switch (m.Kind)
             {
                 case "stockreq":

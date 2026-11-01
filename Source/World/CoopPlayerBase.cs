@@ -29,23 +29,37 @@ namespace RimCoopMod.World
         // (eso se sincroniza por red, ver CoopSessionManager). Ver Defs/MapGeneratorDefs.
         public override MapGeneratorDef MapGeneratorDef => DefDatabase<MapGeneratorDef>.GetNamed("RimCoop_MirrorBase");
 
+        private static Command_Action Disabled(Command_Action c, string reason)
+        {
+            if (reason != null) c.Disable(reason);
+            return c;
+        }
+
         public override IEnumerable<Gizmo> GetGizmos()
         {
             foreach (var g in base.GetGizmos()) yield return g;
 
-            yield return new Command_Action
+            var relation = CoopSessionManager.RelationWith(RemotePlayerId);
+            bool ally = relation == Relation.Ally;
+            bool hostile = relation == Relation.Hostile;
+            int warMinutes = CoopSessionManager.HostileStartsInMinutes(RemotePlayerId);
+            string me = CoopClient.Instance.LocalPlayerName;
+
+            foreach (var g in DiplomacyGizmos(relation, warMinutes, me)) yield return g;
+
+            yield return Disabled(new Command_Action
             {
                 defaultLabel = Loc.T("PlayerBase.01"),
                 defaultDesc = Loc.T("PlayerBase.02", RemotePlayerName),
                 action = () => Find.WindowStack.Add(new Dialog_TradeOffer(RemotePlayerId, RemotePlayerName))
-            };
+            }, hostile ? Loc.T("Diplomacy.HostileReason") : null);
 
-            yield return new Command_Action
+            yield return Disabled(new Command_Action
             {
                 defaultLabel = Loc.T("PlayerBase.03"),
                 defaultDesc = Loc.T("PlayerBase.04", RemotePlayerName),
                 action = () => Find.WindowStack.Add(new Dialog_ChooseColonistsToSend(this))
-            };
+            }, ally ? null : Loc.T("Diplomacy.NeedAllyReason"));
 
             if (CoopSessionManager.IsCollaboratingWith(RemotePlayerId))
             {
@@ -66,12 +80,12 @@ namespace RimCoopMod.World
                 };
             }
 
-            yield return new Command_Action
+            yield return Disabled(new Command_Action
             {
                 defaultLabel = Loc.T("PlayerBase.10"),
                 defaultDesc = Loc.T("PlayerBase.11", RemotePlayerName),
                 action = () => CoopSessionManager.EnterCoopMap(this)
-            };
+            }, hostile ? Loc.T("Diplomacy.HostileReason") : null);
 
             string ideoSummary = CoopSessionManager.GetRemoteIdeoSummary(RemotePlayerId);
             if (!string.IsNullOrEmpty(ideoSummary))
@@ -84,12 +98,53 @@ namespace RimCoopMod.World
                 };
             }
 
-            yield return new Command_Action
+            yield return Disabled(new Command_Action
             {
                 defaultLabel = Loc.T("PlayerBase.12"),
                 defaultDesc = Loc.T("PlayerBase.13", RemotePlayerName),
                 action = () => Find.WindowStack.Add(new Dialog_AttackStrength(RemotePlayerId, RemotePlayerName, Wealth))
-            };
+            }, hostile ? null : warMinutes > 0 ? Loc.T("Diplomacy.AttackReasonWarning", warMinutes) : Loc.T("Diplomacy.AttackReasonPeace"));
+        }
+
+        // Alianza (proponer/aceptar), guerra y paz. Romper la alianza es el "Dejar de colaborar" de siempre (ver más abajo).
+        private IEnumerable<Gizmo> DiplomacyGizmos(Relation relation, int warMinutes, string me)
+        {
+            if (relation == Relation.Neutral && warMinutes == 0)
+            {
+                string pending = CoopSessionManager.PendingFrom(RemotePlayerId, peace: false);
+                bool theyProposed = !string.IsNullOrEmpty(pending) && !string.Equals(pending, me, System.StringComparison.OrdinalIgnoreCase);
+                bool iProposed = string.Equals(pending, me, System.StringComparison.OrdinalIgnoreCase);
+                string reason = iProposed ? Loc.T("Diplomacy.AllyPendingMine", RemotePlayerName)
+                    : CoopSessionManager.LocalAllyCount() >= DiplomacyTable.MaxAllies ? Loc.T("Diplomacy.MaxAlliesReason") : null;
+                yield return Disabled(new Command_Action
+                {
+                    defaultLabel = Loc.T(theyProposed ? "Diplomacy.AcceptAlly" : "Diplomacy.ProposeAlly"),
+                    defaultDesc = Loc.T("Diplomacy.ProposeAllyDesc", RemotePlayerName),
+                    action = () => CoopSessionManager.RequestDiplomacy(RemotePlayerId, "ally")
+                }, reason);
+            }
+
+            if (relation != Relation.Hostile && warMinutes == 0)
+            {
+                yield return new Command_Action
+                {
+                    defaultLabel = Loc.T("Diplomacy.DeclareWar"),
+                    defaultDesc = Loc.T("Diplomacy.DeclareWarDesc", RemotePlayerName),
+                    action = () => Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(
+                        Loc.T("Diplomacy.DeclareWarConfirm", RemotePlayerName),
+                        () => CoopSessionManager.RequestDiplomacy(RemotePlayerId, "hostile"), destructive: true))
+                };
+            }
+            else
+            {
+                bool iProposed = string.Equals(CoopSessionManager.PendingFrom(RemotePlayerId, peace: true), me, System.StringComparison.OrdinalIgnoreCase);
+                yield return Disabled(new Command_Action
+                {
+                    defaultLabel = Loc.T("Diplomacy.ProposePeace"),
+                    defaultDesc = Loc.T("Diplomacy.ProposePeaceDesc", RemotePlayerName),
+                    action = () => CoopSessionManager.RequestDiplomacy(RemotePlayerId, "peace")
+                }, iProposed ? Loc.T("Diplomacy.PeacePendingMine", RemotePlayerName) : null);
+            }
         }
 
         public override string GetInspectString()

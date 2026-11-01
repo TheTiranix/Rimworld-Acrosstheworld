@@ -263,6 +263,7 @@ namespace RimCoopMod.GameComponents
             if (snapshot == null) return;
 
             DrawRitualOverlay(currentMap, snapshot);
+            if (RelationOf(hostPlayerId) != Relation.Ally) DrawViewOnlyNotice();
 
             _syncedPawns.TryGetValue(hostPlayerId, out var puppets);
 
@@ -409,6 +410,7 @@ namespace RimCoopMod.GameComponents
 
             FlushAreaEdits();
             UpdateColonistLedger();
+            EnforceRelationsPeriodically();
 
             if (_pendingProposePause.HasValue && Time.realtimeSinceStartup >= _voteDeadlineTick)
             {
@@ -1693,6 +1695,15 @@ namespace RimCoopMod.GameComponents
         // contesta ningún JoinResult ni se vuelve a "colaborar" con nadie.
         private void HandleJoinRequest(JoinRequestPayload req, bool restoring = false)
         {
+            string me = CoopClient.Instance.LocalPlayerName;
+            bool returningHome = req.OwnerNames != null && req.OwnerNames.Count == req.SerializedPawns.Count && req.OwnerNames.All(o => o == me);
+            if (!restoring && !returningHome && RelationOf(req.FromPlayerId) != Relation.Ally)
+            {
+                CoopClient.Instance.SendJoinResult(req.FromPlayerId, false, Loc.Wire("Diplomacy.NeedAlly", me));
+                ReturnToSender(req, Enumerable.Range(0, req.SerializedPawns.Count));
+                return;
+            }
+
             var map = LocalBaseMap;
             if (map == null)
             {
@@ -1942,6 +1953,7 @@ namespace RimCoopMod.GameComponents
                 case PacketType.WatchRequest:
                     {
                         var w = p.GetPayload<WatchRequestPayload>();
+                        if (RefuseHostileWatcher(w.FromPlayerId)) break;
                         _watchers.Add(w.FromPlayerId);
                         _ideoSummaryDue = true; // el que empieza a mirar necesita mi ideología ya, no dentro de unos segundos
                         _sentAppearances.Remove(w.FromPlayerId); // su mapa espejo es nuevo: necesita el aspecto de todos de nuevo
@@ -2007,6 +2019,7 @@ namespace RimCoopMod.GameComponents
                 case PacketType.BaseSnapshotRequest:
                     {
                         var req = p.GetPayload<BaseSnapshotRequestPayload>();
+                        if (RefuseHostileWatcher(req.FromPlayerId)) break;
                         _watchers.Add(req.FromPlayerId); // por si acaso no llegó el WatchRequest antes
                         _forceFullPlants = true;
                         BroadcastBaseSnapshot();
@@ -2114,6 +2127,12 @@ namespace RimCoopMod.GameComponents
         {
             var map = LocalBaseMap;
             if (map == null) return;
+
+            if (RelationOf(req.FromPlayerId) != Relation.Ally)
+            {
+                TellOnce(req.FromPlayerId, "build", Loc.Wire("Diplomacy.NeedAllyBuild", CoopClient.Instance.LocalPlayerName));
+                return;
+            }
 
             if (HandleExtraRequest(req, map)) return;
 
