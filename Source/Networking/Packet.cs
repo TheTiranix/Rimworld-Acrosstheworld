@@ -53,7 +53,25 @@ namespace RimCoopMod.Networking
 
         // ---- Registro de colonos enviados (para no duplicarlos ni perderlos si alguien carga una partida vieja) ----
         ColonistGone = 36,     // un colono que yo tenía murió o ya no está: el server lo saca del registro
-        ColonistManifest = 37  // al entrar, el server me dice qué colonos tengo que tener (con copia) y cuáles están en otro lado
+        ColonistManifest = 37, // al entrar, el server me dice qué colonos tengo que tener (con copia) y cuáles están en otro lado
+
+        // ---- Diplomacia (aliado / neutral / hostil), la guarda el servidor: ver DiplomacyTable ----
+        DiplomacyMessage = 38, // un jugador pide un cambio: ally | hostile | peace | break (lo resuelve el servidor, no se reenvía)
+        DiplomacyState = 39    // el servidor manda la tabla entera a todos cada vez que cambia (y a cada uno al entrar)
+    }
+
+    public class DiplomacyMessagePayload
+    {
+        public int FromPlayerId;
+        public string FromPlayerName;
+        public int ToPlayerId;
+        public string Kind;
+    }
+
+    public class DiplomacyStatePayload
+    {
+        public long ServerNowUnix; // la hora del servidor al mandarla: el cliente cuenta el aviso de hostilidad desde acá
+        public List<DiplomacyEntry> Entries = new List<DiplomacyEntry>();
     }
 
     public class ColonistGonePayload
@@ -134,7 +152,7 @@ namespace RimCoopMod.Networking
     public static class ProtocolInfo
     {
         /// <summary>Subir cada vez que cambia el formato de un paquete. Mod y servidor tienen que coincidir.</summary>
-        public const int Version = 30;
+        public const int Version = 31;
     }
 
     public class ServerInfoPayload

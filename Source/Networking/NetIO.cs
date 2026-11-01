@@ -68,7 +68,7 @@ namespace RimCoopMod.Networking
         public const int MaxHandshakeFrameSize = 64 * 1024;
         private const int MaxDecompressedSize = 256 * 1024 * 1024;
 
-        public static Packet ReadPacket(NetworkStream stream, int maxFrameSize = MaxFrameSize)
+        public static Packet ReadPacket(Stream stream, int maxFrameSize = MaxFrameSize)
         {
             byte[] lenBuf = ReadExact(stream, 4);
             if (lenBuf == null) return null;
@@ -626,6 +626,33 @@ namespace RimCoopMod.Networking
                         break;
                     }
 
+                case PacketType.DiplomacyMessage:
+                    {
+                        var p = (DiplomacyMessagePayload)packet.Payload;
+                        bw.Write(p.FromPlayerId);
+                        bw.Write(p.FromPlayerName ?? "");
+                        bw.Write(p.ToPlayerId);
+                        bw.Write(p.Kind ?? "");
+                        break;
+                    }
+
+                case PacketType.DiplomacyState:
+                    {
+                        var p = (DiplomacyStatePayload)packet.Payload;
+                        bw.Write(p.ServerNowUnix);
+                        bw.Write(p.Entries.Count);
+                        foreach (var e in p.Entries)
+                        {
+                            bw.Write(e.A ?? "");
+                            bw.Write(e.B ?? "");
+                            bw.Write((byte)e.State);
+                            bw.Write(e.HostileSinceUnix);
+                            bw.Write(e.PendingAllyFrom ?? "");
+                            bw.Write(e.PendingPeaceFrom ?? "");
+                        }
+                        break;
+                    }
+
                 case PacketType.PingResponse:
                     {
                         var p = (PingResponsePayload)packet.Payload;
@@ -1157,6 +1184,28 @@ namespace RimCoopMod.Networking
                         return p;
                     }
 
+                case PacketType.DiplomacyMessage:
+                    return new DiplomacyMessagePayload
+                    {
+                        FromPlayerId = br.ReadInt32(),
+                        FromPlayerName = br.ReadString(),
+                        ToPlayerId = br.ReadInt32(),
+                        Kind = br.ReadString()
+                    };
+
+                case PacketType.DiplomacyState:
+                    {
+                        var p = new DiplomacyStatePayload { ServerNowUnix = br.ReadInt64() };
+                        int n = br.ReadInt32();
+                        for (int i = 0; i < n; i++)
+                            p.Entries.Add(new DiplomacyEntry
+                            {
+                                A = br.ReadString(), B = br.ReadString(), State = (Relation)br.ReadByte(), HostileSinceUnix = br.ReadInt64(),
+                                PendingAllyFrom = br.ReadString(), PendingPeaceFrom = br.ReadString()
+                            });
+                        return p;
+                    }
+
                 case PacketType.PingResponse:
                     return new PingResponsePayload
                     {
@@ -1183,7 +1232,7 @@ namespace RimCoopMod.Networking
             };
         }
 
-        private static byte[] ReadExact(NetworkStream stream, int count)
+        private static byte[] ReadExact(Stream stream, int count)
         {
             byte[] buffer = new byte[count];
             int offset = 0;

@@ -109,8 +109,31 @@ static class Program
             Check("Load_MissingFile", u.Entries.Count == 0);
         }
 
+        WireTests();
+
         Console.WriteLine(_failed == 0 ? "ALL OK" : _failed + " FAILED");
         return _failed == 0 ? 0 : 1;
+    }
+
+    static Packet RoundTrip(Packet p)
+    {
+        using (var ms = new MemoryStream(NetIO.EncodeFrame(p))) return NetIO.ReadPacket(ms);
+    }
+
+    static void WireTests()
+    {
+        var msg = (DiplomacyMessagePayload)RoundTrip(Packet.Create(PacketType.DiplomacyMessage,
+            new DiplomacyMessagePayload { FromPlayerId = 3, FromPlayerName = null, ToPlayerId = 7, Kind = "ally" })).Payload;
+        Check("Wire_Message", msg.FromPlayerId == 3 && msg.FromPlayerName == "" && msg.ToPlayerId == 7 && msg.Kind == "ally");
+
+        var state = new DiplomacyStatePayload { ServerNowUnix = 1234567890123L };
+        state.Entries.Add(new DiplomacyEntry { A = "Agus", B = "Bea", State = Relation.Hostile, HostileSinceUnix = 99, PendingAllyFrom = null, PendingPeaceFrom = "Bea" });
+        state.Entries.Add(new DiplomacyEntry { A = "c", B = "d", State = Relation.Ally });
+        var back = (DiplomacyStatePayload)RoundTrip(Packet.Create(PacketType.DiplomacyState, state)).Payload;
+        Check("Wire_State.now", back.ServerNowUnix == 1234567890123L && back.Entries.Count == 2);
+        var e0 = back.Entries[0];
+        Check("Wire_State.entry", e0.A == "Agus" && e0.B == "Bea" && e0.State == Relation.Hostile && e0.HostileSinceUnix == 99
+            && e0.PendingAllyFrom == "" && e0.PendingPeaceFrom == "Bea" && back.Entries[1].State == Relation.Ally);
     }
 
     static bool Has(DiplomacyEntry e, string n) => string.Equals(e.A, n, StringComparison.OrdinalIgnoreCase) || string.Equals(e.B, n, StringComparison.OrdinalIgnoreCase);
