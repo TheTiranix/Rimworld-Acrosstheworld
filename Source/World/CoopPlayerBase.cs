@@ -56,12 +56,26 @@ namespace RimCoopMod.World
                 action = () => Find.WindowStack.Add(new Dialog_TradeOffer(RemotePlayerId, RemotePlayerName))
             }, hostile ? Loc.T("Diplomacy.HostileReason") : null);
 
-            yield return Disabled(new Command_Action
+            // Sin alianza (se rompió, o hay guerra) igual se le pueden devolver los colonos que ese jugador te prestó: si no, quedaban
+            // varados hasta volver a aliarse.
+            if (ally)
             {
-                defaultLabel = Loc.T("PlayerBase.03"),
-                defaultDesc = Loc.T("PlayerBase.04", RemotePlayerName),
-                action = () => Find.WindowStack.Add(new Dialog_ChooseColonistsToSend(this))
-            }, ally ? null : Loc.T("Diplomacy.NeedAllyReason"));
+                yield return new Command_Action
+                {
+                    defaultLabel = Loc.T("PlayerBase.03"),
+                    defaultDesc = Loc.T("PlayerBase.04", RemotePlayerName),
+                    action = () => Find.WindowStack.Add(new Dialog_ChooseColonistsToSend(this))
+                };
+            }
+            else
+            {
+                yield return Disabled(new Command_Action
+                {
+                    defaultLabel = Loc.T("Diplomacy.ReturnColonists"),
+                    defaultDesc = Loc.T("Diplomacy.ReturnColonistsDesc", RemotePlayerName),
+                    action = () => Find.WindowStack.Add(new Dialog_ChooseColonistsToSend(this))
+                }, Dialog_ChooseColonistsToSend.LentBy(RemotePlayerName).Count == 0 ? Loc.T("Diplomacy.NothingToReturn", RemotePlayerName) : null);
+            }
 
             if (CoopSessionManager.IsCollaboratingWith(RemotePlayerId))
             {

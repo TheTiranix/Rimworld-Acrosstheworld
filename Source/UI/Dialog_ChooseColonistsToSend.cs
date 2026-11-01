@@ -32,7 +32,18 @@ namespace RimCoopMod.UI
 
             var map = global::RimCoopMod.GameComponents.CoopSessionManager.LocalBaseMap;
             // Solo los que están en el mapa: uno en una cápsula de criosueño o cargado en un transporte se copiaba y quedaba también acá.
-            _candidates = map?.mapPawns?.FreeColonistsSpawned?.ToList() ?? new List<Pawn>();
+            // Sin alianza, solo se le pueden devolver los que ese jugador te prestó (él los recibe aunque no sean aliados).
+            bool ally = global::RimCoopMod.GameComponents.CoopSessionManager.RelationWith(target.RemotePlayerId) == Relation.Ally;
+            _candidates = ally ? map?.mapPawns?.FreeColonistsSpawned?.ToList() ?? new List<Pawn>() : LentBy(target.RemotePlayerName);
+        }
+
+        /// <summary>Colonos de mi base que en realidad son de ese jugador (me los mandó con Colaborar).</summary>
+        public static List<Pawn> LentBy(string ownerName)
+        {
+            var map = global::RimCoopMod.GameComponents.CoopSessionManager.LocalBaseMap;
+            return map?.mapPawns?.FreeColonistsSpawned?
+                .Where(p => !string.IsNullOrEmpty(ownerName) && global::RimCoopMod.GameComponents.CoopSessionManager.GetOwnerName(p) == ownerName)
+                .ToList() ?? new List<Pawn>();
         }
 
         public override void DoWindowContents(Rect inRect)

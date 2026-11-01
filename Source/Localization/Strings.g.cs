@@ -497,6 +497,9 @@ namespace RimCoopMod
             { "Diplomacy.View.Ally", "aliados" },
             { "Diplomacy.View.WarPending", "guerra en {0} min" },
             { "Diplomacy.View.War", "en guerra" },
+            { "Diplomacy.ReturnColonists", "Devolver colonos" },
+            { "Diplomacy.ReturnColonistsDesc", "Mandarle de vuelta a {0} los colonos suyos que están en tu base (se puede aunque no sean aliados)." },
+            { "Diplomacy.NothingToReturn", "No tenés colonos de {0} en tu base. Para mandarle colonos tuyos tienen que ser aliados." },
         };
 
         public static readonly Dictionary<string, string> En = new Dictionary<string, string>
@@ -991,6 +994,9 @@ namespace RimCoopMod
             { "Diplomacy.View.Ally", "allies" },
             { "Diplomacy.View.WarPending", "war in {0} min" },
             { "Diplomacy.View.War", "at war" },
+            { "Diplomacy.ReturnColonists", "Return colonists" },
+            { "Diplomacy.ReturnColonistsDesc", "Send back to {0} their colonists who are in your base (allowed even if you are not allies)." },
+            { "Diplomacy.NothingToReturn", "You have none of {0}'s colonists in your base. To send them your own colonists you have to be allies." },
         };
     }
 }

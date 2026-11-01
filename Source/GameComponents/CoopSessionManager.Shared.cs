@@ -146,12 +146,10 @@ namespace RimCoopMod.GameComponents
             RequestDiplomacy(playerId, "break");
         }
 
-        /// <summary>Me mandaron colonos o aceptaron los míos: si ya somos aliados se pone al día la investigación; si no, se propone la alianza.</summary>
+        /// <summary>Me mandaron colonos o aceptaron los míos: si somos aliados se pone al día la investigación. La alianza la decide cada jugador (nunca sola).</summary>
         private void AddCollaborator(int playerId)
         {
-            if (!_playerNames.TryGetValue(playerId, out var name) || string.IsNullOrEmpty(name)) return;
-            if (IsCollaborator(playerId)) { SendResearchFullTo(playerId); return; }
-            if (_diplomacyKnown && RelationOf(playerId) == Relation.Neutral && LocalAllyCount() < DiplomacyTable.MaxAllies) RequestDiplomacy(playerId, "ally");
+            if (IsCollaborator(playerId)) SendResearchFullTo(playerId);
         }
 
         private static string ResearchProgressString()

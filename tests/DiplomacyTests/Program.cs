@@ -52,6 +52,14 @@ static class Program
             Check("Alliance_Cap4.otherSideFull", t.ProposeAlliance("f", "a") == "Diplomacy.MaxAllies");
         }
         {
+            // La propuesta pendiente se descarta si al aceptarla alguno ya llegó al tope (quedó pendiente de antes).
+            var t = Allied("a", "b", "a", "c", "a", "d");
+            t.ProposeAlliance("e", "a");
+            t.ProposeAlliance("a", "x"); t.ProposeAlliance("x", "a"); // a llega a 4 con la propuesta de e pendiente
+            Check("Alliance_Cap4_PendingBefore.reason", t.ProposeAlliance("a", "e") == "Diplomacy.MaxAllies");
+            Check("Alliance_Cap4_PendingBefore.noPending", t.Entries.TrueForAll(en => !(Has(en, "a") && Has(en, "e"))));
+        }
+        {
             var t = new DiplomacyTable();
             Check("Hostile_Declare", t.DeclareHostile("a", "b", 1000) == null);
             Check("Hostile_WarningPeriod.before", t.Get("a", "b", 1000 + DiplomacyTable.HostileWarningSeconds - 1) == Relation.Neutral);

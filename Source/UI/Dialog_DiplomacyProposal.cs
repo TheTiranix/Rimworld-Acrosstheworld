@@ -26,6 +26,13 @@ namespace RimCoopMod.UI
 
         public override void DoWindowContents(Rect inRect)
         {
+            // Se resolvió por otro lado (botón de la base, guerra, tope de aliados): sin esto quedaba abierta y contestarla daba error.
+            if (!string.Equals(CoopSessionManager.PendingFrom(FromPlayerId, Peace), FromName, System.StringComparison.OrdinalIgnoreCase))
+            {
+                Close(false);
+                return;
+            }
+
             Text.Font = GameFont.Medium;
             Widgets.Label(new Rect(0f, 0f, inRect.width, 34f), Loc.T(Peace ? "Diplomacy.ProposalPeaceTitle" : "Diplomacy.ProposalAllyTitle", FromName));
             Text.Font = GameFont.Small;

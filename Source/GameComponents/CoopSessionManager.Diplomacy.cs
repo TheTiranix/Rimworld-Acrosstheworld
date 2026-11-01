@@ -242,10 +242,14 @@ namespace RimCoopMod.GameComponents
             string me = CoopClient.Instance.LocalPlayerName;
             int room = DiplomacyTable.MaxAllies - _diplomacy.AllyCount(me);
             var over = new List<string>();
-            foreach (var name in _collaboratorNames.OrderBy(n => n))
+            _pendingLeaveNames.Clear(); // avisos de "dejé de compartir" de antes de la diplomacia: ya no aplican
+            foreach (var name in _collaboratorNames.OrderBy(n => n).ToList())
             {
-                if (_diplomacy.Get(me, name, ServerNow()) == Relation.Ally) continue;
-                if (room <= 0) { over.Add(name); continue; }
+                // Una sola vez: cada nombre sale de la lista vieja apenas se decide qué pasa con él (si quedaba, cada carga volvía a
+                // proponer alianza y hasta re-aliaba a quienes se habían peleado). Los que quedan en _toMigrate salen al mandarse.
+                var rel = _diplomacy.Get(me, name, ServerNow());
+                if (rel != Relation.Neutral || _diplomacy.IsHostilePending(me, name, ServerNow())) { _collaboratorNames.Remove(name); continue; }
+                if (room <= 0) { over.Add(name); _collaboratorNames.Remove(name); continue; }
                 _toMigrate.Add(name);
                 room--;
             }
@@ -261,7 +265,8 @@ namespace RimCoopMod.GameComponents
                 int id = PlayerIdByName(name);
                 if (id < 0) continue;
                 _toMigrate.Remove(name);
-                if (RelationOf(id) == Relation.Neutral) RequestDiplomacy(id, "ally");
+                _collaboratorNames.Remove(name);
+                if (RelationOf(id) == Relation.Neutral && !IsHostilePendingWith(id)) RequestDiplomacy(id, "ally");
             }
         }
     }
