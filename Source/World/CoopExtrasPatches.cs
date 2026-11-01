@@ -206,8 +206,10 @@ namespace RimCoopMod.World
             }
             else return;
 
-            bool add = __instance is Designator_AreaPollutionClear
-                ? !(__instance is Designator_AreaPollutionClearClear) // el "clear" no expone el modo por el mismo camino: se decide por tipo
+            // Las permitidas y la de polución no tienen campo "mode" en 1.6 (leerlo daba siempre "agregar": borrar celdas en el espejo
+            // las agregaba en el dueño): se decide por el tipo del designador.
+            bool add = __instance is Designator_AreaAllowed ? __instance is Designator_AreaAllowedExpand
+                : __instance is Designator_AreaPollutionClear ? !(__instance is Designator_AreaPollutionClearClear)
                 : Traverse.Create(__instance).Field("mode").GetValue<DesignateMode>() == DesignateMode.Add;
             CoopSessionManager.QueueAreaEdit(host, kind, add, label, c);
         }

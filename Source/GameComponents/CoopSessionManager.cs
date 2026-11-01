@@ -330,8 +330,12 @@ namespace RimCoopMod.GameComponents
                 CoopLog.Message(Loc.T("SessionManager.02", target.RemotePlayerName));
             }
 
-            Map map = GetOrGenerateMapUtility.GetOrGenerateMap(target.Tile,
-                DefDatabase<WorldObjectDef>.GetNamed("RimCoop_CoopPlayerBase"));
+            // Con el tamaño del mapa del DUEÑO (llega en cada foto): con el tamaño por defecto (el que eligió quien mira al crear su
+            // mundo) la base del otro quedaba cortada y cada cosa fuera del borde tiraba un error en rojo.
+            var parentDef = DefDatabase<WorldObjectDef>.GetNamed("RimCoop_CoopPlayerBase");
+            Map map = target.HostMapSize.x > 0
+                ? GetOrGenerateMapUtility.GetOrGenerateMap(target.Tile, target.HostMapSize, parentDef)
+                : GetOrGenerateMapUtility.GetOrGenerateMap(target.Tile, parentDef);
 
             instance._coopMaps[target.RemotePlayerId] = map;
 
@@ -470,6 +474,24 @@ namespace RimCoopMod.GameComponents
                 if (kv.Value == map) return kv.Key;
             }
             return -1;
+        }
+
+        /// <summary>El espejo se generó con otro tamaño que el mapa del dueño (primera vez que se entra): se lo rehace una vez con el correcto.</summary>
+        private readonly HashSet<int> _resizedMirrors = new HashSet<int>();
+
+        private bool RegenerateMirrorIfSizeDiffers(MapSnapshotPayload snap)
+        {
+            if (snap.MapWidth <= 0 || snap.MapHeight <= 0 || !_coopMaps.TryGetValue(snap.HostPlayerId, out var mirror) || mirror == null) return false;
+            var wobj = _remoteBases.Values.FirstOrDefault(b => b != null && b.RemotePlayerId == snap.HostPlayerId);
+            if (wobj == null) return false;
+            wobj.HostMapSize = new IntVec3(snap.MapWidth, 1, snap.MapHeight);
+            if (mirror.Size.x == snap.MapWidth && mirror.Size.z == snap.MapHeight) return false;
+            if (!_resizedMirrors.Add(snap.HostPlayerId)) return false; // una sola vez por sesión: si el juego no pudiera dar ese tamaño, no rehacerlo en cada foto
+
+            bool wasViewing = Find.CurrentMap == mirror;
+            DropMirrorMap(wobj, snap.HostPlayerId, jumpToHome: false);
+            EnterCoopMap(wobj, jumpCamera: wasViewing);
+            return true;
         }
 
         public static MapSnapshotPayload GetRemoteSnapshot(int hostPlayerId)
@@ -821,6 +843,10 @@ namespace RimCoopMod.GameComponents
                 // como base propia de quien mira (incidentes que lo apuntan, colonos contados de más, AnyPlayerHomeMap).
                 if (thing is Building_GravEngine) continue;
 
+                // Un mueble desarmado o un plano de instalación se rehacen vacíos con ThingMaker (sin el mueble adentro): errores en
+                // rojo y una copia que se borra sola y vuelve en cada foto. Se ven recién cuando el dueño los instala.
+                if (thing is MinifiedThing || thing is Blueprint_Install) continue;
+
                 result.Add(new ThingSnapshot
                 {
                     ThingId = thing.thingIDNumber,
@@ -832,7 +858,9 @@ namespace RimCoopMod.GameComponents
                     StackCount = thing is Filth filth ? filth.thickness : thing is Fire fire ? (int)(fire.fireSize * 100f) : thing is Blight blight ? (int)(blight.Severity * 100f) : thing.stackCount,
                     HitPoints = thing.HitPoints,
                     StyleDefName = thing.StyleDef?.defName,
-                    StateStr = (thing is Building || thing is Frame) ? BuildStateString(thing) : thing.def.category == ThingCategory.Item ? BuildItemStateString(thing) : ""
+                    // La roca natural (miles en un mapa de montaña) no tiene estado que mostrar: armarlo cada 30 ticks era el grueso del costo.
+                    StateStr = thing.def.building?.isNaturalRock == true ? ""
+                        : (thing is Building || thing is Frame) ? BuildStateString(thing) : thing.def.category == ThingCategory.Item ? BuildItemStateString(thing) : ""
                 });
             }
             return result;
@@ -937,6 +965,10 @@ namespace RimCoopMod.GameComponents
                     if (ts.HitPoints > 0) thing.HitPoints = Math.Min(ts.HitPoints, thing.MaxHitPoints);
 
                     var cell = new IntVec3(ts.X, 0, ts.Z);
+                    if (!cell.InBounds(map)) continue;
+                    // Planos, marcos e interruptores del espejo son "del jugador": si no, desde el espejo no se podían cancelar planos ni
+                    // tocar un interruptor (el juego solo los ofrece en cosas propias). Lo que se edita igual lo aplica el dueño.
+                    if (thing is Blueprint || thing is Frame || thing.TryGetComp<CompFlickable>() != null) thing.SetFactionDirect(Faction.OfPlayer);
                     GenSpawn.Spawn(thing, cell, map, new Rot4(ts.Rotation), WipeMode.Vanish);
                     known[ts.ThingId] = thing;
                     ApplyThingState(thing, ts.StateStr);
@@ -1896,6 +1928,7 @@ namespace RimCoopMod.GameComponents
                             catch (Exception ex) { CoopLog.Warning(Loc.T("SessionManager.30", info.PlayerName, ex.Message)); }
 
                             _coopMaps.Remove(info.PlayerId);
+                            ForgetMirrorCaches(info.PlayerId);
                             _syncedThings.Remove(info.PlayerId);
                             _syncedPawns.Remove(info.PlayerId);
                             _syncedPlants.Remove(info.PlayerId);
@@ -1990,6 +2023,7 @@ namespace RimCoopMod.GameComponents
                             break;
                         }
                         _remoteSnapshots[snap.HostPlayerId] = snap;
+                        if (RegenerateMirrorIfSizeDiffers(snap)) break;
                         if (!string.IsNullOrEmpty(snap.IdeoSummary)) _remoteIdeoSummaries[snap.HostPlayerId] = snap.IdeoSummary;
                         SyncPuppetPawns(snap);
                         break;
@@ -2239,11 +2273,15 @@ namespace RimCoopMod.GameComponents
             var cells = ParseCells(req.StuffDefName).Where(c => c.InBounds(map)).ToList();
             if (cells.Count == 0) return;
 
-            var prevMap = Current.Game.CurrentMap;
+            // Los designators trabajan sobre Find.CurrentMap, así que lo apuntamos un instante a mi mapa real. Directo al índice: el setter
+            // de CurrentMap le cortaba al dueño el designador o la mira que tuviera en la mano. Y sin nada seleccionado: el designador de
+            // zonas agranda la zona seleccionada si toca las celdas, y además deseleccionaba a los colonos del dueño (en plena incursión).
+            sbyte prevIndex = Current.Game.currentMapIndex;
+            var prevSelection = Find.Selector.SelectedObjects.ToList();
             try
             {
-                // Los designators trabajan sobre Find.CurrentMap, así que lo apuntamos un instante a mi mapa real.
-                Current.Game.CurrentMap = map;
+                Current.Game.currentMapIndex = (sbyte)map.Index;
+                Find.Selector.ClearSelection();
                 if (req.DefName == ZoneDelete)
                 {
                     var del = new Designator_ZoneDelete();
@@ -2265,7 +2303,9 @@ namespace RimCoopMod.GameComponents
             }
             finally
             {
-                Current.Game.CurrentMap = prevMap;
+                Current.Game.currentMapIndex = prevIndex;
+                Find.Selector.ClearSelection();
+                foreach (var o in prevSelection) Find.Selector.Select(o, playSound: false, forceDesignatorDeselect: false);
             }
         }
 

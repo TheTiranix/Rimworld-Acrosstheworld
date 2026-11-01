@@ -376,6 +376,7 @@ namespace RimCoopMod.GameComponents
             catch (Exception ex) { CoopLog.Warning(Loc.T("SessionManager_Dlc.06", wobj.RemotePlayerName, ex.Message)); }
 
             _mirrorSkyfallers.Remove(playerId); // las copias visuales mueren con el mapa
+            ForgetMirrorCaches(playerId);
             _coopMaps.Remove(playerId);
             _syncedThings.Remove(playerId);
             _syncedPawns.Remove(playerId);

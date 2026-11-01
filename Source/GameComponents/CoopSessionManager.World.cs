@@ -155,7 +155,8 @@ namespace RimCoopMod.GameComponents
                 // espejo todos los planos/marcos válidos vienen de la foto del dueño. Igual con un edificio local de facción jugador.
                 bool localConstruction = t is Blueprint || t is Frame || (t is Building && t.Faction == Faction.OfPlayer);
 
-                if (t.def.category == ThingCategory.Item || t is Filth || localConstruction)
+                // Fuego que no vino del dueño (un rayo del clima copiado cae solo en el espejo): se apaga.
+                if (t.def.category == ThingCategory.Item || t is Filth || t is Fire || localConstruction)
                 {
                     try { t.Destroy(DestroyMode.Vanish); } catch { }
                 }
@@ -463,8 +464,11 @@ namespace RimCoopMod.GameComponents
                 }
             }
 
-            giver.BillStack.Clear();
-            foreach (var b in result) giver.BillStack.AddBill(b);
+            // Delete y no Clear: Clear no marca la receta como borrada ni avisa al banco, así que quien la estaba haciendo la terminaba
+            // igual y un banco automático (gestador de mechs, codificador) seguía con ella.
+            foreach (var gone in existing) giver.BillStack.Delete(gone);
+            foreach (var b in result) if (!giver.BillStack.Bills.Contains(b)) giver.BillStack.AddBill(b);
+            giver.BillStack.Bills.Sort((a, b) => result.IndexOf(a).CompareTo(result.IndexOf(b))); // mismo orden que del otro lado
         }
 
         // Lado espejo: si el que mira tocó algo editable (gizmos, recetas), se le pide al dueño el mismo cambio.

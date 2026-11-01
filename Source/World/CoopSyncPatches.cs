@@ -48,8 +48,11 @@ namespace RimCoopMod.World
         }
     }
 
-    /// <summary>El fuego del espejo es solo para verse: no se propaga ni quema nada del mapa espejo.</summary>
-    [HarmonyPatch(typeof(Fire), "Tick")]
+    /// <summary>
+    /// El fuego del espejo es solo para verse: no se propaga ni quema nada del mapa espejo. En 1.6 la propagación y el daño están
+    /// en TickInterval (Tick solo mantiene el sonido): el parche viejo sobre Tick no frenaba nada.
+    /// </summary>
+    [HarmonyPatch(typeof(Fire), "TickInterval")]
     public static class Fire_Tick_Patch
     {
         [HarmonyPrefix]

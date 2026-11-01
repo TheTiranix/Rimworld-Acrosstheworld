@@ -23,6 +23,7 @@ namespace RimCoopMod.World
         public string RemotePlayerName;
         public int ColonistCount;
         public int Wealth;
+        public IntVec3 HostMapSize; // tamaño del mapa real del dueño (para generar el espejo igual), ver CoopSessionManager.EnterCoopMap
 
         public override string Label => RemotePlayerName ?? Loc.T("Common.Player");
 
@@ -167,6 +168,7 @@ namespace RimCoopMod.World
             Scribe_Values.Look(ref RemotePlayerName, "remotePlayerName");
             Scribe_Values.Look(ref ColonistCount, "colonistCount");
             Scribe_Values.Look(ref Wealth, "wealth");
+            Scribe_Values.Look(ref HostMapSize, "hostMapSize");
         }
     }
 }

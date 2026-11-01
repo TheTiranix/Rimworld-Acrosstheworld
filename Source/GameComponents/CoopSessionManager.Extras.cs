@@ -862,6 +862,22 @@ namespace RimCoopMod.GameComponents
         {
             public string LastSettings;
             public float CooldownUntil;
+            public Building_Storage Building; // la copia a la que corresponde LastSettings (una copia nueva todavía no tiene los ajustes del dueño)
+        }
+
+        /// <summary>
+        /// Lo que se recuerda por base para no reaplicar lo mismo (zonas, estantes, techos, áreas, terreno/nieve/polución): al cerrar
+        /// su espejo se olvida. Si no, al volver a entrar el espejo nuevo se quedaba sin esas cosas y, peor, los estantes nuevos (con
+        /// los ajustes por defecto) parecían "editados por quien mira" y le borraban al dueño los filtros reales.
+        /// </summary>
+        private void ForgetMirrorCaches(int hostPlayerId)
+        {
+            _mirrorZones.Remove(hostPlayerId);
+            _mirrorStores.Remove(hostPlayerId);
+            _roofSigs.Remove(hostPlayerId);
+            InvalidateAreaSigs(hostPlayerId);
+            string prefix = hostPlayerId + "|";
+            foreach (var k in _gridSigs.Keys.Where(k => k.StartsWith(prefix)).ToList()) _gridSigs.Remove(k);
         }
 
         private readonly Dictionary<int, Dictionary<int, MirrorSettings>> _mirrorZones = new Dictionary<int, Dictionary<int, MirrorSettings>>();
@@ -902,6 +918,7 @@ namespace RimCoopMod.GameComponents
                     Zone zone;
                     if (zs.Kind == "growing") zone = new Zone_Growing(map.zoneManager);
                     else zone = new Zone_Stockpile(StorageSettingsPreset.DefaultStockpile, map.zoneManager);
+                    map.zoneManager.RegisterZone(zone); // el constructor no la registra: sin esto no se veía, se rehacía cada foto y no se podía editar
 
                     foreach (var c in ParseCells(zs.CellsCsv)) if (c.InBounds(map)) zone.AddCell(c);
                     ApplyZoneSettings(zone, zs.SettingsStr);
@@ -940,7 +957,7 @@ namespace RimCoopMod.GameComponents
 
             foreach (var b in map.listerBuildings.allBuildingsColonist.OfType<Building_Storage>())
             {
-                payload.Stores.Add(new StoreSnapshot { X = b.Position.x, Z = b.Position.z, SettingsStr = StorageString(b.settings) });
+                payload.Stores.Add(new StoreSnapshot { X = b.Position.x, Z = b.Position.z, SettingsStr = StorageString(b.GetStoreSettings()) });
             }
         }
 
@@ -1096,11 +1113,10 @@ namespace RimCoopMod.GameComponents
                     ms = new MirrorStore { LastSettings = null };
                     stores[key] = ms;
                 }
-                if (ss.SettingsStr != ms.LastSettings && Time.realtimeSinceStartup >= ms.CooldownUntil)
-                {
-                    ApplyStorageString(building.settings, ss.SettingsStr);
-                    ms.LastSettings = StorageString(building.settings);
-                }
+                if (Time.realtimeSinceStartup < ms.CooldownUntil) continue; // el que mira acaba de editarlo: no pisarlo
+                if (ms.Building != building || StorageString(building.GetStoreSettings()) != ss.SettingsStr) ApplyStorageString(building.GetStoreSettings(), ss.SettingsStr);
+                ms.Building = building;
+                ms.LastSettings = StorageString(building.GetStoreSettings());
             }
         }
 
@@ -1145,8 +1161,9 @@ namespace RimCoopMod.GameComponents
                         var xz = sk.Key.Split(',');
                         var cell = new IntVec3(int.Parse(xz[0]), 0, int.Parse(xz[1]));
                         var building = cell.InBounds(map) ? cell.GetThingList(map).OfType<Building_Storage>().FirstOrDefault() : null;
-                        if (building == null || sk.Value.LastSettings == null) continue;
-                        string cur = StorageString(building.settings);
+                        // Una copia que todavía no recibió los ajustes del dueño (recién creada) no cuenta como edición de quien mira.
+                        if (building == null || sk.Value.LastSettings == null || building != sk.Value.Building) continue;
+                        string cur = StorageString(building.GetStoreSettings());
                         if (cur == sk.Value.LastSettings) continue;
                         sk.Value.LastSettings = cur;
                         sk.Value.CooldownUntil = Time.realtimeSinceStartup + EditCooldownSeconds;
@@ -1214,7 +1231,7 @@ namespace RimCoopMod.GameComponents
                 {
                     var cell = new IntVec3(req.X, 0, req.Z);
                     var b = cell.InBounds(map) ? cell.GetThingList(map).OfType<Building_Storage>().FirstOrDefault() : null;
-                    if (b != null) ApplyStorageString(b.settings, req.StuffDefName);
+                    if (b != null) ApplyStorageString(b.GetStoreSettings(), req.StuffDefName); // GetStoreSettings: si está en un grupo enlazado, los ajustes son del grupo
                     return true;
                 }
 
@@ -1225,7 +1242,15 @@ namespace RimCoopMod.GameComponents
                     var area = FindArea(map, f[1], f[3], f[2] == "1");
                     if (area == null) return true;
                     bool add = f[2] == "1";
-                    foreach (var c in ParseCells(req.StuffDefName)) if (c.InBounds(map)) area[c] = add;
+                    // Como el designador normal: marcar "construir techo" saca "sin techo" en esa celda y al revés (si no, el dueño quedaba
+                    // en un bucle de construir y quitar el techo).
+                    Area opposite = !add ? null : f[1] == "buildroof" ? map.areaManager.NoRoof : f[1] == "noroof" ? map.areaManager.BuildRoof : null;
+                    foreach (var c in ParseCells(req.StuffDefName))
+                    {
+                        if (!c.InBounds(map)) continue;
+                        area[c] = add;
+                        if (opposite != null) opposite[c] = false;
+                    }
                     CoopLog.Message(Loc.T("SessionManager_Extras.18", req.FromPlayerId, f[1], Loc.T(add ? "SessionManager_Extras.19" : "SessionManager_Extras.20")));
                     return true;
                 }

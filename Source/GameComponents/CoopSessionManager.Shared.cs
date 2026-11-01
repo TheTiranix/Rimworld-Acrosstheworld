@@ -310,7 +310,7 @@ namespace RimCoopMod.GameComponents
             if (ApplyingRemoteCondition || cond?.def == null || cond.Permanent) return;
             if (!CoopClient.Instance.IsConnected) return;
 
-            var map = Traverse.Create(manager).Field("map").GetValue<Map>();
+            var map = manager.ownerMap; // en 1.6 el campo se llama ownerMap (con "map" esto daba siempre null y no se mandaba nada)
             if (map == null || !map.IsPlayerHome || GetHostPlayerIdForMap(map) >= 0) return;
 
             var instance = Current.Game?.GetComponent<CoopSessionManager>();
